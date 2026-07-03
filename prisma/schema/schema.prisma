@@ -1,0 +1,10 @@
+// This is your Prisma schema entrypoint.
+// Feature-based model files live under prisma/schema/.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
