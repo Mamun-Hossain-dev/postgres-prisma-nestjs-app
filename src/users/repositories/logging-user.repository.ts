@@ -2,12 +2,13 @@ import { Injectable, Logger } from '@nestjs/common';
 import { UserRepository } from './user.repository';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
+import { CachedUserRepository } from './cached-user.repository';
 
 @Injectable()
 export class LoggingUserRepository extends UserRepository {
   private readonly logger = new Logger(LoggingUserRepository.name);
 
-  constructor(private readonly repository: UserRepository) {
+  constructor(private readonly repo: CachedUserRepository) {
     super();
   }
 
@@ -15,7 +16,7 @@ export class LoggingUserRepository extends UserRepository {
     this.logger.log(`Finding user by email: ${email}`);
 
     try {
-      const result = await this.repository.findByEmail(email);
+      const result = await this.repo.findByEmail(email);
 
       this.logger.log('User fetched successfully');
 
@@ -30,26 +31,26 @@ export class LoggingUserRepository extends UserRepository {
   async create(dto: CreateUserDto) {
     this.logger.log('Creating user');
 
-    return this.repository.create(dto);
+    return this.repo.create(dto);
   }
 
   async update(id: number, dto: UpdateUserDto) {
     this.logger.log(`Updating user ${id}`);
 
-    return this.repository.update(id, dto);
+    return this.repo.update(id, dto);
   }
 
   async delete(id: number) {
     this.logger.log(`Deleting user ${id}`);
 
-    return this.repository.delete(id);
+    return this.repo.delete(id);
   }
 
   async findById(id: number) {
-    return this.repository.findById(id);
+    return this.repo.findById(id);
   }
 
   async findAll() {
-    return this.repository.findAll();
+    return this.repo.findAll();
   }
 }
