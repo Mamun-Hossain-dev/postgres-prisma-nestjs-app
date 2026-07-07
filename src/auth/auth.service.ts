@@ -4,18 +4,21 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PublicUser } from '../users/interfaces/user.interface';
+import { JwtService } from '@nestjs/jwt';
+import { PublicUser, User } from '../users/interfaces/user.interface';
 import { UserRepository } from '../users/repositories/user.repository';
 import { toPublicUser } from '../users/utils/public-user.util';
 import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
 import { LoginDto } from './dto/login.dto';
+import { AuthResponse, JwtPayload } from './interfaces/auth.interface';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly configService: ConfigService,
+    private readonly jwtService: JwtService,
   ) {}
 
   async register(dto: RegisterDto): Promise<PublicUser> {
@@ -37,7 +40,7 @@ export class AuthService {
     return toPublicUser(user);
   }
 
-  async login(dto: LoginDto): Promise<PublicUser> {
+  async login(dto: LoginDto): Promise<AuthResponse> {
     const user = await this.userRepository.findByEmail(dto.email);
 
     if (!user) {
@@ -49,6 +52,21 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    return toPublicUser(user);
+    return this.buildAuthResponse(user);
+  }
+
+  private async buildAuthResponse(user: User): Promise<AuthResponse> {
+    const publicUser = toPublicUser(user);
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+    };
+    const accessToken = await this.jwtService.signAsync(payload);
+
+    return {
+      accessToken,
+      tokenType: 'Bearer',
+      user: publicUser,
+    };
   }
 }

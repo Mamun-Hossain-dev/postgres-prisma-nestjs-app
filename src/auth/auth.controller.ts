@@ -1,8 +1,11 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { createApiResponse } from '../common/utils/api-response.util';
 import { LoginDto } from './dto/login.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { CurrentUser } from './decorators/current-user.decorator';
+import type { PublicUser } from '../users/interfaces/user.interface';
 
 @Controller('auth')
 export class AuthController {
@@ -20,5 +23,11 @@ export class AuthController {
   async login(@Body() dto: LoginDto) {
     const user = await this.authService.login(dto);
     return createApiResponse('Login successful', user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('profile')
+  getProfile(@CurrentUser() user: PublicUser) {
+    return createApiResponse('Authenticated user fetched successfully', user);
   }
 }

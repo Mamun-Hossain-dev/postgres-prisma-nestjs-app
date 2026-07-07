@@ -25,6 +25,49 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## JWT Authentication Flow
+
+This project now uses NestJS JWT auth in the standard way:
+
+1. `POST /auth/register` creates a user with a hashed password.
+2. `POST /auth/login` verifies the password and returns a signed JWT access token.
+3. `GET /auth/profile` is a protected route. Send `Authorization: Bearer <token>` to access it.
+
+### Required env vars
+
+```env
+JWT_SECRET=super-secret-key-with-at-least-16-chars
+JWT_EXPIRES_IN=1d
+BCRYPT_SALT_ROUNDS=10
+DATABASE_URL=your_database_url
+```
+
+### Example login response
+
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "accessToken": "your-jwt-token",
+    "tokenType": "Bearer",
+    "user": {
+      "id": 1,
+      "name": "Mamun",
+      "email": "mamun@example.com",
+      "age": 24
+    }
+  }
+}
+```
+
+### How JWT works here
+
+- `AuthService` checks email and password, then signs a token with `sub` and `email`.
+- `JwtAuthGuard` blocks requests that do not have a valid bearer token.
+- `JwtStrategy` verifies the token and loads the real user from the database.
+- `@CurrentUser()` gives you the authenticated user inside controllers.
+
 ## Project setup
 
 ```bash
