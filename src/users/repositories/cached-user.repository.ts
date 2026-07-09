@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { RedisService } from 'src/redis/redis.service';
+
 import { UserRepository } from './user.repository';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { User } from '../interfaces/user.interface';
 import { UpdateUserDto } from '../dto/update-user.dto';
+import { RedisService } from '../../redis/redis.service';
 
 @Injectable()
 export class CachedUserRepository extends UserRepository {

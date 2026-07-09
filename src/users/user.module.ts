@@ -6,19 +6,27 @@ import { PrismaUserRepository } from './repositories/prisma-user.repository';
 import { CachedUserRepository } from './repositories/cached-user.repository';
 import { LoggingUserRepository } from './repositories/logging-user.repository';
 import { RedisModule } from '../redis/redis.module';
-// import { RedisService } from '../redis/redis.service';
+import { RedisService } from '../redis/redis.service';
 
 @Module({
   imports: [RedisModule],
   providers: [
     UserService,
     PrismaUserRepository,
-    CachedUserRepository,
-    LoggingUserRepository,
     {
       provide: UserRepository,
-      useFactory: (logging: LoggingUserRepository) => logging,
-      inject: [LoggingUserRepository],
+      useFactory: (
+        prismaRepository: PrismaUserRepository,
+        redisService: RedisService,
+      ) => {
+        const cachedRepository = new CachedUserRepository(
+          redisService,
+          prismaRepository,
+        );
+
+        return new LoggingUserRepository(cachedRepository);
+      },
+      inject: [PrismaUserRepository, RedisService],
     },
   ],
   controllers: [UserController],

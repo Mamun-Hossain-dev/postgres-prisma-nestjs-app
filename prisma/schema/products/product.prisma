@@ -1,0 +1,10 @@
+model Product {
+  id        Int      @id @default(autoincrement())
+  title     String
+  price     Float
+  quantity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("products")
+}
