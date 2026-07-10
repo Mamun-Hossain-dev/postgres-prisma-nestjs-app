@@ -31,6 +31,12 @@ async function bootstrap() {
   };
 
   app.useGlobalPipes(new ValidationPipe(validationPipeOptions));
+  app.enableCors(
+    configService.get('app.cors', {
+      origin: true,
+      credentials: true,
+    }),
+  );
 
   logger.log(`Attempting to listen on ${host}:${port}`);
   await app.listen(port, host);
