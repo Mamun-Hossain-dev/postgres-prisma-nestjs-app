@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
-import { createApiResponse } from '../common/utils/api-response.util';
+import { ResponseMessage } from '../common/utils/api-response.util';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -12,22 +12,21 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
+  @ResponseMessage('User registered successfully')
   async register(@Body() dto: RegisterDto) {
-    return createApiResponse(
-      'User registered successfully',
-      this.authService.register(dto),
-    );
+    return this.authService.register(dto);
   }
 
   @Post('login')
+  @ResponseMessage('Login successful')
   async login(@Body() dto: LoginDto) {
-    const user = await this.authService.login(dto);
-    return createApiResponse('Login successful', user);
+    return this.authService.login(dto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('profile')
+  @ResponseMessage('Authenticated user fetched successfully')
   getProfile(@CurrentUser() user: PublicUser) {
-    return createApiResponse('Authenticated user fetched successfully', user);
+    return user;
   }
 }

@@ -24,12 +24,8 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return a clean response', async () => {
-      await expect(appController.getHello()).resolves.toEqual({
-        success: true,
-        message: 'App fetched successfully',
-        data: 'Server is running on port 8080',
-      });
+    it('should return the service data', () => {
+      expect(appController.getHello()).toBe('Server is running on port 8080');
     });
   });
 });
