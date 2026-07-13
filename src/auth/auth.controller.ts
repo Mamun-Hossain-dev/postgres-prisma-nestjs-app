@@ -1,9 +1,9 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { ResponseMessage } from '../common/utils/api-response.util';
 import { LoginDto } from './dto/login.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
+
 import { CurrentUser } from './decorators/current-user.decorator';
 import type { PublicUser } from '../users/interfaces/user.interface';
 import { Public } from './decorators/public.decorator';
@@ -26,7 +26,6 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('profile')
   @ResponseMessage('Authenticated user fetched successfully')
   getProfile(@CurrentUser() user: PublicUser) {
