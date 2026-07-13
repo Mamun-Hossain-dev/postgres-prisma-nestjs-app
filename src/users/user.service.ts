@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { UserRepository } from './repositories/user.repository';
 import { CreateUserDto } from './dto/create-user.dto';
 import { PublicUser } from './interfaces/user.interface';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { toPublicUser } from './utils/public-user.util';
+import { AppException } from '../common/exceptions/app.exception';
 
 @Injectable()
 export class UserService {
@@ -17,7 +18,10 @@ export class UserService {
   async getUserById(id: number): Promise<PublicUser> {
     const user = await this.userRepository.findById(id);
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new AppException('User not found', {
+        code: 'USER_NOT_FOUND',
+        status: 404,
+      });
     }
     return toPublicUser(user);
   }
@@ -30,7 +34,10 @@ export class UserService {
   async updateUser(id: number, user: UpdateUserDto): Promise<PublicUser> {
     const updatedUser = await this.userRepository.update(id, user);
     if (!updatedUser) {
-      throw new NotFoundException('User not found');
+      throw new AppException('User not found', {
+        code: 'USER_NOT_FOUND',
+        status: 404,
+      });
     }
     return toPublicUser(updatedUser);
   }
@@ -38,7 +45,10 @@ export class UserService {
   async deleteUser(id: number): Promise<void> {
     const user = await this.userRepository.findById(id);
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new AppException('User not found', {
+        code: 'USER_NOT_FOUND',
+        status: 404,
+      });
     }
 
     await this.userRepository.delete(id);

@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
 import { UserRepository } from '../users/repositories/user.repository';
+import * as bcrypt from 'bcrypt';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -56,7 +57,7 @@ describe('AuthService', () => {
       name: 'Mamun',
       email: 'mamun@example.com',
       age: 24,
-      password: await require('bcrypt').hash('secret123', 10),
+      password: await bcrypt.hash('secret123', 10),
     });
 
     await expect(

@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ProductRepository } from './repositories/product.repository';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Product } from './interfaces/product.interface';
+import { AppException } from '../common/exceptions/app.exception';
 
 @Injectable()
 export class ProductsService {
@@ -16,7 +17,10 @@ export class ProductsService {
     const product = await this.productsRepository.findById(id);
 
     if (!product) {
-      throw new NotFoundException('Product not found');
+      throw new AppException('Product not found', {
+        code: 'PRODUCT_NOT_FOUND',
+        status: 404,
+      });
     }
 
     return product;
@@ -30,7 +34,10 @@ export class ProductsService {
     const updatedProduct = await this.productsRepository.update(id, dto);
 
     if (!updatedProduct) {
-      throw new NotFoundException('Product not found');
+      throw new AppException('Product not found', {
+        code: 'PRODUCT_NOT_FOUND',
+        status: 404,
+      });
     }
 
     return updatedProduct;
@@ -39,7 +46,10 @@ export class ProductsService {
   async deleteProduct(id: number): Promise<void> {
     const product = await this.productsRepository.findById(id);
     if (!product) {
-      throw new NotFoundException('Product not found');
+      throw new AppException('Product not found', {
+        code: 'PRODUCT_NOT_FOUND',
+        status: 404,
+      });
     }
 
     await this.productsRepository.delete(id);
