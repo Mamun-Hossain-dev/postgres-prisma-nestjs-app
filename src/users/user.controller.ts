@@ -14,7 +14,6 @@ import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ResponseMessage } from '../common/utils/api-response.util';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from './interfaces/user.interface';
@@ -38,7 +37,7 @@ export class UserController {
     return this.userService.getUserById(id);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Post()
   @ResponseMessage('User created successfully')
@@ -46,7 +45,7 @@ export class UserController {
     return this.userService.createUser(dto);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Patch(':id')
   @ResponseMessage('User updated successfully')
@@ -54,7 +53,7 @@ export class UserController {
     return this.userService.updateUser(id, dto);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Delete(':id')
   @ResponseMessage('User deleted successfully')

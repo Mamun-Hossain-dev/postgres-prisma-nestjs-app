@@ -9,7 +9,10 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Public } from '../auth/decorators/public.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../users/interfaces/user.interface';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -19,12 +22,14 @@ import { ResponseMessage } from '../common/utils/api-response.util';
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
+  @Public()
   @Get()
   @ResponseMessage('Products fetched successfully')
   findAll() {
     return this.productsService.getAllProducts();
   }
 
+  @Public()
   @Get(':id')
   @ResponseMessage('Product fetched successfully')
   findOne(@Param('id', ParseIntPipe) id: number) {
@@ -32,13 +37,13 @@ export class ProductsController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.SELLER)
   @ResponseMessage('Product created successfully')
   create(@Body() dto: CreateProductDto) {
     return this.productsService.createProduct(dto);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Patch(':id')
   @ResponseMessage('Product updated successfully')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateProductDto) {
@@ -46,6 +51,8 @@ export class ProductsController {
   }
 
   @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.SELLER)
   @ResponseMessage('Product deleted successfully')
   async delete(@Param('id', ParseIntPipe) id: number) {
     await this.productsService.deleteProduct(id);

@@ -37,7 +37,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       this.isReady = false;
       this.logger.warn(
-        'Redis is not reachable. Continuing without cache support.',
+        `Redis is not reachable. Continuing without cache support: ${error}`,
       );
     }
   }
