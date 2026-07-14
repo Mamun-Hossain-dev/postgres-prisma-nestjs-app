@@ -17,14 +17,11 @@ describe('AppController (e2e)', () => {
   });
 
   it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect({
-        success: true,
-        message: 'App fetched successfully',
-        data: 'Hello World!',
-      });
+    return request(app.getHttpServer()).get('/').expect(200).expect({
+      success: true,
+      message: 'App fetched successfully',
+      data: 'Hello World!',
+    });
   });
 
   afterEach(async () => {

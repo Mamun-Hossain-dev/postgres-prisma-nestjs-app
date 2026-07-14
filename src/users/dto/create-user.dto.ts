@@ -1,5 +1,12 @@
 import { Type } from 'class-transformer';
-import { IsNumber, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
+import { Role } from '../interfaces/user.interface';
 
 export class CreateUserDto {
   @IsString()
@@ -12,6 +19,9 @@ export class CreateUserDto {
   @Type(() => Number)
   @IsNumber()
   age?: number;
+
+  @IsEnum(Role)
+  role!: Role;
 
   @IsString()
   @MinLength(6)

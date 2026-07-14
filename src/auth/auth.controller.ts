@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { ResponseMessage } from '../common/utils/api-response.util';
@@ -13,6 +14,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
+  @Throttle({ default: { limit: 15, ttl: 60_0000 } })
   @Post('register')
   @ResponseMessage('User registered successfully')
   async register(@Body() dto: RegisterDto) {
@@ -20,6 +22,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 15, ttl: 60_000 } })
   @Post('login')
   @ResponseMessage('Login successful')
   async login(@Body() dto: LoginDto) {
