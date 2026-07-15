@@ -40,6 +40,12 @@ export class LoggingUserRepository extends UserRepository {
     return this.repo.update(id, dto);
   }
 
+  async setBlocked(id: number, isBlocked: boolean) {
+    this.logger.log(`${isBlocked ? 'Blocking' : 'Unblocking'} user ${id}`);
+
+    return this.repo.setBlocked(id, isBlocked);
+  }
+
   async delete(id: number) {
     this.logger.log(`Deleting user ${id}`);
 

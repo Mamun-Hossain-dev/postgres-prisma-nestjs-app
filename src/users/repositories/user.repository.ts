@@ -8,5 +8,6 @@ export abstract class UserRepository {
   abstract findById(id: number): Promise<User | null>;
   abstract create(user: CreateUserDto): Promise<User>;
   abstract update(id: number, user: UpdateUserDto): Promise<User | null>;
+  abstract setBlocked(id: number, isBlocked: boolean): Promise<User | null>;
   abstract delete(id: number): Promise<void>;
 }

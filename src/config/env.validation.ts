@@ -12,7 +12,13 @@ const envSchema = z.object({
   JWT_SECRET: z
     .string()
     .min(16, 'JWT_SECRET must be at least 16 characters long'),
-  JWT_EXPIRES_IN: z.string().min(1).default('1d'),
+  JWT_EXPIRES_IN: z.string().min(1).default('15m'),
+  REFRESH_TOKEN_TTL_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(2_592_000),
+  REFRESH_COOKIE_NAME: z.string().min(1).default('refresh_token'),
   Global_API_PREFIX: z.string().min(1).default('api/v1/'),
 });
 

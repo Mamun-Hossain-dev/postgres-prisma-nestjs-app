@@ -10,3 +10,15 @@ export interface AuthResponse {
   tokenType: 'Bearer';
   user: PublicUser;
 }
+
+export interface SessionMetadata {
+  ip: string;
+  userAgent: string;
+  device: string;
+}
+
+export interface AuthSessionResult {
+  auth: AuthResponse;
+  refreshToken: string;
+  refreshTokenExpiresAt: Date;
+}

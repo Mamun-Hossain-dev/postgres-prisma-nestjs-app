@@ -55,6 +55,22 @@ export class UserController {
 
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
+  @Patch(':id/block')
+  @ResponseMessage('User blocked successfully')
+  block(@Param('id', ParseIntPipe) id: number) {
+    return this.userService.setUserBlocked(id, true);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
+  @Patch(':id/unblock')
+  @ResponseMessage('User unblocked successfully')
+  unblock(@Param('id', ParseIntPipe) id: number) {
+    return this.userService.setUserBlocked(id, false);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
   @Delete(':id')
   @ResponseMessage('User deleted successfully')
   async delete(@Param('id', ParseIntPipe) id: number) {

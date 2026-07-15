@@ -60,6 +60,22 @@ export class CachedUserRepository extends UserRepository {
     return user;
   }
 
+  async setBlocked(id: number, isBlocked: boolean): Promise<User | null> {
+    const existingUser = await this.repository.findById(id);
+    const user = await this.repository.setBlocked(id, isBlocked);
+
+    if (!user) {
+      return null;
+    }
+
+    if (existingUser) {
+      await this.invalidateUserCache(existingUser);
+    }
+
+    await this.cacheUser(user);
+    return user;
+  }
+
   async delete(id: number): Promise<void> {
     const existingUser = await this.repository.findById(id);
 

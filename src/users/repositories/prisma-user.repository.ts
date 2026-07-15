@@ -49,6 +49,19 @@ export class PrismaUserRepository extends UserRepository {
     });
   }
 
+  async setBlocked(id: number, isBlocked: boolean): Promise<User | null> {
+    const existingUser = await this.prisma.user.findUnique({ where: { id } });
+
+    if (!existingUser) {
+      return null;
+    }
+
+    return this.prisma.user.update({
+      where: { id },
+      data: { isBlocked },
+    });
+  }
+
   async delete(id: number): Promise<void> {
     await this.prisma.user.delete({
       where: { id },

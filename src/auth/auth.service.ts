@@ -7,8 +7,14 @@ import { toPublicUser } from '../users/utils/public-user.util';
 import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
 import { LoginDto } from './dto/login.dto';
-import { AuthResponse, JwtPayload } from './interfaces/auth.interface';
+import {
+  AuthResponse,
+  AuthSessionResult,
+  JwtPayload,
+  SessionMetadata,
+} from './interfaces/auth.interface';
 import { AppException } from '../common/exceptions/app.exception';
+import { AuthSessionService } from './auth-session.service';
 
 @Injectable()
 export class AuthService {
@@ -16,6 +22,7 @@ export class AuthService {
     private readonly userRepository: UserRepository,
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
+    private readonly authSessionService: AuthSessionService,
   ) {}
 
   async register(dto: RegisterDto): Promise<PublicUser> {
@@ -40,7 +47,10 @@ export class AuthService {
     return toPublicUser(user);
   }
 
-  async login(dto: LoginDto): Promise<AuthResponse> {
+  async login(
+    dto: LoginDto,
+    metadata: SessionMetadata,
+  ): Promise<AuthSessionResult> {
     const user = await this.userRepository.findByEmail(dto.email);
 
     if (!user) {
@@ -58,7 +68,49 @@ export class AuthService {
       });
     }
 
-    return this.buildAuthResponse(user);
+    if (user.isBlocked) {
+      throw new AppException('User account is blocked', {
+        code: 'USER_BLOCKED',
+        status: 401,
+      });
+    }
+
+    const session = await this.authSessionService.create(user.id, metadata);
+
+    return {
+      auth: await this.buildAuthResponse(user),
+      refreshToken: session.refreshToken,
+      refreshTokenExpiresAt: session.expiresAt,
+    };
+  }
+
+  async refresh(
+    refreshToken: string,
+    metadata: SessionMetadata,
+  ): Promise<AuthSessionResult> {
+    const session = await this.authSessionService.rotate(
+      refreshToken,
+      metadata,
+    );
+    const user = await this.userRepository.findById(session.userId);
+
+    if (!user || user.isBlocked) {
+      await this.authSessionService.revoke(session.refreshToken);
+      throw new AppException('Invalid or expired refresh token', {
+        code: 'INVALID_REFRESH_TOKEN',
+        status: 401,
+      });
+    }
+
+    return {
+      auth: await this.buildAuthResponse(user),
+      refreshToken: session.refreshToken,
+      refreshTokenExpiresAt: session.expiresAt,
+    };
+  }
+
+  async logout(refreshToken: string): Promise<void> {
+    await this.authSessionService.revoke(refreshToken);
   }
 
   private async buildAuthResponse(user: User): Promise<AuthResponse> {

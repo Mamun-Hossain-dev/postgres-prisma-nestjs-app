@@ -13,6 +13,7 @@ export interface User {
   age: number;
   password: string;
   role: Role;
+  isBlocked: boolean;
 }
 
 export type PublicUser = Omit<User, 'password'>;

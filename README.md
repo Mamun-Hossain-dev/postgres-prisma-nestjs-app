@@ -37,7 +37,9 @@ This project now uses NestJS JWT auth in the standard way:
 
 ```env
 JWT_SECRET=super-secret-key-with-at-least-16-chars
-JWT_EXPIRES_IN=1d
+JWT_EXPIRES_IN=15m
+REFRESH_TOKEN_TTL_SECONDS=2592000
+REFRESH_COOKIE_NAME=refresh_token
 BCRYPT_SALT_ROUNDS=10
 DATABASE_URL=your_database_url
 ```
