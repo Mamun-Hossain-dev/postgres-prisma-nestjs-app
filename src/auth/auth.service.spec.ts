@@ -5,13 +5,14 @@ import { AuthService } from './auth.service';
 import { UserRepository } from '../users/repositories/user.repository';
 import * as bcrypt from 'bcrypt';
 import { AuthSessionService } from './auth-session.service';
+import { Role } from '../users/interfaces/user.interface';
 
 describe('AuthService', () => {
   let service: AuthService;
   let userRepository: {
     findByEmail: jest.Mock;
     findById: jest.Mock;
-    create: jest.Mock;
+    create: jest.MockedFunction<UserRepository['create']>;
   };
   let jwtService: {
     signAsync: jest.Mock;
@@ -26,7 +27,7 @@ describe('AuthService', () => {
     userRepository = {
       findByEmail: jest.fn(),
       findById: jest.fn(),
-      create: jest.fn(),
+      create: jest.fn<UserRepository['create']>(),
     };
     jwtService = {
       signAsync: jest.fn().mockResolvedValue('signed-jwt-token'),
@@ -69,6 +70,38 @@ describe('AuthService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  it('normalizes the email, hashes the password, and assigns USER on register', async () => {
+    userRepository.findByEmail.mockResolvedValue(null);
+    userRepository.create.mockImplementation((data: object) =>
+      Promise.resolve({
+        id: 1,
+        age: 0,
+        isBlocked: false,
+        ...data,
+      }),
+    );
+
+    const result = await service.register({
+      name: 'Mamun',
+      email: '  MAMUN@Example.COM ',
+      password: 'secret123',
+    });
+
+    expect(userRepository.findByEmail).toHaveBeenCalledWith(
+      'mamun@example.com',
+    );
+    expect(userRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'mamun@example.com',
+        role: Role.USER,
+      }),
+    );
+    expect(userRepository.create.mock.calls[0][0].password).toMatch(
+      /^\$2[aby]\$/,
+    );
+    expect(result).not.toHaveProperty('password');
   });
 
   it('should return a signed JWT with the public user on successful login', async () => {

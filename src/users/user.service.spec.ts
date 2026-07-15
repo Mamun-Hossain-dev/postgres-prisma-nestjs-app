@@ -2,13 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UserService } from './user.service';
 import { UserRepository } from './repositories/user.repository';
 import { Role, User } from './interfaces/user.interface';
+import { ConfigService } from '@nestjs/config';
 
 describe('UserService', () => {
   let service: UserService;
   let userRepository: {
     findAll: jest.Mock;
     findById: jest.Mock;
-    create: jest.Mock;
+    create: jest.MockedFunction<UserRepository['create']>;
     update: jest.Mock;
     setBlocked: jest.Mock;
     delete: jest.Mock;
@@ -18,7 +19,7 @@ describe('UserService', () => {
     userRepository = {
       findAll: jest.fn().mockResolvedValue([]),
       findById: jest.fn().mockResolvedValue(null),
-      create: jest.fn(),
+      create: jest.fn<UserRepository['create']>(),
       update: jest.fn().mockResolvedValue(null),
       setBlocked: jest.fn().mockResolvedValue(null),
       delete: jest.fn().mockResolvedValue(undefined),
@@ -31,6 +32,12 @@ describe('UserService', () => {
           provide: UserRepository,
           useValue: userRepository,
         },
+        {
+          provide: ConfigService,
+          useValue: {
+            getOrThrow: jest.fn().mockReturnValue(10),
+          },
+        },
       ],
     }).compile();
 
@@ -39,6 +46,28 @@ describe('UserService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  it('hashes passwords and normalizes email for admin-created users', async () => {
+    userRepository.create.mockImplementation((data: object) =>
+      Promise.resolve({ id: 1, age: 0, isBlocked: false, ...data }),
+    );
+
+    await service.createUser({
+      name: 'Seller',
+      email: ' SELLER@Example.COM ',
+      password: 'secret123',
+      role: Role.SELLER,
+    });
+
+    expect(userRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'seller@example.com',
+      }),
+    );
+    expect(userRepository.create.mock.calls[0][0].password).toMatch(
+      /^\$2[aby]\$/,
+    );
   });
 
   it.each([Role.USER, Role.SELLER])('blocks a %s account', async (role) => {

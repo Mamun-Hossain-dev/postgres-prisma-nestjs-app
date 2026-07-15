@@ -8,6 +8,8 @@ const envSchema = z.object({
   HOST: z.string().min(1).default('127.0.0.1'),
   PORT: z.coerce.number().int().min(1).max(65535).default(8080),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+  REDIS_HOST: z.string().min(1).default('localhost'),
+  REDIS_PORT: z.coerce.number().int().min(1).max(65535).default(6379),
   BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(4).max(15).default(10),
   JWT_SECRET: z
     .string()

@@ -26,6 +26,18 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     this.client.on('error', (error) => {
       this.logger.warn(`Redis unavailable: ${error.message}`);
     });
+
+    this.client.on('ready', () => {
+      this.isReady = true;
+    });
+
+    this.client.on('close', () => {
+      this.isReady = false;
+    });
+
+    this.client.on('end', () => {
+      this.isReady = false;
+    });
   }
 
   async onModuleInit() {

@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsEnum,
+  IsEmail,
   IsNumber,
   IsOptional,
   IsString,
@@ -12,7 +13,7 @@ export class CreateUserDto {
   @IsString()
   name!: string;
 
-  @IsString()
+  @IsEmail()
   email!: string;
 
   @IsOptional()

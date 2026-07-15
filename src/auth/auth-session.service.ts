@@ -100,12 +100,16 @@ export class AuthSessionService {
     const rotationResult = await this.redis.getClient().eval(
       `if redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end
        redis.call('SET', KEYS[1], ARGV[2], 'EX', ARGV[3])
+       redis.call('SADD', KEYS[2], ARGV[4])
+       redis.call('EXPIRE', KEYS[2], ARGV[3])
        return 1`,
-      1,
+      2,
       sessionKey,
+      this.userSessionsKey(session.userId),
       rawSession,
       JSON.stringify(rotatedSession),
       String(this.ttlSeconds),
+      sessionId,
     );
 
     if (rotationResult !== 1) {
@@ -128,6 +132,8 @@ export class AuthSessionService {
     if (!rawSession) return;
 
     const session = this.parseSession(rawSession);
+    if (session.hashedRefreshToken !== this.hash(parsed.secret)) return;
+
     await this.revokeBySessionId(parsed.sessionId, session.userId);
   }
 

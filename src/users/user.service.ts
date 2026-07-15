@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import * as bcrypt from 'bcrypt';
 import { UserRepository } from './repositories/user.repository';
 import { CreateUserDto } from './dto/create-user.dto';
 import { PublicUser, Role } from './interfaces/user.interface';
@@ -8,7 +10,10 @@ import { AppException } from '../common/exceptions/app.exception';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly configService: ConfigService,
+  ) {}
 
   async getAllUsers(): Promise<PublicUser[]> {
     const users = await this.userRepository.findAll();
@@ -27,7 +32,15 @@ export class UserService {
   }
 
   async createUser(user: CreateUserDto): Promise<PublicUser> {
-    const createdUser = await this.userRepository.create(user);
+    const saltRounds = this.configService.getOrThrow<number>(
+      'auth.bcryptSaltRounds',
+    );
+    const password = await bcrypt.hash(user.password, saltRounds);
+    const createdUser = await this.userRepository.create({
+      ...user,
+      email: user.email.trim().toLowerCase(),
+      password,
+    });
     return toPublicUser(createdUser);
   }
 

@@ -29,9 +29,11 @@
 
 This project now uses NestJS JWT auth in the standard way:
 
-1. `POST /auth/register` creates a user with a hashed password.
-2. `POST /auth/login` verifies the password and returns a signed JWT access token.
-3. `GET /auth/profile` is a protected route. Send `Authorization: Bearer <token>` to access it.
+1. `POST /auth/register` creates a `USER` account with a hashed password.
+2. `POST /auth/login` returns a short-lived JWT and sets a rotating refresh-token cookie.
+3. `POST /auth/refresh` rotates the Redis-backed refresh session and returns a new JWT.
+4. `POST /auth/logout` revokes the refresh session and clears its cookie.
+5. `GET /auth/profile` is protected. Send `Authorization: Bearer <token>` to access it.
 
 ### Required env vars
 
@@ -42,6 +44,8 @@ REFRESH_TOKEN_TTL_SECONDS=2592000
 REFRESH_COOKIE_NAME=refresh_token
 BCRYPT_SALT_ROUNDS=10
 DATABASE_URL=your_database_url
+REDIS_HOST=localhost
+REDIS_PORT=6379
 ```
 
 ### Example login response
@@ -65,7 +69,8 @@ DATABASE_URL=your_database_url
 
 ### How JWT works here
 
-- `AuthService` checks email and password, then signs a token with `sub` and `email`.
+- `AuthService` checks email, password, and blocked status, then signs a token with `sub` and `email`.
+- `AuthSessionService` stores only a hash of the refresh secret in Redis and rotates it on refresh.
 - `JwtAuthGuard` blocks requests that do not have a valid bearer token.
 - `JwtStrategy` verifies the token and loads the real user from the database.
 - `@CurrentUser()` gives you the authenticated user inside controllers.

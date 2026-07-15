@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { PublicUser, User } from '../users/interfaces/user.interface';
+import { PublicUser, Role, User } from '../users/interfaces/user.interface';
 import { UserRepository } from '../users/repositories/user.repository';
 import { toPublicUser } from '../users/utils/public-user.util';
 import { RegisterDto } from './dto/register.dto';
@@ -26,7 +26,8 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto): Promise<PublicUser> {
-    const existingUser = await this.userRepository.findByEmail(dto.email);
+    const email = this.normalizeEmail(dto.email);
+    const existingUser = await this.userRepository.findByEmail(email);
 
     if (existingUser) {
       throw new AppException('Email already in use', {
@@ -41,7 +42,9 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(dto.password, saltRounds);
     const user = await this.userRepository.create({
       ...dto,
+      email,
       password: hashedPassword,
+      role: Role.USER,
     });
 
     return toPublicUser(user);
@@ -51,7 +54,9 @@ export class AuthService {
     dto: LoginDto,
     metadata: SessionMetadata,
   ): Promise<AuthSessionResult> {
-    const user = await this.userRepository.findByEmail(dto.email);
+    const user = await this.userRepository.findByEmail(
+      this.normalizeEmail(dto.email),
+    );
 
     if (!user) {
       throw new AppException('Invalid email or password', {
@@ -111,6 +116,10 @@ export class AuthService {
 
   async logout(refreshToken: string): Promise<void> {
     await this.authSessionService.revoke(refreshToken);
+  }
+
+  private normalizeEmail(email: string): string {
+    return email.trim().toLowerCase();
   }
 
   private async buildAuthResponse(user: User): Promise<AuthResponse> {
