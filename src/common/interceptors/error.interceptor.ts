@@ -1,6 +1,5 @@
 import {
   CallHandler,
-  ConflictException,
   ExecutionContext,
   HttpException,
   Injectable,
@@ -28,12 +27,26 @@ export class ErrorInterceptor implements NestInterceptor {
 
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2002') {
-        return new ConflictException(
-          'A record with this value already exists',
-          {
+        const target = error.meta?.target;
+        const fields = Array.isArray(target)
+          ? target.filter((field): field is string => typeof field === 'string')
+          : typeof target === 'string'
+            ? [target]
+            : [];
+
+        if (fields.includes('email')) {
+          return new AppException('Email already in use', {
+            code: 'EMAIL_ALREADY_IN_USE',
+            status: 409,
             cause: error,
-          },
-        );
+          });
+        }
+
+        return new AppException('A record with this value already exists', {
+          code: 'UNIQUE_CONSTRAINT_VIOLATION',
+          status: 409,
+          cause: error,
+        });
       }
 
       if (error.code === 'P2025') {

@@ -45,6 +45,8 @@ export class ProductsController {
   }
 
   @Patch(':id')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.SELLER)
   @ResponseMessage('Product updated successfully')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateProductDto) {
     return this.productsService.updateProduct(id, dto);
