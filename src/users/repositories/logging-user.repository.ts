@@ -29,16 +29,16 @@ export class LoggingUserRepository implements UserRepository {
     }
   }
 
-  async create(input: CreateUserInput) {
+  async create(input: CreateUserInput, image?: UserProfileImage) {
     this.logger.log('Creating user');
 
-    return this.repo.create(input);
+    return this.repo.create(input, image);
   }
 
-  async update(id: number, input: UpdateUserInput) {
+  async update(id: number, input: UpdateUserInput, image?: UserProfileImage) {
     this.logger.log(`Updating user ${id}`);
 
-    return this.repo.update(id, input);
+    return this.repo.update(id, input, image);
   }
 
   async setBlocked(id: number, isBlocked: boolean) {

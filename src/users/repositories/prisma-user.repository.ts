@@ -29,13 +29,21 @@ export class PrismaUserRepository implements UserRepository {
     });
   }
 
-  async create(user: CreateUserInput): Promise<User> {
+  async create(user: CreateUserInput, image?: UserProfileImage): Promise<User> {
     return await this.prisma.user.create({
-      data: user,
+      data: {
+        ...user,
+        profileImageUrl: image?.url,
+        profileImagePublicId: image?.publicId,
+      },
     });
   }
 
-  async update(id: number, user: UpdateUserInput): Promise<User | null> {
+  async update(
+    id: number,
+    user: UpdateUserInput,
+    image?: UserProfileImage,
+  ): Promise<User | null> {
     const existingUser = await this.prisma.user.findUnique({
       where: { id },
     });
@@ -46,7 +54,11 @@ export class PrismaUserRepository implements UserRepository {
 
     return await this.prisma.user.update({
       where: { id },
-      data: user,
+      data: {
+        ...user,
+        profileImageUrl: image?.url,
+        profileImagePublicId: image?.publicId,
+      },
     });
   }
 

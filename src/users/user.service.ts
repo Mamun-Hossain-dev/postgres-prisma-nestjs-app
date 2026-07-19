@@ -41,26 +41,69 @@ export class UserService {
     return toPublicUser(user);
   }
 
-  async createUser(user: CreateUserInput): Promise<PublicUser> {
+  async createUser(
+    user: CreateUserInput,
+    file?: FileToStore,
+  ): Promise<PublicUser> {
     const saltRounds = this.configService.getOrThrow<number>(
       'auth.bcryptSaltRounds',
     );
     const password = await bcrypt.hash(user.password, saltRounds);
-    const createdUser = await this.userRepository.create({
-      ...user,
-      email: user.email.trim().toLowerCase(),
-      password,
-    });
-    return toPublicUser(createdUser);
+    const uploadedImage = file
+      ? await this.uploadsService.uploadImage(file)
+      : undefined;
+
+    try {
+      const createdUser = await this.userRepository.create(
+        {
+          ...user,
+          email: user.email.trim().toLowerCase(),
+          password,
+        },
+        uploadedImage
+          ? { url: uploadedImage.url, publicId: uploadedImage.publicId }
+          : undefined,
+      );
+      return toPublicUser(createdUser);
+    } catch (error) {
+      await this.deleteFileSafely(uploadedImage?.publicId ?? null);
+      throw error;
+    }
   }
 
-  async updateUser(id: number, user: UpdateUserInput): Promise<PublicUser> {
-    const updatedUser = await this.userRepository.update(id, user);
+  async updateUser(
+    id: number,
+    user: UpdateUserInput,
+    file?: FileToStore,
+  ): Promise<PublicUser> {
+    const existingUser = await this.requireUser(id);
+    const uploadedImage = file
+      ? await this.uploadsService.uploadImage(file)
+      : undefined;
+    let updatedUser;
+
+    try {
+      updatedUser = await this.userRepository.update(
+        id,
+        user,
+        uploadedImage
+          ? { url: uploadedImage.url, publicId: uploadedImage.publicId }
+          : undefined,
+      );
+    } catch (error) {
+      await this.deleteFileSafely(uploadedImage?.publicId ?? null);
+      throw error;
+    }
+
     if (!updatedUser) {
+      await this.deleteFileSafely(uploadedImage?.publicId ?? null);
       throw new AppException('User not found', {
         code: 'USER_NOT_FOUND',
         status: 404,
       });
+    }
+    if (uploadedImage) {
+      await this.deleteFileSafely(existingUser.profileImagePublicId);
     }
     return toPublicUser(updatedUser);
   }

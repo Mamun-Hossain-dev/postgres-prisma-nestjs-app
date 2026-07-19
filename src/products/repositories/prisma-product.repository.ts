@@ -27,14 +27,24 @@ export class PrismaProductRepository implements ProductRepository {
     });
   }
 
-  async create(input: CreateProductInput): Promise<Product> {
+  async create(
+    input: CreateProductInput,
+    images: NewProductImage[] = [],
+  ): Promise<Product> {
     return await this.prisma.product.create({
-      data: input,
+      data: {
+        ...input,
+        images: { create: images },
+      },
       include: { images: true },
     });
   }
 
-  async update(id: number, input: UpdateProductInput): Promise<Product | null> {
+  async update(
+    id: number,
+    input: UpdateProductInput,
+    images: NewProductImage[] = [],
+  ): Promise<Product | null> {
     const existingProduct = await this.prisma.product.findUnique({
       where: { id },
     });
@@ -45,7 +55,10 @@ export class PrismaProductRepository implements ProductRepository {
 
     return await this.prisma.product.update({
       where: { id },
-      data: input,
+      data: {
+        ...input,
+        images: images.length ? { create: images } : undefined,
+      },
       include: { images: { orderBy: { id: 'asc' } } },
     });
   }

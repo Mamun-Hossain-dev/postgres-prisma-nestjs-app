@@ -23,14 +23,18 @@ export class LoggingProductRepository implements ProductRepository {
     return await this.repository.findById(id);
   }
 
-  async create(input: CreateProductInput) {
+  async create(input: CreateProductInput, images: NewProductImage[] = []) {
     this.logger.log('Creating product');
-    return await this.repository.create(input);
+    return await this.repository.create(input, images);
   }
 
-  async update(id: number, input: UpdateProductInput) {
+  async update(
+    id: number,
+    input: UpdateProductInput,
+    images: NewProductImage[] = [],
+  ) {
     this.logger.log(`Updating product ${id}`);
-    return await this.repository.update(id, input);
+    return await this.repository.update(id, input, images);
   }
 
   async delete(id: number) {

@@ -44,21 +44,13 @@ export class ProductsController {
   @Post()
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.SELLER)
+  @UseInterceptors(FilesInterceptor('images'))
   @ResponseMessage('Product created successfully')
-  create(@Body() dto: CreateProductDto) {
-    return this.productsService.createProduct(dto);
-  }
-
-  @Post(':id/images')
-  @UseGuards(RolesGuard)
-  @Roles(Role.ADMIN, Role.SELLER)
-  @UseInterceptors(FilesInterceptor('files'))
-  @ResponseMessage('Product images uploaded successfully')
-  addImages(
-    @Param('id', ParseIntPipe) id: number,
-    @UploadedFiles(ImageFilesValidationPipe) files: Express.Multer.File[],
+  create(
+    @Body() dto: CreateProductDto,
+    @UploadedFiles(ImageFilesValidationPipe) images: Express.Multer.File[],
   ) {
-    return this.productsService.addImages(id, files.map(toFileToStore));
+    return this.productsService.createProduct(dto, images.map(toFileToStore));
   }
 
   @Delete(':id/images/:imageId')
@@ -75,9 +67,18 @@ export class ProductsController {
   @Patch(':id')
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.SELLER)
+  @UseInterceptors(FilesInterceptor('images'))
   @ResponseMessage('Product updated successfully')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateProductDto) {
-    return this.productsService.updateProduct(id, dto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateProductDto,
+    @UploadedFiles(ImageFilesValidationPipe) images: Express.Multer.File[],
+  ) {
+    return this.productsService.updateProduct(
+      id,
+      dto,
+      images.map(toFileToStore),
+    );
   }
 
   @Delete(':id')

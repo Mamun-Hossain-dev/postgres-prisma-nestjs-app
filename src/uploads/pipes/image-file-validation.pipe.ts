@@ -10,7 +10,7 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class ImageFileValidationPipe implements PipeTransform<
   Express.Multer.File | undefined,
-  Promise<Express.Multer.File>
+  Promise<Express.Multer.File | undefined>
 > {
   private readonly parseFilePipe: ParseFilePipe;
 
@@ -18,7 +18,7 @@ export class ImageFileValidationPipe implements PipeTransform<
     const maxSize = configService.getOrThrow<number>('cloudinary.maxFileSize');
 
     this.parseFilePipe = new ParseFilePipe({
-      fileIsRequired: true,
+      fileIsRequired: false,
       validators: [
         new MaxFileSizeValidator({ maxSize }),
         new FileTypeValidator({ fileType: /^image\/(jpeg|png|webp|gif)$/ }),
@@ -28,7 +28,8 @@ export class ImageFileValidationPipe implements PipeTransform<
 
   async transform(
     file: Express.Multer.File | undefined,
-  ): Promise<Express.Multer.File> {
-    return (await this.parseFilePipe.transform(file)) as Express.Multer.File;
+  ): Promise<Express.Multer.File | undefined> {
+    return (await this.parseFilePipe.transform(file)) as
+      Express.Multer.File | undefined;
   }
 }

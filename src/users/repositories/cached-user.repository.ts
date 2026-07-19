@@ -36,17 +36,21 @@ export class CachedUserRepository implements UserRepository {
     return user;
   }
 
-  async create(data: CreateUserInput): Promise<User> {
-    const user = await this.repository.create(data);
+  async create(data: CreateUserInput, image?: UserProfileImage): Promise<User> {
+    const user = await this.repository.create(data, image);
 
     await this.cacheUser(user);
 
     return user;
   }
 
-  async update(id: number, data: UpdateUserInput): Promise<User | null> {
+  async update(
+    id: number,
+    data: UpdateUserInput,
+    image?: UserProfileImage,
+  ): Promise<User | null> {
     const existingUser = await this.repository.findById(id);
-    const user = await this.repository.update(id, data);
+    const user = await this.repository.update(id, data, image);
 
     if (!user) {
       return null;

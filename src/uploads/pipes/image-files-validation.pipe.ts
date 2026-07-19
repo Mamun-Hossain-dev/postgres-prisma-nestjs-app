@@ -23,7 +23,7 @@ export class ImageFilesValidationPipe implements PipeTransform<
     const maxSize = configService.getOrThrow<number>('cloudinary.maxFileSize');
 
     this.parseFilePipe = new ParseFilePipe({
-      fileIsRequired: true,
+      fileIsRequired: false,
       validators: [
         new MaxFileSizeValidator({ maxSize }),
         new FileTypeValidator({ fileType: /^image\/(jpeg|png|webp|gif)$/ }),
@@ -35,10 +35,7 @@ export class ImageFilesValidationPipe implements PipeTransform<
     files: Express.Multer.File[] | undefined,
   ): Promise<Express.Multer.File[]> {
     if (!files?.length) {
-      throw new AppException('At least one image is required', {
-        code: 'IMAGES_REQUIRED',
-        status: 400,
-      });
+      return [];
     }
 
     if (files.length > this.maxFiles) {

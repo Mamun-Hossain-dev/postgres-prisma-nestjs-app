@@ -48,19 +48,16 @@ export class UserController {
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Post()
+  @UseInterceptors(FileInterceptor('image'))
   @ResponseMessage('User created successfully')
-  create(@Body() dto: CreateUserDto) {
-    return this.userService.createUser(dto);
-  }
-
-  @Put('me/profile-image')
-  @UseInterceptors(FileInterceptor('file'))
-  @ResponseMessage('Profile image updated successfully')
-  updateProfileImage(
-    @CurrentUser() user: PublicUser,
-    @UploadedFile(ImageFileValidationPipe) file: Express.Multer.File,
+  create(
+    @Body() dto: CreateUserDto,
+    @UploadedFile(ImageFileValidationPipe) image?: Express.Multer.File,
   ) {
-    return this.userService.updateProfileImage(user.id, toFileToStore(file));
+    return this.userService.createUser(
+      dto,
+      image ? toFileToStore(image) : undefined,
+    );
   }
 
   @Delete('me/profile-image')
@@ -72,9 +69,18 @@ export class UserController {
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Patch(':id')
+  @UseInterceptors(FileInterceptor('image'))
   @ResponseMessage('User updated successfully')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUserDto) {
-    return this.userService.updateUser(id, dto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateUserDto,
+    @UploadedFile(ImageFileValidationPipe) image?: Express.Multer.File,
+  ) {
+    return this.userService.updateUser(
+      id,
+      dto,
+      image ? toFileToStore(image) : undefined,
+    );
   }
 
   @UseGuards(RolesGuard)

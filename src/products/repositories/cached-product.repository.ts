@@ -53,8 +53,11 @@ export class CachedProductRepository implements ProductRepository {
     return product;
   }
 
-  async create(input: CreateProductInput): Promise<Product> {
-    const product = await this.repository.create(input);
+  async create(
+    input: CreateProductInput,
+    images: NewProductImage[] = [],
+  ): Promise<Product> {
+    const product = await this.repository.create(input, images);
 
     await this.cacheProduct(product);
     await this.redis.del(this.getAllCacheKey());
@@ -62,8 +65,12 @@ export class CachedProductRepository implements ProductRepository {
     return product;
   }
 
-  async update(id: number, input: UpdateProductInput): Promise<Product | null> {
-    const updatedProduct = await this.repository.update(id, input);
+  async update(
+    id: number,
+    input: UpdateProductInput,
+    images: NewProductImage[] = [],
+  ): Promise<Product | null> {
+    const updatedProduct = await this.repository.update(id, input, images);
 
     if (!updatedProduct) {
       return null;

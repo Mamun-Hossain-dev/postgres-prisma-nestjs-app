@@ -37,14 +37,51 @@ export class ProductsService {
     return product;
   }
 
-  async createProduct(input: CreateProductInput): Promise<Product> {
-    return await this.productsRepository.create(input);
+  async createProduct(
+    input: CreateProductInput,
+    files: FileToStore[] = [],
+  ): Promise<Product> {
+    const uploadedImages = await this.uploadsService.uploadImages(files);
+
+    try {
+      return await this.productsRepository.create(
+        input,
+        uploadedImages.map(({ url, publicId }) => ({ url, publicId })),
+      );
+    } catch (error) {
+      await this.deleteFilesSafely(
+        uploadedImages.map(({ publicId }) => publicId),
+      );
+      throw error;
+    }
   }
 
-  async updateProduct(id: number, input: UpdateProductInput): Promise<Product> {
-    const updatedProduct = await this.productsRepository.update(id, input);
+  async updateProduct(
+    id: number,
+    input: UpdateProductInput,
+    files: FileToStore[] = [],
+  ): Promise<Product> {
+    await this.getProductById(id);
+    const uploadedImages = await this.uploadsService.uploadImages(files);
+    let updatedProduct: Product | null;
+
+    try {
+      updatedProduct = await this.productsRepository.update(
+        id,
+        input,
+        uploadedImages.map(({ url, publicId }) => ({ url, publicId })),
+      );
+    } catch (error) {
+      await this.deleteFilesSafely(
+        uploadedImages.map(({ publicId }) => publicId),
+      );
+      throw error;
+    }
 
     if (!updatedProduct) {
+      await this.deleteFilesSafely(
+        uploadedImages.map(({ publicId }) => publicId),
+      );
       throw new AppException('Product not found', {
         code: 'PRODUCT_NOT_FOUND',
         status: 404,
@@ -65,29 +102,6 @@ export class ProductsService {
 
     await this.productsRepository.delete(id);
     await this.deleteFilesSafely(product.images.map((image) => image.publicId));
-  }
-
-  async addImages(productId: number, files: FileToStore[]): Promise<Product> {
-    await this.getProductById(productId);
-    const uploadedImages = await this.uploadsService.uploadImages(files);
-
-    try {
-      const product = await this.productsRepository.addImages(
-        productId,
-        uploadedImages.map((image) => ({
-          url: image.url,
-          publicId: image.publicId,
-        })),
-      );
-
-      if (!product) throw this.productNotFoundException();
-      return product;
-    } catch (error) {
-      await this.deleteFilesSafely(
-        uploadedImages.map((image) => image.publicId),
-      );
-      throw error;
-    }
   }
 
   async removeImage(productId: number, imageId: number): Promise<Product> {
