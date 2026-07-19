@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { UserRepository } from './user.repository';
 import { CreateUserDto } from '../dto/create-user.dto';
-import { User } from '../interfaces/user.interface';
+import { User, UserProfileImage } from '../interfaces/user.interface';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { RedisService } from '../../redis/redis.service';
 
@@ -73,6 +73,21 @@ export class CachedUserRepository extends UserRepository {
     }
 
     await this.cacheUser(user);
+    return user;
+  }
+
+  async updateProfileImage(
+    id: number,
+    image: UserProfileImage | null,
+  ): Promise<User | null> {
+    const existingUser = await this.repository.findById(id);
+    const user = await this.repository.updateProfileImage(id, image);
+
+    if (!user) return null;
+
+    if (existingUser) await this.invalidateUserCache(existingUser);
+    await this.cacheUser(user);
+
     return user;
   }
 

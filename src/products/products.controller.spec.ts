@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
+import { ConfigService } from '@nestjs/config';
 
 describe('ProductsController', () => {
   let controller: ProductsController;
@@ -9,6 +10,14 @@ describe('ProductsController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ProductsController],
       providers: [
+        {
+          provide: ConfigService,
+          useValue: {
+            getOrThrow: jest.fn((key: string) =>
+              key === 'cloudinary.maxProductImages' ? 10 : 5 * 1024 * 1024,
+            ),
+          },
+        },
         {
           provide: ProductsService,
           useValue: {

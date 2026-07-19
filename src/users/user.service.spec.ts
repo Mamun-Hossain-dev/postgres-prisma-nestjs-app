@@ -3,6 +3,7 @@ import { UserService } from './user.service';
 import { UserRepository } from './repositories/user.repository';
 import { Role, User } from './interfaces/user.interface';
 import { ConfigService } from '@nestjs/config';
+import { UploadsService } from '../uploads/uploads.service';
 
 describe('UserService', () => {
   let service: UserService;
@@ -12,7 +13,12 @@ describe('UserService', () => {
     create: jest.MockedFunction<UserRepository['create']>;
     update: jest.Mock;
     setBlocked: jest.Mock;
+    updateProfileImage: jest.Mock;
     delete: jest.Mock;
+  };
+  let uploadsService: {
+    uploadImage: jest.Mock;
+    deleteFile: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -22,7 +28,12 @@ describe('UserService', () => {
       create: jest.fn<UserRepository['create']>(),
       update: jest.fn().mockResolvedValue(null),
       setBlocked: jest.fn().mockResolvedValue(null),
+      updateProfileImage: jest.fn().mockResolvedValue(null),
       delete: jest.fn().mockResolvedValue(undefined),
+    };
+    uploadsService = {
+      uploadImage: jest.fn(),
+      deleteFile: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -37,6 +48,10 @@ describe('UserService', () => {
           useValue: {
             getOrThrow: jest.fn().mockReturnValue(10),
           },
+        },
+        {
+          provide: UploadsService,
+          useValue: uploadsService,
         },
       ],
     }).compile();
@@ -79,6 +94,8 @@ describe('UserService', () => {
       password: 'hashed-password',
       role,
       isBlocked: false,
+      profileImageUrl: null,
+      profileImagePublicId: null,
     };
     userRepository.findById.mockResolvedValue(user);
     userRepository.setBlocked.mockResolvedValue({
@@ -103,11 +120,49 @@ describe('UserService', () => {
       password: 'hashed-password',
       role: Role.ADMIN,
       isBlocked: false,
+      profileImageUrl: null,
+      profileImagePublicId: null,
     });
 
     await expect(service.setUserBlocked(1, true)).rejects.toMatchObject({
       code: 'ADMIN_BLOCK_FORBIDDEN',
     });
     expect(userRepository.setBlocked).not.toHaveBeenCalled();
+  });
+
+  it('replaces the current user profile image and removes the old file', async () => {
+    const user: User = {
+      id: 1,
+      name: 'User',
+      email: 'user@example.com',
+      age: 20,
+      password: 'hash',
+      role: Role.USER,
+      isBlocked: false,
+      profileImageUrl: 'https://example.com/old.png',
+      profileImagePublicId: 'users/old',
+    };
+    userRepository.findById.mockResolvedValue(user);
+    uploadsService.uploadImage.mockResolvedValue({
+      url: 'https://example.com/new.png',
+      publicId: 'users/new',
+    });
+    userRepository.updateProfileImage.mockResolvedValue({
+      ...user,
+      profileImageUrl: 'https://example.com/new.png',
+      profileImagePublicId: 'users/new',
+    });
+
+    await expect(
+      service.updateProfileImage(1, {} as Express.Multer.File),
+    ).resolves.toMatchObject({
+      id: 1,
+      profileImageUrl: 'https://example.com/new.png',
+    });
+    expect(userRepository.updateProfileImage).toHaveBeenCalledWith(1, {
+      url: 'https://example.com/new.png',
+      publicId: 'users/new',
+    });
+    expect(uploadsService.deleteFile).toHaveBeenCalledWith('users/old');
   });
 });

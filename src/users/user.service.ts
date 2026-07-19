@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { UserRepository } from './repositories/user.repository';
@@ -7,12 +7,16 @@ import { PublicUser, Role } from './interfaces/user.interface';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { toPublicUser } from './utils/public-user.util';
 import { AppException } from '../common/exceptions/app.exception';
+import { UploadsService } from '../uploads/uploads.service';
 
 @Injectable()
 export class UserService {
+  private readonly logger = new Logger(UserService.name);
+
   constructor(
     private readonly userRepository: UserRepository,
     private readonly configService: ConfigService,
+    private readonly uploadsService: UploadsService,
   ) {}
 
   async getAllUsers(): Promise<PublicUser[]> {
@@ -92,5 +96,65 @@ export class UserService {
     }
 
     await this.userRepository.delete(id);
+    await this.deleteFileSafely(user.profileImagePublicId);
+  }
+
+  async updateProfileImage(
+    userId: number,
+    file: Express.Multer.File,
+  ): Promise<PublicUser> {
+    const user = await this.requireUser(userId);
+    const uploadedImage = await this.uploadsService.uploadImage(file);
+
+    try {
+      const updatedUser = await this.userRepository.updateProfileImage(userId, {
+        url: uploadedImage.url,
+        publicId: uploadedImage.publicId,
+      });
+
+      if (!updatedUser) throw this.userNotFoundException();
+
+      await this.deleteFileSafely(user.profileImagePublicId);
+      return toPublicUser(updatedUser);
+    } catch (error) {
+      await this.deleteFileSafely(uploadedImage.publicId);
+      throw error;
+    }
+  }
+
+  async removeProfileImage(userId: number): Promise<PublicUser> {
+    const user = await this.requireUser(userId);
+    const updatedUser = await this.userRepository.updateProfileImage(
+      userId,
+      null,
+    );
+
+    if (!updatedUser) throw this.userNotFoundException();
+
+    await this.deleteFileSafely(user.profileImagePublicId);
+    return toPublicUser(updatedUser);
+  }
+
+  private async requireUser(id: number) {
+    const user = await this.userRepository.findById(id);
+    if (!user) throw this.userNotFoundException();
+    return user;
+  }
+
+  private userNotFoundException() {
+    return new AppException('User not found', {
+      code: 'USER_NOT_FOUND',
+      status: 404,
+    });
+  }
+
+  private async deleteFileSafely(publicId: string | null): Promise<void> {
+    if (!publicId) return;
+
+    try {
+      await this.uploadsService.deleteFile(publicId);
+    } catch (error) {
+      this.logger.warn(`Cloudinary cleanup failed for ${publicId}`, error);
+    }
   }
 }

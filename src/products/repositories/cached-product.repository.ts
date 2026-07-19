@@ -3,6 +3,7 @@ import { RedisService } from '../../redis/redis.service';
 import { CreateProductDto } from '../dto/create-product.dto';
 import { UpdateProductDto } from '../dto/update-product.dto';
 import { Product } from '../interfaces/product.interface';
+import type { NewProductImage } from '../interfaces/product.interface';
 import { ProductRepository } from './product.repository';
 
 @Injectable()
@@ -79,6 +80,31 @@ export class CachedProductRepository extends ProductRepository {
 
     await Promise.all([
       this.redis.del(this.getIdCacheKey(id)),
+      this.redis.del(this.getAllCacheKey()),
+    ]);
+  }
+
+  async addImages(
+    id: number,
+    images: NewProductImage[],
+  ): Promise<Product | null> {
+    const product = await this.repository.addImages(id, images);
+
+    if (!product) return null;
+
+    await this.cacheProduct(product);
+    await this.redis.del(this.getAllCacheKey());
+    return product;
+  }
+
+  findImage(productId: number, imageId: number) {
+    return this.repository.findImage(productId, imageId);
+  }
+
+  async deleteImage(productId: number, imageId: number): Promise<void> {
+    await this.repository.deleteImage(productId, imageId);
+    await Promise.all([
+      this.redis.del(this.getIdCacheKey(productId)),
       this.redis.del(this.getAllCacheKey()),
     ]);
   }

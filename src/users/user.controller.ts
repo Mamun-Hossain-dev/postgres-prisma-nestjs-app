@@ -7,6 +7,9 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Put,
+  UploadedFile,
+  UseInterceptors,
   UseGuards,
 } from '@nestjs/common';
 
@@ -18,6 +21,10 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from './interfaces/user.interface';
 import { Public } from '../auth/decorators/public.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { PublicUser } from './interfaces/user.interface';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ImageFileValidationPipe } from '../uploads/pipes/image-file-validation.pipe';
 
 @Controller('users')
 export class UserController {
@@ -43,6 +50,22 @@ export class UserController {
   @ResponseMessage('User created successfully')
   create(@Body() dto: CreateUserDto) {
     return this.userService.createUser(dto);
+  }
+
+  @Put('me/profile-image')
+  @UseInterceptors(FileInterceptor('file'))
+  @ResponseMessage('Profile image updated successfully')
+  updateProfileImage(
+    @CurrentUser() user: PublicUser,
+    @UploadedFile(ImageFileValidationPipe) file: Express.Multer.File,
+  ) {
+    return this.userService.updateProfileImage(user.id, file);
+  }
+
+  @Delete('me/profile-image')
+  @ResponseMessage('Profile image removed successfully')
+  removeProfileImage(@CurrentUser() user: PublicUser) {
+    return this.userService.removeProfileImage(user.id);
   }
 
   @UseGuards(RolesGuard)

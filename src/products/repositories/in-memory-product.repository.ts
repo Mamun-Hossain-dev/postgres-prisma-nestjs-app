@@ -12,12 +12,14 @@ export class InMemoryProductRepository extends ProductRepository {
       title: 'iPhone 15',
       price: 1200,
       quantity: 10,
+      images: [],
     },
     {
       id: 2,
       title: 'MacBook Pro',
       price: 2200,
       quantity: 5,
+      images: [],
     },
   ];
 
@@ -40,6 +42,7 @@ export class InMemoryProductRepository extends ProductRepository {
     const newProduct: Product = {
       id: nextId,
       ...dto,
+      images: [],
     };
 
     this.products.push(newProduct);
@@ -69,5 +72,17 @@ export class InMemoryProductRepository extends ProductRepository {
     }
 
     return Promise.resolve();
+  }
+
+  addImages(): Promise<Product | null> {
+    throw new Error('Not implemented');
+  }
+
+  findImage() {
+    return Promise.resolve(null);
+  }
+
+  deleteImage(): Promise<void> {
+    throw new Error('Not implemented');
   }
 }

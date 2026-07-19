@@ -46,7 +46,30 @@ BCRYPT_SALT_ROUNDS=10
 DATABASE_URL=your_database_url
 REDIS_HOST=localhost
 REDIS_PORT=6379
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+CLOUDINARY_FOLDER=nestjs-learning
+UPLOAD_MAX_FILE_SIZE=5242880
+UPLOAD_MAX_PRODUCT_IMAGES=10
 ```
+
+## Image upload
+
+Authenticated users can manage one profile image:
+
+- `PUT /users/me/profile-image` uses the multipart field `file`.
+- `DELETE /users/me/profile-image` removes the current profile image.
+
+Admins and sellers can manage multiple product images:
+
+- `POST /products/:id/images` uses the repeated multipart field `files`.
+- `DELETE /products/:id/images/:imageId` removes one product image.
+
+JPEG, PNG, WebP, and GIF images are accepted. The default limit is 5 MB per
+image and 10 images in one product upload request. Multer buffers the files in
+memory and Cloudinary stores them permanently. Image URLs and Cloudinary public
+IDs are persisted in PostgreSQL.
 
 ### Example login response
 

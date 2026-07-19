@@ -3,6 +3,7 @@ import appConfig from './app.config';
 import databaseConfig from './database.config';
 import jwtConfig from './jwt.config';
 import redisConfig from './redis.config';
+import cloudinaryConfig from './cloudinary.config';
 
 export const configFactories = [
   appConfig,
@@ -10,6 +11,14 @@ export const configFactories = [
   jwtConfig,
   authConfig,
   redisConfig,
+  cloudinaryConfig,
 ];
 
-export { appConfig, authConfig, databaseConfig, jwtConfig, redisConfig };
+export {
+  appConfig,
+  authConfig,
+  cloudinaryConfig,
+  databaseConfig,
+  jwtConfig,
+  redisConfig,
+};

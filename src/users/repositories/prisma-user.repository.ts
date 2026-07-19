@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { UserRepository } from './user.repository';
 import { PrismaService } from '../../prisma/prisma.service';
-import { User } from '../interfaces/user.interface';
+import { User, UserProfileImage } from '../interfaces/user.interface';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 
@@ -59,6 +59,23 @@ export class PrismaUserRepository extends UserRepository {
     return this.prisma.user.update({
       where: { id },
       data: { isBlocked },
+    });
+  }
+
+  async updateProfileImage(
+    id: number,
+    image: UserProfileImage | null,
+  ): Promise<User | null> {
+    const existingUser = await this.prisma.user.findUnique({ where: { id } });
+
+    if (!existingUser) return null;
+
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        profileImageUrl: image?.url ?? null,
+        profileImagePublicId: image?.publicId ?? null,
+      },
     });
   }
 

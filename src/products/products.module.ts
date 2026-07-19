@@ -8,9 +8,10 @@ import { CachedProductRepository } from './repositories/cached-product.repositor
 import { LoggingProductRepository } from './repositories/logging-product.repository';
 import { ProductRepository } from './repositories/product.repository';
 import { PrismaProductRepository } from './repositories/prisma-product.repository';
+import { UploadsModule } from '../uploads/uploads.module';
 
 @Module({
-  imports: [AuthModule, RedisModule],
+  imports: [AuthModule, RedisModule, UploadsModule],
   controllers: [ProductsController],
   providers: [
     ProductsService,

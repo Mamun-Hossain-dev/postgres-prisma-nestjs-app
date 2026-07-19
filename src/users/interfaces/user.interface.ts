@@ -14,6 +14,13 @@ export interface User {
   password: string;
   role: Role;
   isBlocked: boolean;
+  profileImageUrl: string | null;
+  profileImagePublicId: string | null;
 }
 
-export type PublicUser = Omit<User, 'password'>;
+export type PublicUser = Omit<User, 'password' | 'profileImagePublicId'>;
+
+export interface UserProfileImage {
+  url: string;
+  publicId: string;
+}

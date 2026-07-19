@@ -7,9 +7,10 @@ import { CachedUserRepository } from './repositories/cached-user.repository';
 import { LoggingUserRepository } from './repositories/logging-user.repository';
 import { RedisModule } from '../redis/redis.module';
 import { RedisService } from '../redis/redis.service';
+import { UploadsModule } from '../uploads/uploads.module';
 
 @Module({
-  imports: [RedisModule],
+  imports: [RedisModule, UploadsModule],
   providers: [
     UserService,
     PrismaUserRepository,

@@ -5,15 +5,17 @@ enum Role {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  age       Int      @default(0)
-  password  String
-  role      Role     @default(USER)
-  isBlocked Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   Int      @id @default(autoincrement())
+  name                 String
+  email                String   @unique
+  age                  Int      @default(0)
+  password             String
+  role                 Role     @default(USER)
+  isBlocked            Boolean  @default(false)
+  profileImageUrl      String?
+  profileImagePublicId String?  @unique
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   @@map("users")
 }

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ProductsService } from './products.service';
 import { ProductRepository } from './repositories/product.repository';
+import { UploadsService } from '../uploads/uploads.service';
 
 describe('ProductsService', () => {
   let service: ProductsService;
@@ -21,7 +22,17 @@ describe('ProductsService', () => {
               quantity: 1,
             }),
             update: jest.fn().mockResolvedValue(null),
+            addImages: jest.fn().mockResolvedValue(null),
+            findImage: jest.fn().mockResolvedValue(null),
+            deleteImage: jest.fn().mockResolvedValue(undefined),
             delete: jest.fn().mockResolvedValue(true),
+          },
+        },
+        {
+          provide: UploadsService,
+          useValue: {
+            uploadImages: jest.fn(),
+            deleteFile: jest.fn(),
           },
         },
       ],

@@ -3,6 +3,7 @@ import { UserRepository } from './user.repository';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { CachedUserRepository } from './cached-user.repository';
+import type { UserProfileImage } from '../interfaces/user.interface';
 
 @Injectable()
 export class LoggingUserRepository extends UserRepository {
@@ -44,6 +45,14 @@ export class LoggingUserRepository extends UserRepository {
     this.logger.log(`${isBlocked ? 'Blocking' : 'Unblocking'} user ${id}`);
 
     return this.repo.setBlocked(id, isBlocked);
+  }
+
+  async updateProfileImage(id: number, image: UserProfileImage | null) {
+    this.logger.log(
+      `${image ? 'Updating' : 'Removing'} user ${id} profile image`,
+    );
+
+    return this.repo.updateProfileImage(id, image);
   }
 
   async delete(id: number) {

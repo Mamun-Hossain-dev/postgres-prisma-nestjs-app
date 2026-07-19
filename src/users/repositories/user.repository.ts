@@ -1,6 +1,6 @@
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
-import { User } from '../interfaces/user.interface';
+import { User, UserProfileImage } from '../interfaces/user.interface';
 
 export abstract class UserRepository {
   abstract findAll(): Promise<User[]>;
@@ -9,5 +9,9 @@ export abstract class UserRepository {
   abstract create(user: CreateUserDto): Promise<User>;
   abstract update(id: number, user: UpdateUserDto): Promise<User | null>;
   abstract setBlocked(id: number, isBlocked: boolean): Promise<User | null>;
+  abstract updateProfileImage(
+    id: number,
+    image: UserProfileImage | null,
+  ): Promise<User | null>;
   abstract delete(id: number): Promise<void>;
 }

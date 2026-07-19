@@ -3,6 +3,7 @@ import { CreateProductDto } from '../dto/create-product.dto';
 import { UpdateProductDto } from '../dto/update-product.dto';
 import { CachedProductRepository } from './cached-product.repository';
 import { ProductRepository } from './product.repository';
+import type { NewProductImage } from '../interfaces/product.interface';
 
 @Injectable()
 export class LoggingProductRepository extends ProductRepository {
@@ -35,5 +36,19 @@ export class LoggingProductRepository extends ProductRepository {
   async delete(id: number) {
     this.logger.log(`Deleting product ${id}`);
     return await this.repository.delete(id);
+  }
+
+  async addImages(id: number, images: NewProductImage[]) {
+    this.logger.log(`Adding ${images.length} images to product ${id}`);
+    return this.repository.addImages(id, images);
+  }
+
+  async findImage(productId: number, imageId: number) {
+    return this.repository.findImage(productId, imageId);
+  }
+
+  async deleteImage(productId: number, imageId: number) {
+    this.logger.log(`Deleting image ${imageId} from product ${productId}`);
+    return this.repository.deleteImage(productId, imageId);
   }
 }
