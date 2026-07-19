@@ -4,6 +4,7 @@ import { UserRepository } from './repositories/user.repository';
 import { Role, User } from './interfaces/user.interface';
 import { ConfigService } from '@nestjs/config';
 import { UploadsService } from '../uploads/uploads.service';
+import { USER_REPOSITORY } from './constants/user.tokens';
 
 describe('UserService', () => {
   let service: UserService;
@@ -40,7 +41,7 @@ describe('UserService', () => {
       providers: [
         UserService,
         {
-          provide: UserRepository,
+          provide: USER_REPOSITORY,
           useValue: userRepository,
         },
         {
@@ -154,7 +155,12 @@ describe('UserService', () => {
     });
 
     await expect(
-      service.updateProfileImage(1, {} as Express.Multer.File),
+      service.updateProfileImage(1, {
+        buffer: Buffer.from('image'),
+        mimetype: 'image/png',
+        originalname: 'profile.png',
+        size: 5,
+      }),
     ).resolves.toMatchObject({
       id: 1,
       profileImageUrl: 'https://example.com/new.png',

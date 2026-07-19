@@ -1,17 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { UserRepository } from './user.repository';
-import { CreateUserDto } from '../dto/create-user.dto';
-import { UpdateUserDto } from '../dto/update-user.dto';
+import type { UserRepository } from './user.repository';
 import { CachedUserRepository } from './cached-user.repository';
-import type { UserProfileImage } from '../interfaces/user.interface';
+import type {
+  CreateUserInput,
+  UpdateUserInput,
+  UserProfileImage,
+} from '../interfaces/user.interface';
 
 @Injectable()
-export class LoggingUserRepository extends UserRepository {
+export class LoggingUserRepository implements UserRepository {
   private readonly logger = new Logger(LoggingUserRepository.name);
 
-  constructor(private readonly repo: CachedUserRepository) {
-    super();
-  }
+  constructor(private readonly repo: CachedUserRepository) {}
 
   async findByEmail(email: string) {
     this.logger.log(`Finding user by email: ${email}`);
@@ -29,16 +29,16 @@ export class LoggingUserRepository extends UserRepository {
     }
   }
 
-  async create(dto: CreateUserDto) {
+  async create(input: CreateUserInput) {
     this.logger.log('Creating user');
 
-    return this.repo.create(dto);
+    return this.repo.create(input);
   }
 
-  async update(id: number, dto: UpdateUserDto) {
+  async update(id: number, input: UpdateUserInput) {
     this.logger.log(`Updating user ${id}`);
 
-    return this.repo.update(id, dto);
+    return this.repo.update(id, input);
   }
 
   async setBlocked(id: number, isBlocked: boolean) {

@@ -24,3 +24,17 @@ export interface UserProfileImage {
   url: string;
   publicId: string;
 }
+
+export interface CreateUserInput {
+  name: string;
+  email: string;
+  age?: number;
+  role: Role;
+  password: string;
+}
+
+export interface UpdateUserInput {
+  name?: string;
+  email?: string;
+  age?: number;
+}

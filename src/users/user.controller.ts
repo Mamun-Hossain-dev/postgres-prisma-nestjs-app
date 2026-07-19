@@ -25,6 +25,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { PublicUser } from './interfaces/user.interface';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ImageFileValidationPipe } from '../uploads/pipes/image-file-validation.pipe';
+import { toFileToStore } from '../uploads/utils/multer-file.util';
 
 @Controller('users')
 export class UserController {
@@ -59,7 +60,7 @@ export class UserController {
     @CurrentUser() user: PublicUser,
     @UploadedFile(ImageFileValidationPipe) file: Express.Multer.File,
   ) {
-    return this.userService.updateProfileImage(user.id, file);
+    return this.userService.updateProfileImage(user.id, toFileToStore(file));
   }
 
   @Delete('me/profile-image')

@@ -1,19 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateProductDto } from '../dto/create-product.dto';
-import { UpdateProductDto } from '../dto/update-product.dto';
 import {
+  CreateProductInput,
   NewProductImage,
   Product,
   ProductImage,
+  UpdateProductInput,
 } from '../interfaces/product.interface';
-import { ProductRepository } from './product.repository';
+import type { ProductRepository } from './product.repository';
 
 @Injectable()
-export class PrismaProductRepository extends ProductRepository {
-  constructor(private readonly prisma: PrismaService) {
-    super();
-  }
+export class PrismaProductRepository implements ProductRepository {
+  constructor(private readonly prisma: PrismaService) {}
 
   async findAll(): Promise<Product[]> {
     return await this.prisma.product.findMany({
@@ -29,14 +27,14 @@ export class PrismaProductRepository extends ProductRepository {
     });
   }
 
-  async create(dto: CreateProductDto): Promise<Product> {
+  async create(input: CreateProductInput): Promise<Product> {
     return await this.prisma.product.create({
-      data: dto,
+      data: input,
       include: { images: true },
     });
   }
 
-  async update(id: number, dto: UpdateProductDto): Promise<Product | null> {
+  async update(id: number, input: UpdateProductInput): Promise<Product | null> {
     const existingProduct = await this.prisma.product.findUnique({
       where: { id },
     });
@@ -47,7 +45,7 @@ export class PrismaProductRepository extends ProductRepository {
 
     return await this.prisma.product.update({
       where: { id },
-      data: dto,
+      data: input,
       include: { images: { orderBy: { id: 'asc' } } },
     });
   }

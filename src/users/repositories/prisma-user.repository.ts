@@ -1,15 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { UserRepository } from './user.repository';
+import type { UserRepository } from './user.repository';
 import { PrismaService } from '../../prisma/prisma.service';
-import { User, UserProfileImage } from '../interfaces/user.interface';
-import { CreateUserDto } from '../dto/create-user.dto';
-import { UpdateUserDto } from '../dto/update-user.dto';
+import {
+  CreateUserInput,
+  UpdateUserInput,
+  User,
+  UserProfileImage,
+} from '../interfaces/user.interface';
 
 @Injectable()
-export class PrismaUserRepository extends UserRepository {
-  constructor(private readonly prisma: PrismaService) {
-    super();
-  }
+export class PrismaUserRepository implements UserRepository {
+  constructor(private readonly prisma: PrismaService) {}
 
   async findAll(): Promise<User[]> {
     const users = await this.prisma.user.findMany();
@@ -28,13 +29,13 @@ export class PrismaUserRepository extends UserRepository {
     });
   }
 
-  async create(user: CreateUserDto): Promise<User> {
+  async create(user: CreateUserInput): Promise<User> {
     return await this.prisma.user.create({
       data: user,
     });
   }
 
-  async update(id: number, user: UpdateUserDto): Promise<User | null> {
+  async update(id: number, user: UpdateUserInput): Promise<User | null> {
     const existingUser = await this.prisma.user.findUnique({
       where: { id },
     });

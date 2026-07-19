@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
 import { UserRepository } from '../users/repositories/user.repository';
+import { USER_REPOSITORY } from '../users/constants/user.tokens';
 import * as bcrypt from 'bcrypt';
 import { AuthSessionService } from './auth-session.service';
 import { Role } from '../users/interfaces/user.interface';
@@ -45,7 +46,7 @@ describe('AuthService', () => {
       providers: [
         AuthService,
         {
-          provide: UserRepository,
+          provide: USER_REPOSITORY,
           useValue: userRepository,
         },
         {

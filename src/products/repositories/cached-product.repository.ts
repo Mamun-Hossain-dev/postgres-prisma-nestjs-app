@@ -1,21 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { RedisService } from '../../redis/redis.service';
-import { CreateProductDto } from '../dto/create-product.dto';
-import { UpdateProductDto } from '../dto/update-product.dto';
-import { Product } from '../interfaces/product.interface';
-import type { NewProductImage } from '../interfaces/product.interface';
-import { ProductRepository } from './product.repository';
+import {
+  CreateProductInput,
+  NewProductImage,
+  Product,
+  UpdateProductInput,
+} from '../interfaces/product.interface';
+import type { ProductRepository } from './product.repository';
 
 @Injectable()
-export class CachedProductRepository extends ProductRepository {
+export class CachedProductRepository implements ProductRepository {
   private readonly cacheTtlInSeconds = 60 * 5;
 
   constructor(
     private readonly redis: RedisService,
     private readonly repository: ProductRepository,
-  ) {
-    super();
-  }
+  ) {}
 
   async findAll(): Promise<Product[]> {
     const cacheKey = this.getAllCacheKey();
@@ -53,8 +53,8 @@ export class CachedProductRepository extends ProductRepository {
     return product;
   }
 
-  async create(dto: CreateProductDto): Promise<Product> {
-    const product = await this.repository.create(dto);
+  async create(input: CreateProductInput): Promise<Product> {
+    const product = await this.repository.create(input);
 
     await this.cacheProduct(product);
     await this.redis.del(this.getAllCacheKey());
@@ -62,8 +62,8 @@ export class CachedProductRepository extends ProductRepository {
     return product;
   }
 
-  async update(id: number, dto: UpdateProductDto): Promise<Product | null> {
-    const updatedProduct = await this.repository.update(id, dto);
+  async update(id: number, input: UpdateProductInput): Promise<Product | null> {
+    const updatedProduct = await this.repository.update(id, input);
 
     if (!updatedProduct) {
       return null;

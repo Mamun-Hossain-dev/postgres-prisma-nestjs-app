@@ -1,17 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { CreateProductDto } from '../dto/create-product.dto';
-import { UpdateProductDto } from '../dto/update-product.dto';
 import { CachedProductRepository } from './cached-product.repository';
-import { ProductRepository } from './product.repository';
-import type { NewProductImage } from '../interfaces/product.interface';
+import type { ProductRepository } from './product.repository';
+import type {
+  CreateProductInput,
+  NewProductImage,
+  UpdateProductInput,
+} from '../interfaces/product.interface';
 
 @Injectable()
-export class LoggingProductRepository extends ProductRepository {
+export class LoggingProductRepository implements ProductRepository {
   private readonly logger = new Logger(LoggingProductRepository.name);
 
-  constructor(private readonly repository: CachedProductRepository) {
-    super();
-  }
+  constructor(private readonly repository: CachedProductRepository) {}
 
   async findAll() {
     this.logger.log('Fetching all products');
@@ -23,14 +23,14 @@ export class LoggingProductRepository extends ProductRepository {
     return await this.repository.findById(id);
   }
 
-  async create(dto: CreateProductDto) {
+  async create(input: CreateProductInput) {
     this.logger.log('Creating product');
-    return await this.repository.create(dto);
+    return await this.repository.create(input);
   }
 
-  async update(id: number, dto: UpdateProductDto) {
+  async update(id: number, input: UpdateProductInput) {
     this.logger.log(`Updating product ${id}`);
-    return await this.repository.update(id, dto);
+    return await this.repository.update(id, input);
   }
 
   async delete(id: number) {

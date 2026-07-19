@@ -1,19 +1,25 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { UserRepository } from './repositories/user.repository';
-import { CreateUserDto } from './dto/create-user.dto';
-import { PublicUser, Role } from './interfaces/user.interface';
-import { UpdateUserDto } from './dto/update-user.dto';
+import type { UserRepository } from './repositories/user.repository';
+import {
+  CreateUserInput,
+  PublicUser,
+  Role,
+  UpdateUserInput,
+} from './interfaces/user.interface';
 import { toPublicUser } from './utils/public-user.util';
 import { AppException } from '../common/exceptions/app.exception';
 import { UploadsService } from '../uploads/uploads.service';
+import type { FileToStore } from '../uploads/interfaces/file-storage.interface';
+import { USER_REPOSITORY } from './constants/user.tokens';
 
 @Injectable()
 export class UserService {
   private readonly logger = new Logger(UserService.name);
 
   constructor(
+    @Inject(USER_REPOSITORY)
     private readonly userRepository: UserRepository,
     private readonly configService: ConfigService,
     private readonly uploadsService: UploadsService,
@@ -35,7 +41,7 @@ export class UserService {
     return toPublicUser(user);
   }
 
-  async createUser(user: CreateUserDto): Promise<PublicUser> {
+  async createUser(user: CreateUserInput): Promise<PublicUser> {
     const saltRounds = this.configService.getOrThrow<number>(
       'auth.bcryptSaltRounds',
     );
@@ -48,7 +54,7 @@ export class UserService {
     return toPublicUser(createdUser);
   }
 
-  async updateUser(id: number, user: UpdateUserDto): Promise<PublicUser> {
+  async updateUser(id: number, user: UpdateUserInput): Promise<PublicUser> {
     const updatedUser = await this.userRepository.update(id, user);
     if (!updatedUser) {
       throw new AppException('User not found', {
@@ -101,7 +107,7 @@ export class UserService {
 
   async updateProfileImage(
     userId: number,
-    file: Express.Multer.File,
+    file: FileToStore,
   ): Promise<PublicUser> {
     const user = await this.requireUser(userId);
     const uploadedImage = await this.uploadsService.uploadImage(file);

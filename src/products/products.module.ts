@@ -6,9 +6,9 @@ import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
 import { CachedProductRepository } from './repositories/cached-product.repository';
 import { LoggingProductRepository } from './repositories/logging-product.repository';
-import { ProductRepository } from './repositories/product.repository';
 import { PrismaProductRepository } from './repositories/prisma-product.repository';
 import { UploadsModule } from '../uploads/uploads.module';
+import { PRODUCT_REPOSITORY } from './constants/product.tokens';
 
 @Module({
   imports: [AuthModule, RedisModule, UploadsModule],
@@ -17,7 +17,7 @@ import { UploadsModule } from '../uploads/uploads.module';
     ProductsService,
     PrismaProductRepository,
     {
-      provide: ProductRepository,
+      provide: PRODUCT_REPOSITORY,
       useFactory: (
         prismaRepository: PrismaProductRepository,
         redisService: RedisService,

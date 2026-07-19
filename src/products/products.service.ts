@@ -1,16 +1,21 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ProductRepository } from './repositories/product.repository';
-import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
-import { Product } from './interfaces/product.interface';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import type { ProductRepository } from './repositories/product.repository';
+import {
+  CreateProductInput,
+  Product,
+  UpdateProductInput,
+} from './interfaces/product.interface';
 import { AppException } from '../common/exceptions/app.exception';
 import { UploadsService } from '../uploads/uploads.service';
+import type { FileToStore } from '../uploads/interfaces/file-storage.interface';
+import { PRODUCT_REPOSITORY } from './constants/product.tokens';
 
 @Injectable()
 export class ProductsService {
   private readonly logger = new Logger(ProductsService.name);
 
   constructor(
+    @Inject(PRODUCT_REPOSITORY)
     private readonly productsRepository: ProductRepository,
     private readonly uploadsService: UploadsService,
   ) {}
@@ -32,12 +37,12 @@ export class ProductsService {
     return product;
   }
 
-  async createProduct(dto: CreateProductDto): Promise<Product> {
-    return await this.productsRepository.create(dto);
+  async createProduct(input: CreateProductInput): Promise<Product> {
+    return await this.productsRepository.create(input);
   }
 
-  async updateProduct(id: number, dto: UpdateProductDto): Promise<Product> {
-    const updatedProduct = await this.productsRepository.update(id, dto);
+  async updateProduct(id: number, input: UpdateProductInput): Promise<Product> {
+    const updatedProduct = await this.productsRepository.update(id, input);
 
     if (!updatedProduct) {
       throw new AppException('Product not found', {
@@ -62,10 +67,7 @@ export class ProductsService {
     await this.deleteFilesSafely(product.images.map((image) => image.publicId));
   }
 
-  async addImages(
-    productId: number,
-    files: Express.Multer.File[],
-  ): Promise<Product> {
+  async addImages(productId: number, files: FileToStore[]): Promise<Product> {
     await this.getProductById(productId);
     const uploadedImages = await this.uploadsService.uploadImages(files);
 

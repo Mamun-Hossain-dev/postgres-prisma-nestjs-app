@@ -17,3 +17,15 @@ export interface NewProductImage {
   url: string;
   publicId: string;
 }
+
+export interface CreateProductInput {
+  title: string;
+  price: number;
+  quantity: number;
+}
+
+export interface UpdateProductInput {
+  title?: string;
+  price?: number;
+  quantity?: number;
+}

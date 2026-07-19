@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { PublicUser, Role, User } from '../users/interfaces/user.interface';
-import { UserRepository } from '../users/repositories/user.repository';
+import type { UserRepository } from '../users/repositories/user.repository';
 import { toPublicUser } from '../users/utils/public-user.util';
 import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
@@ -15,10 +15,12 @@ import {
 } from './interfaces/auth.interface';
 import { AppException } from '../common/exceptions/app.exception';
 import { AuthSessionService } from './auth-session.service';
+import { USER_REPOSITORY } from '../users/constants/user.tokens';
 
 @Injectable()
 export class AuthService {
   constructor(
+    @Inject(USER_REPOSITORY)
     private readonly userRepository: UserRepository,
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,

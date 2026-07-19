@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ProductsService } from './products.service';
-import { ProductRepository } from './repositories/product.repository';
 import { UploadsService } from '../uploads/uploads.service';
+import { PRODUCT_REPOSITORY } from './constants/product.tokens';
 
 describe('ProductsService', () => {
   let service: ProductsService;
@@ -11,7 +11,7 @@ describe('ProductsService', () => {
       providers: [
         ProductsService,
         {
-          provide: ProductRepository,
+          provide: PRODUCT_REPOSITORY,
           useValue: {
             findAll: jest.fn().mockResolvedValue([]),
             findById: jest.fn().mockResolvedValue(null),

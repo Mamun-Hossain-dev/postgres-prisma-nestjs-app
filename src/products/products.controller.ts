@@ -21,6 +21,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { ResponseMessage } from '../common/utils/api-response.util';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { ImageFilesValidationPipe } from '../uploads/pipes/image-files-validation.pipe';
+import { toFileToStore } from '../uploads/utils/multer-file.util';
 
 @Controller('products')
 export class ProductsController {
@@ -57,7 +58,7 @@ export class ProductsController {
     @Param('id', ParseIntPipe) id: number,
     @UploadedFiles(ImageFilesValidationPipe) files: Express.Multer.File[],
   ) {
-    return this.productsService.addImages(id, files);
+    return this.productsService.addImages(id, files.map(toFileToStore));
   }
 
   @Delete(':id/images/:imageId')

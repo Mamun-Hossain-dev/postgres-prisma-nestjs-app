@@ -1,21 +1,22 @@
 import { Injectable } from '@nestjs/common';
 
-import { UserRepository } from './user.repository';
-import { CreateUserDto } from '../dto/create-user.dto';
-import { User, UserProfileImage } from '../interfaces/user.interface';
-import { UpdateUserDto } from '../dto/update-user.dto';
+import type { UserRepository } from './user.repository';
+import {
+  CreateUserInput,
+  UpdateUserInput,
+  User,
+  UserProfileImage,
+} from '../interfaces/user.interface';
 import { RedisService } from '../../redis/redis.service';
 
 @Injectable()
-export class CachedUserRepository extends UserRepository {
+export class CachedUserRepository implements UserRepository {
   private readonly cacheTtlInSeconds = 60 * 5;
 
   constructor(
     private readonly redis: RedisService,
     private readonly repository: UserRepository,
-  ) {
-    super();
-  }
+  ) {}
 
   async findByEmail(email: string): Promise<User | null> {
     const cacheKey = this.getEmailCacheKey(email);
@@ -35,7 +36,7 @@ export class CachedUserRepository extends UserRepository {
     return user;
   }
 
-  async create(data: CreateUserDto): Promise<User> {
+  async create(data: CreateUserInput): Promise<User> {
     const user = await this.repository.create(data);
 
     await this.cacheUser(user);
@@ -43,7 +44,7 @@ export class CachedUserRepository extends UserRepository {
     return user;
   }
 
-  async update(id: number, data: UpdateUserDto): Promise<User | null> {
+  async update(id: number, data: UpdateUserInput): Promise<User | null> {
     const existingUser = await this.repository.findById(id);
     const user = await this.repository.update(id, data);
 

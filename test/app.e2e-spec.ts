@@ -20,7 +20,7 @@ describe('AppController (e2e)', () => {
     return request(app.getHttpServer()).get('/').expect(200).expect({
       success: true,
       message: 'App fetched successfully',
-      data: 'Hello World!',
+      data: 'Server is running on port 8080',
     });
   });
 

@@ -9,7 +9,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { AuthSessionService } from './auth-session.service';
-import { RedisModule } from 'src/redis/redis.module';
+import { RedisModule } from '../redis/redis.module';
 
 @Module({
   imports: [
