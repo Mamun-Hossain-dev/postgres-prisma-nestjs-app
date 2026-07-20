@@ -6,17 +6,21 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { configFactories } from './config';
 import { validateEnv } from './config/env.validation';
-import { PrismaModule } from './prisma/prisma.module';
-import { ProductsModule } from './products/products.module';
-import { UserModule } from './users/user.module';
-import { AuthModule } from './auth/auth.module';
-import { RedisModule } from './redis/redis.module';
-import { RedisService } from './redis/redis.service';
-import { RedisThrottlerStorage } from './redis/redis-throttler.storage';
+import { PrismaModule } from './infrastructure/prisma/prisma.module';
+import { ProductsModule } from './modules/products/products.module';
+import { UserModule } from './modules/users/user.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { RedisModule } from './infrastructure/redis/redis.module';
+import { RedisService } from './infrastructure/redis/redis.service';
+import { RedisThrottlerStorage } from './infrastructure/redis/redis-throttler.storage';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
-import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { ErrorInterceptor } from './common/interceptors/error.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { EmailsModule } from './modules/emails/emails.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
   imports: [
@@ -26,6 +30,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
       load: configFactories,
       validate: validateEnv,
     }),
+    EventEmitterModule.forRoot(),
     ThrottlerModule.forRootAsync({
       imports: [RedisModule],
       inject: [RedisService],
@@ -38,6 +43,9 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
     ProductsModule,
     UserModule,
     AuthModule,
+    EmailsModule,
+    NotificationsModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [

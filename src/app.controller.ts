@@ -2,7 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { AppService } from './app.service';
 import { ResponseMessage } from './common/utils/api-response.util';
 import { SkipThrottle } from '@nestjs/throttler';
-import { Public } from './auth/decorators/public.decorator';
+import { Public } from './common/decorators/public.decorator';
 
 @Controller()
 export class AppController {
