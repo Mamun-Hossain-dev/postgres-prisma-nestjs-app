@@ -7,14 +7,28 @@ import {
   User,
   UserProfileImage,
 } from '../interfaces/user.interface';
+import type {
+  RepositoryPaginatedResult,
+  RepositoryPaginationOptions,
+} from '../../../common/interfaces/pagination.interface';
 
 @Injectable()
 export class PrismaUserRepository implements UserRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(): Promise<User[]> {
-    const users = await this.prisma.user.findMany();
-    return users;
+  async findAll(
+    options: RepositoryPaginationOptions,
+  ): Promise<RepositoryPaginatedResult<User>> {
+    const [data, totalItems] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        skip: options.skip,
+        take: options.take,
+        orderBy: { id: 'asc' },
+      }),
+      this.prisma.user.count(),
+    ]);
+
+    return { data, totalItems };
   }
 
   async findByEmail(email: string): Promise<User | null> {

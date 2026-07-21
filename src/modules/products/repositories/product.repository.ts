@@ -5,9 +5,15 @@ import {
   ProductImage,
   UpdateProductInput,
 } from '../interfaces/product.interface';
+import type {
+  RepositoryPaginatedResult,
+  RepositoryPaginationOptions,
+} from '../../../common/interfaces/pagination.interface';
 
 export interface ProductRepository {
-  findAll(): Promise<Product[]>;
+  findAll(
+    options: RepositoryPaginationOptions,
+  ): Promise<RepositoryPaginatedResult<Product>>;
   findById(id: number): Promise<Product | null>;
   create(
     input: CreateProductInput,

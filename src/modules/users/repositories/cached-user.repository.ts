@@ -8,6 +8,7 @@ import {
   UserProfileImage,
 } from '../interfaces/user.interface';
 import { RedisService } from '../../../infrastructure/redis/redis.service';
+import type { RepositoryPaginationOptions } from '../../../common/interfaces/pagination.interface';
 
 @Injectable()
 export class CachedUserRepository implements UserRepository {
@@ -124,8 +125,8 @@ export class CachedUserRepository implements UserRepository {
     return user;
   }
 
-  async findAll(): Promise<User[]> {
-    return this.repository.findAll();
+  findAll(options: RepositoryPaginationOptions) {
+    return this.repository.findAll(options);
   }
 
   private async cacheUser(user: User): Promise<void> {

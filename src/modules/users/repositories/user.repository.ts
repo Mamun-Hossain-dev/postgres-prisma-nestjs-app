@@ -4,9 +4,15 @@ import {
   User,
   UserProfileImage,
 } from '../interfaces/user.interface';
+import type {
+  RepositoryPaginatedResult,
+  RepositoryPaginationOptions,
+} from '../../../common/interfaces/pagination.interface';
 
 export interface UserRepository {
-  findAll(): Promise<User[]>;
+  findAll(
+    options: RepositoryPaginationOptions,
+  ): Promise<RepositoryPaginatedResult<User>>;
   findByEmail(email: string): Promise<User | null>;
   findById(id: number): Promise<User | null>;
   create(user: CreateUserInput, image?: UserProfileImage): Promise<User>;

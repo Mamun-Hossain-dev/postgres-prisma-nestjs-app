@@ -6,6 +6,7 @@ import type {
   UpdateUserInput,
   UserProfileImage,
 } from '../interfaces/user.interface';
+import type { RepositoryPaginationOptions } from '../../../common/interfaces/pagination.interface';
 
 @Injectable()
 export class LoggingUserRepository implements UserRepository {
@@ -65,7 +66,10 @@ export class LoggingUserRepository implements UserRepository {
     return this.repo.findById(id);
   }
 
-  async findAll() {
-    return this.repo.findAll();
+  async findAll(options: RepositoryPaginationOptions) {
+    this.logger.log(
+      `Fetching users ${options.skip}-${options.skip + options.take}`,
+    );
+    return this.repo.findAll(options);
   }
 }

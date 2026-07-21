@@ -8,16 +8,29 @@ import {
   UpdateProductInput,
 } from '../interfaces/product.interface';
 import type { ProductRepository } from './product.repository';
+import type {
+  RepositoryPaginatedResult,
+  RepositoryPaginationOptions,
+} from '../../../common/interfaces/pagination.interface';
 
 @Injectable()
 export class PrismaProductRepository implements ProductRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(): Promise<Product[]> {
-    return await this.prisma.product.findMany({
-      orderBy: { id: 'asc' },
-      include: { images: { orderBy: { id: 'asc' } } },
-    });
+  async findAll(
+    options: RepositoryPaginationOptions,
+  ): Promise<RepositoryPaginatedResult<Product>> {
+    const [data, totalItems] = await this.prisma.$transaction([
+      this.prisma.product.findMany({
+        skip: options.skip,
+        take: options.take,
+        orderBy: { id: 'asc' },
+        include: { images: { orderBy: { id: 'asc' } } },
+      }),
+      this.prisma.product.count(),
+    ]);
+
+    return { data, totalItems };
   }
 
   async findById(id: number): Promise<Product | null> {

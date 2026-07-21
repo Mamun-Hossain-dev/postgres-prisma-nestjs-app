@@ -11,6 +11,8 @@ A feature-first NestJS 11 REST API demonstrating JWT authentication, role-based 
 - Cloudinary storage behind a replaceable `FileStorage` abstraction.
 - Redis caching and Redis-backed API throttling.
 - Consistent success/error response envelopes.
+- Reusable database-level pagination for list endpoints.
+- Event-driven welcome emails through Nodemailer with an inline welcome image.
 - Zod environment validation and split Prisma schemas.
 
 ## Tech stack
@@ -19,6 +21,7 @@ A feature-first NestJS 11 REST API demonstrating JWT authentication, role-based 
 - PostgreSQL, Prisma 7, and the PostgreSQL Prisma adapter
 - Redis and ioredis
 - Passport JWT, bcrypt, and HTTP-only refresh cookies
+- Nodemailer and SMTP
 - Multer memory storage and Cloudinary
 - Jest, Supertest, ESLint, and Prettier
 
@@ -185,9 +188,22 @@ CLOUDINARY_API_SECRET=dummy_api_secret
 CLOUDINARY_FOLDER=nestjs-learning
 UPLOAD_MAX_FILE_SIZE=5242880
 UPLOAD_MAX_PRODUCT_IMAGES=10
+
+# Email is optional; registration still works while disabled.
+MAIL_ENABLED=false
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-smtp-user
+SMTP_PASSWORD=your-smtp-password
+MAIL_FROM=NestJS Learning API <hello@example.com>
 ```
 
 Environment values are validated at startup by `src/config/env.validation.ts`.
+When `MAIL_ENABLED=true`, `SMTP_HOST` and `MAIL_FROM` are required. Set both
+`SMTP_USER` and `SMTP_PASSWORD` for authenticated SMTP; omit both for a local
+SMTP server that does not use authentication. Port 587 normally uses
+`SMTP_SECURE=false`; port 465 normally uses `SMTP_SECURE=true`.
 
 ### Database
 
@@ -254,6 +270,39 @@ curl -X PUT http://127.0.0.1:8080/api/v1/users/me/profile-image \
   -H "Authorization: Bearer <access-token>" \
   -F "file=@./avatar.png"
 ```
+
+User and product lists accept the same pagination query:
+
+```http
+GET /api/v1/users?page=2&limit=10
+GET /api/v1/products?page=1&limit=20
+```
+
+`page` defaults to `1`; `limit` defaults to `10` and is capped at `100`.
+The paginated payload has this shape:
+
+```json
+{
+  "data": [],
+  "meta": {
+    "page": 2,
+    "limit": 10,
+    "totalItems": 21,
+    "totalPages": 3,
+    "hasNextPage": true,
+    "hasPreviousPage": true
+  }
+}
+```
+
+### Welcome email flow
+
+After `POST /auth/register` creates a user, `AuthService` emits the
+`user.created` event. `EmailListener` receives it asynchronously and asks
+`EmailsService` to send the welcome template. The generated PNG banner is
+attached inline and referenced from the HTML with a content ID (`cid`), so it is
+part of the email rather than a public image URL. SMTP errors are logged inside
+the listener and do not roll back a successfully created account.
 
 ### Products
 

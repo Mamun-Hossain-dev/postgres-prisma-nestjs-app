@@ -14,6 +14,14 @@ import { AppException } from '../../common/exceptions/app.exception';
 import { UploadsService } from '../../infrastructure/uploads/uploads.service';
 import type { FileToStore } from '../../infrastructure/uploads/interfaces/file-storage.interface';
 import { USER_REPOSITORY } from './constants/user.tokens';
+import type {
+  PaginatedResult,
+  PaginationOptions,
+} from '../../common/interfaces/pagination.interface';
+import {
+  toPaginatedResult,
+  toRepositoryPagination,
+} from '../../common/utils/pagination.util';
 
 @Injectable()
 export class UserService {
@@ -26,9 +34,17 @@ export class UserService {
     private readonly uploadsService: UploadsService,
   ) {}
 
-  async getAllUsers(): Promise<PublicUser[]> {
-    const users = await this.userRepository.findAll();
-    return users.map(toPublicUser);
+  async getAllUsers(
+    options: PaginationOptions,
+  ): Promise<PaginatedResult<PublicUser>> {
+    const result = await this.userRepository.findAll(
+      toRepositoryPagination(options),
+    );
+
+    return toPaginatedResult(
+      { ...result, data: result.data.map(toPublicUser) },
+      options,
+    );
   }
 
   async getUserById(id: number): Promise<PublicUser> {

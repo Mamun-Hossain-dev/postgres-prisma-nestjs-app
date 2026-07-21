@@ -6,6 +6,7 @@ import type {
   NewProductImage,
   UpdateProductInput,
 } from '../interfaces/product.interface';
+import type { RepositoryPaginationOptions } from '../../../common/interfaces/pagination.interface';
 
 @Injectable()
 export class LoggingProductRepository implements ProductRepository {
@@ -13,9 +14,11 @@ export class LoggingProductRepository implements ProductRepository {
 
   constructor(private readonly repository: CachedProductRepository) {}
 
-  async findAll() {
-    this.logger.log('Fetching all products');
-    return await this.repository.findAll();
+  async findAll(options: RepositoryPaginationOptions) {
+    this.logger.log(
+      `Fetching products ${options.skip}-${options.skip + options.take}`,
+    );
+    return await this.repository.findAll(options);
   }
 
   async findById(id: number) {

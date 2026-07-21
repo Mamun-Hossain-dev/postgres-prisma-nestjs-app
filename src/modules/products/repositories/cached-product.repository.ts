@@ -7,6 +7,7 @@ import {
   UpdateProductInput,
 } from '../interfaces/product.interface';
 import type { ProductRepository } from './product.repository';
+import type { RepositoryPaginationOptions } from '../../../common/interfaces/pagination.interface';
 
 @Injectable()
 export class CachedProductRepository implements ProductRepository {
@@ -17,23 +18,8 @@ export class CachedProductRepository implements ProductRepository {
     private readonly repository: ProductRepository,
   ) {}
 
-  async findAll(): Promise<Product[]> {
-    const cacheKey = this.getAllCacheKey();
-    const cachedProducts = await this.redis.get(cacheKey);
-
-    if (cachedProducts) {
-      return JSON.parse(cachedProducts) as Product[];
-    }
-
-    const products = await this.repository.findAll();
-
-    await this.redis.set(
-      cacheKey,
-      JSON.stringify(products),
-      this.cacheTtlInSeconds,
-    );
-
-    return products;
+  findAll(options: RepositoryPaginationOptions) {
+    return this.repository.findAll(options);
   }
 
   async findById(id: number): Promise<Product | null> {
@@ -60,7 +46,6 @@ export class CachedProductRepository implements ProductRepository {
     const product = await this.repository.create(input, images);
 
     await this.cacheProduct(product);
-    await this.redis.del(this.getAllCacheKey());
 
     return product;
   }
@@ -77,7 +62,6 @@ export class CachedProductRepository implements ProductRepository {
     }
 
     await this.cacheProduct(updatedProduct);
-    await this.redis.del(this.getAllCacheKey());
 
     return updatedProduct;
   }
@@ -85,10 +69,7 @@ export class CachedProductRepository implements ProductRepository {
   async delete(id: number): Promise<void> {
     await this.repository.delete(id);
 
-    await Promise.all([
-      this.redis.del(this.getIdCacheKey(id)),
-      this.redis.del(this.getAllCacheKey()),
-    ]);
+    await this.redis.del(this.getIdCacheKey(id));
   }
 
   async addImages(
@@ -100,7 +81,6 @@ export class CachedProductRepository implements ProductRepository {
     if (!product) return null;
 
     await this.cacheProduct(product);
-    await this.redis.del(this.getAllCacheKey());
     return product;
   }
 
@@ -110,10 +90,7 @@ export class CachedProductRepository implements ProductRepository {
 
   async deleteImage(productId: number, imageId: number): Promise<void> {
     await this.repository.deleteImage(productId, imageId);
-    await Promise.all([
-      this.redis.del(this.getIdCacheKey(productId)),
-      this.redis.del(this.getAllCacheKey()),
-    ]);
+    await this.redis.del(this.getIdCacheKey(productId));
   }
 
   private async cacheProduct(product: Product): Promise<void> {
@@ -126,9 +103,5 @@ export class CachedProductRepository implements ProductRepository {
 
   private getIdCacheKey(id: number): string {
     return `product:id:${id}`;
-  }
-
-  private getAllCacheKey(): string {
-    return 'product:all';
   }
 }

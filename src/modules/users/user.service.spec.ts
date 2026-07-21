@@ -80,10 +80,58 @@ describe('UserService', () => {
       expect.objectContaining({
         email: 'seller@example.com',
       }),
+      undefined,
     );
     expect(userRepository.create.mock.calls[0][0].password).toMatch(
       /^\$2[aby]\$/,
     );
+  });
+
+  it('returns public users with pagination metadata', async () => {
+    userRepository.findAll.mockResolvedValue({
+      data: [
+        {
+          id: 11,
+          name: 'User',
+          email: 'user@example.com',
+          age: 20,
+          password: 'hash',
+          role: Role.USER,
+          isBlocked: false,
+          profileImageUrl: null,
+          profileImagePublicId: 'private-public-id',
+        },
+      ],
+      totalItems: 21,
+    });
+
+    const result = await service.getAllUsers({ page: 2, limit: 10 });
+
+    expect(result).toEqual({
+      data: [
+        {
+          id: 11,
+          name: 'User',
+          email: 'user@example.com',
+          age: 20,
+          role: Role.USER,
+          isBlocked: false,
+          profileImageUrl: null,
+        },
+      ],
+      meta: {
+        page: 2,
+        limit: 10,
+        totalItems: 21,
+        totalPages: 3,
+        hasNextPage: true,
+        hasPreviousPage: true,
+      },
+    });
+    expect(userRepository.findAll).toHaveBeenCalledWith({
+      skip: 10,
+      take: 10,
+    });
   });
 
   it.each([Role.USER, Role.SELLER])('blocks a %s account', async (role) => {

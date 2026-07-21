@@ -9,6 +9,14 @@ import { AppException } from '../../common/exceptions/app.exception';
 import { UploadsService } from '../../infrastructure/uploads/uploads.service';
 import type { FileToStore } from '../../infrastructure/uploads/interfaces/file-storage.interface';
 import { PRODUCT_REPOSITORY } from './constants/product.tokens';
+import type {
+  PaginatedResult,
+  PaginationOptions,
+} from '../../common/interfaces/pagination.interface';
+import {
+  toPaginatedResult,
+  toRepositoryPagination,
+} from '../../common/utils/pagination.util';
 
 @Injectable()
 export class ProductsService {
@@ -20,8 +28,13 @@ export class ProductsService {
     private readonly uploadsService: UploadsService,
   ) {}
 
-  async getAllProducts(): Promise<Product[]> {
-    return await this.productsRepository.findAll();
+  async getAllProducts(
+    options: PaginationOptions,
+  ): Promise<PaginatedResult<Product>> {
+    const result = await this.productsRepository.findAll(
+      toRepositoryPagination(options),
+    );
+    return toPaginatedResult(result, options);
   }
 
   async getProductById(id: number): Promise<Product> {

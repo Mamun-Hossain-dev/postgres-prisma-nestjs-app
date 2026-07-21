@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   UploadedFiles,
   UseInterceptors,
   UseGuards,
@@ -22,6 +23,7 @@ import { ResponseMessage } from '../../common/utils/api-response.util';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { ImageFilesValidationPipe } from '../../infrastructure/uploads/pipes/image-files-validation.pipe';
 import { toFileToStore } from '../../infrastructure/uploads/utils/multer-file.util';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 
 @Controller('products')
 export class ProductsController {
@@ -30,8 +32,8 @@ export class ProductsController {
   @Public()
   @Get()
   @ResponseMessage('Products fetched successfully')
-  findAll() {
-    return this.productsService.getAllProducts();
+  findAll(@Query() query: PaginationQueryDto) {
+    return this.productsService.getAllProducts(query);
   }
 
   @Public()
