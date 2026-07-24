@@ -1,175 +1,120 @@
-# NestJS Learning API
+# DeviceDock
 
-A feature-first NestJS 11 REST API demonstrating JWT authentication, role-based access, repository decorators, Redis caching, Prisma/PostgreSQL persistence, and Cloudinary image storage through Multer.
+DeviceDock is a full-stack gadget store for mobiles, laptops, tablets, audio
+devices, watches, and accessories. The purchase journey currently covers
+authentication, product discovery, product details, and a persistent cart.
+Order placement and payment are intentionally reserved for the next phase.
 
-## Features
+The repository contains two independent pnpm projects. Each project owns its
+dependencies, lockfile, and pnpm settings.
 
-- JWT access tokens with rotating Redis-backed refresh sessions.
-- `USER`, `SELLER`, and `ADMIN` authorization roles.
-- User management, blocking, and one profile image per user.
-- Product CRUD and multiple images per product.
-- Cloudinary storage behind a replaceable `FileStorage` abstraction.
-- Redis caching and Redis-backed API throttling.
-- Consistent success/error response envelopes.
-- Reusable database-level pagination for list endpoints.
-- Event-driven welcome emails through Nodemailer with an inline welcome image.
-- Zod environment validation and split Prisma schemas.
-
-## Tech stack
-
-- NestJS 11 and TypeScript
-- PostgreSQL, Prisma 7, and the PostgreSQL Prisma adapter
-- Redis and ioredis
-- Passport JWT, bcrypt, and HTTP-only refresh cookies
-- Nodemailer and SMTP
-- Multer memory storage and Cloudinary
-- Jest, Supertest, ESLint, and Prettier
-
-## Project structure
+## Applications
 
 ```text
 .
-├── prisma/
-│   ├── migrations/                 # Versioned SQL migrations
-│   └── schema/
-│       ├── schema.prisma           # Generator and datasource
-│       ├── users/user.prisma       # User and Role models
-│       └── products/product.prisma # Product and ProductImage models
-├── src/
-│   ├── auth/                       # Login, registration, JWT, refresh sessions
-│   │   ├── decorators/
-│   │   ├── dto/
-│   │   ├── guards/
-│   │   ├── interfaces/
-│   │   └── strategies/
-│   ├── users/                      # User HTTP/use cases/repositories
-│   │   ├── constants/              # User repository symbol token
-│   │   ├── dto/
-│   │   ├── interfaces/
-│   │   ├── repositories/
-│   │   └── utils/
-│   ├── products/                   # Product HTTP/use cases/repositories
-│   │   ├── constants/              # Product repository symbol token
-│   │   ├── dto/
-│   │   ├── interfaces/
-│   │   └── repositories/
-│   ├── uploads/                    # Reusable upload infrastructure; no controller
-│   │   ├── constants/              # Symbol injection tokens
-│   │   ├── interfaces/             # FileStorage contract
-│   │   ├── pipes/                  # Single/multiple image validation
-│   │   ├── providers/              # Cloudinary, Multer, storage bindings
-│   │   ├── storage/                # Cloudinary adapter
-│   │   └── types/
-│   ├── common/                     # Exceptions, filters, interceptors, response utils
-│   ├── config/                     # Namespaced config and environment validation
-│   ├── prisma/                     # Global Prisma module/service
-│   ├── redis/                      # Redis service and throttler storage
-│   ├── app.module.ts
-│   └── main.ts
-├── test/                           # End-to-end tests
-└── AGENTS.md                       # Minimal context for coding agents
+├── backend/
+│   ├── prisma/                  # Split Prisma schema and migrations
+│   ├── src/                     # NestJS application
+│   ├── test/                    # End-to-end tests
+│   ├── .env                     # Backend environment (ignored by Git)
+│   ├── package.json
+│   ├── pnpm-lock.yaml
+│   └── pnpm-workspace.yaml
+├── frontend/
+│   ├── app/                     # Next.js App Router pages
+│   ├── components/              # Storefront components and providers
+│   ├── lib/                     # API client, types, and preview data
+│   ├── public/                  # Static storefront assets
+│   ├── package.json
+│   ├── pnpm-lock.yaml
+│   └── pnpm-workspace.yaml
+└── README.md
 ```
 
-## Architecture conventions
+There is no shared root `node_modules`, `pnpm-lock.yaml`, or
+`pnpm-workspace.yaml`. Run `pnpm install` separately inside each application.
 
-### Feature ownership
+## Current features
 
-Routes live with the domain that owns the operation. User profile uploads belong to `UserController`; product uploads belong to `ProductsController`. `UploadsModule` exposes infrastructure and services, not a generic `/uploads` endpoint.
+### Backend
 
-### Layering
+- JWT access tokens and rotating Redis-backed refresh sessions
+- HTTP-only refresh-token cookie
+- `USER`, `SELLER`, and `ADMIN` roles
+- User management, blocking, and profile images
+- Gadget categories, brands, SKUs, slugs, descriptions, prices, stock, and
+  specifications
+- Product search, filtering, sorting, pagination, and multiple images
+- One persistent cart per authenticated user
+- Add, update, remove, and clear cart operations
+- Cart stock validation, item count, and subtotal
+- PostgreSQL persistence through Prisma
+- Redis caching, throttling, and session storage
+- Cloudinary image storage behind the `FileStorage` abstraction
+- Consistent API success/error envelopes
+- Optional event-driven welcome emails
 
-```text
-HTTP request
-  -> Controller
-  -> Feature service
-  -> Repository abstraction / UploadsService
-  -> Prisma, Redis, or FileStorage
-  -> PostgreSQL or Cloudinary
-```
+### Frontend
 
-Controllers stay thin. Services coordinate use cases and cleanup. Repository implementations handle persistence.
+- Responsive storefront homepage
+- Product catalog with search, categories, and sorting
+- Product details and quantity selection
+- Login and registration pages
+- Refresh-cookie authentication flow
+- Persistent server-backed cart
+- Loading, empty, and error states
+- Local preview products when the public catalog API is unavailable
+- Checkout placeholder for the future order/payment phase
 
-### Repository decorators
+## Technology
 
-Users and products compose repositories as:
+### Backend
 
-```text
-Logging repository -> Cached repository -> Prisma repository
-```
+- NestJS 11 and TypeScript
+- PostgreSQL and Prisma
+- Redis and ioredis
+- Passport JWT and bcrypt
+- Multer and Cloudinary
+- Nodemailer
+- Jest, ESLint, and Prettier
 
-New repository methods must be implemented through all three layers. Write operations must update or invalidate relevant Redis keys.
+### Frontend
 
-### Dependency injection
+- Next.js 14 App Router and React 18
+- Tailwind CSS
+- TanStack Query
+- React Hook Form and Zod
+- Radix UI
+- Lucide React
+- Sonner
 
-External implementations and initialized clients use collision-safe symbol tokens:
+## Requirements
 
-```ts
-export const CLOUDINARY_CLIENT = Symbol('CLOUDINARY_CLIENT');
-export const FILE_STORAGE = Symbol('FILE_STORAGE');
-export const USER_REPOSITORY = Symbol('USER_REPOSITORY');
-export const PRODUCT_REPOSITORY = Symbol('PRODUCT_REPOSITORY');
-```
-
-Application services depend on the `FileStorage` interface. Replacing Cloudinary with S3 only requires a new adapter and provider binding.
-
-HTTP DTOs and `Express.Multer.File` stay at controller boundaries. Controllers map validated Multer files to `FileToStore`; services and repository contracts remain framework-independent.
-
-### Authentication and responses
-
-The global JWT guard protects endpoints unless they use `@Public()`. Role checks use `RolesGuard` plus `@Roles()`.
-
-Successful responses use this envelope:
-
-```json
-{
-  "success": true,
-  "message": "Request successful",
-  "data": {}
-}
-```
-
-Domain failures use `AppException` and the global exception filter:
-
-```json
-{
-  "success": false,
-  "statusCode": 404,
-  "error": {
-    "code": "PRODUCT_NOT_FOUND",
-    "message": "Product not found"
-  },
-  "timestamp": "2026-07-19T00:00:00.000Z",
-  "path": "/api/v1/products/99",
-  "requestId": "request-id"
-}
-```
-
-## Setup
-
-### Requirements
-
-- Node.js 20+
+- Node.js 20 or later
 - pnpm
 - PostgreSQL
 - Redis
-- A Cloudinary account
+- Cloudinary credentials for image uploads
 
-### Install
+## Backend setup
+
+### 1. Install dependencies
 
 ```bash
+cd backend
 pnpm install
 ```
 
-### Environment
+### 2. Configure the environment
 
-Create `.env` in the project root. Dummy Cloudinary values are suitable for bootstrapping only; replace them before testing uploads.
+The backend reads `backend/.env`. A minimal example is:
 
 ```env
 NODE_ENV=development
-HOST=127.0.0.1
+HOST=0.0.0.0
 PORT=8080
 Global_API_PREFIX=api/v1/
-CORS_ORIGIN=*
+CORS_ORIGIN=http://localhost:3000
 
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/nestjs_app
 
@@ -182,30 +127,20 @@ JWT_EXPIRES_IN=15m
 REFRESH_TOKEN_TTL_SECONDS=2592000
 REFRESH_COOKIE_NAME=refresh_token
 
-CLOUDINARY_CLOUD_NAME=dummy_cloud_name
-CLOUDINARY_API_KEY=dummy_api_key
-CLOUDINARY_API_SECRET=dummy_api_secret
-CLOUDINARY_FOLDER=nestjs-learning
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+CLOUDINARY_FOLDER=device-dock
 UPLOAD_MAX_FILE_SIZE=5242880
 UPLOAD_MAX_PRODUCT_IMAGES=10
 
-# Email is optional; registration still works while disabled.
 MAIL_ENABLED=false
-SMTP_HOST=smtp.example.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=your-smtp-user
-SMTP_PASSWORD=your-smtp-password
-MAIL_FROM=NestJS Learning API <hello@example.com>
 ```
 
-Environment values are validated at startup by `src/config/env.validation.ts`.
-When `MAIL_ENABLED=true`, `SMTP_HOST` and `MAIL_FROM` are required. Set both
-`SMTP_USER` and `SMTP_PASSWORD` for authenticated SMTP; omit both for a local
-SMTP server that does not use authentication. Port 587 normally uses
-`SMTP_SECURE=false`; port 465 normally uses `SMTP_SECURE=true`.
+Do not commit real secrets. If email is enabled, also configure the SMTP
+variables documented in `backend/src/config/env.validation.ts`.
 
-### Database
+### 3. Prepare Prisma
 
 ```bash
 pnpm exec prisma validate
@@ -213,155 +148,255 @@ pnpm exec prisma generate
 pnpm exec prisma migrate deploy
 ```
 
-For a new development migration:
+`migrate deploy` applies the existing migrations, including the gadget catalog
+and cart tables. To create a new development migration:
 
 ```bash
 pnpm exec prisma migrate dev --name describe_the_change
 ```
 
-### Run
+### 4. Start the API
 
 ```bash
 pnpm run start:dev
 ```
 
-Default base URL:
+The default API base URL is:
 
 ```text
-http://127.0.0.1:8080/api/v1
+http://localhost:8080/api/v1
 ```
 
-## API by feature
+## Frontend setup
+
+Open a second terminal:
+
+```bash
+cd frontend
+pnpm install
+cp .env.example .env.local
+pnpm run dev
+```
+
+`frontend/.env.local` should contain:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+```
+
+The storefront runs at:
+
+```text
+http://localhost:3000
+```
+
+For refresh cookies to work consistently, open the frontend with `localhost`
+and keep `NEXT_PUBLIC_API_URL` on `localhost` as shown above.
+
+## Quick start
+
+Terminal 1:
+
+```bash
+cd backend
+pnpm install
+pnpm exec prisma generate
+pnpm exec prisma migrate deploy
+pnpm run start:dev
+```
+
+Terminal 2:
+
+```bash
+cd frontend
+pnpm install
+cp .env.example .env.local
+pnpm run dev
+```
+
+## Main API routes
+
+All routes are relative to `/api/v1`.
 
 ### Authentication
 
-| Method | Route            | Access                           | Purpose                                    |
-| ------ | ---------------- | -------------------------------- | ------------------------------------------ |
-| POST   | `/auth/register` | Public                           | Register a `USER` account                  |
-| POST   | `/auth/login`    | Public                           | Return access token and set refresh cookie |
-| POST   | `/auth/refresh`  | Public + refresh cookie          | Rotate session and access token            |
-| POST   | `/auth/logout`   | Public + optional refresh cookie | Revoke session and clear cookie            |
-| GET    | `/auth/profile`  | Authenticated                    | Return current user                        |
+| Method | Route            | Access                  | Purpose                           |
+| ------ | ---------------- | ----------------------- | --------------------------------- |
+| POST   | `/auth/register` | Public                  | Create a customer account         |
+| POST   | `/auth/login`    | Public                  | Sign in and create a session      |
+| POST   | `/auth/refresh`  | Refresh cookie          | Rotate the session and JWT        |
+| POST   | `/auth/logout`   | Optional refresh cookie | Revoke the session                |
+| GET    | `/auth/profile`  | Authenticated           | Get the authenticated user        |
 
-Send access tokens as:
+Protected requests use:
 
 ```http
 Authorization: Bearer <access-token>
 ```
 
-### Users
-
-| Method | Route                     | Access        | Purpose                          |
-| ------ | ------------------------- | ------------- | -------------------------------- |
-| GET    | `/users`                  | Public        | List users                       |
-| GET    | `/users/:id`              | Public        | Get user                         |
-| POST   | `/users`                  | Admin         | Create a user                    |
-| PATCH  | `/users/:id`              | Admin         | Update a user                    |
-| PATCH  | `/users/:id/block`        | Admin         | Block non-admin user             |
-| PATCH  | `/users/:id/unblock`      | Admin         | Unblock non-admin user           |
-| DELETE | `/users/:id`              | Admin         | Delete user and profile asset    |
-| PUT    | `/users/me/profile-image` | Authenticated | Add or replace own profile image |
-| DELETE | `/users/me/profile-image` | Authenticated | Remove own profile image         |
-
-Profile-image request:
-
-```bash
-curl -X PUT http://127.0.0.1:8080/api/v1/users/me/profile-image \
-  -H "Authorization: Bearer <access-token>" \
-  -F "file=@./avatar.png"
-```
-
-User and product lists accept the same pagination query:
-
-```http
-GET /api/v1/users?page=2&limit=10
-GET /api/v1/products?page=1&limit=20
-```
-
-`page` defaults to `1`; `limit` defaults to `10` and is capped at `100`.
-The paginated payload has this shape:
-
-```json
-{
-  "data": [],
-  "meta": {
-    "page": 2,
-    "limit": 10,
-    "totalItems": 21,
-    "totalPages": 3,
-    "hasNextPage": true,
-    "hasPreviousPage": true
-  }
-}
-```
-
-### Welcome email flow
-
-After `POST /auth/register` creates a user, `AuthService` emits the
-`user.created` event. `EmailListener` receives it asynchronously and asks
-`EmailsService` to send the welcome template. The generated PNG banner is
-attached inline and referenced from the HTML with a content ID (`cid`), so it is
-part of the email rather than a public image URL. SMTP errors are logged inside
-the listener and do not roll back a successfully created account.
-
 ### Products
 
 | Method | Route                           | Access        | Purpose                       |
 | ------ | ------------------------------- | ------------- | ----------------------------- |
-| GET    | `/products`                     | Public        | List products with images     |
-| GET    | `/products/:id`                 | Public        | Get product with images       |
-| POST   | `/products`                     | Admin, Seller | Create product                |
-| PATCH  | `/products/:id`                 | Admin, Seller | Update product                |
-| DELETE | `/products/:id`                 | Admin, Seller | Delete product and its assets |
-| POST   | `/products/:id/images`          | Admin, Seller | Add multiple product images   |
+| GET    | `/products`                     | Public        | Search and filter products    |
+| GET    | `/products/:id`                 | Public        | Get product details           |
+| POST   | `/products`                     | Admin, Seller | Create a product              |
+| PATCH  | `/products/:id`                 | Admin, Seller | Update a product              |
+| DELETE | `/products/:id`                 | Admin, Seller | Delete product and images     |
 | DELETE | `/products/:id/images/:imageId` | Admin, Seller | Remove one product image      |
 
-Multiple-image request; repeat the `files` field:
-
-```bash
-curl -X POST http://127.0.0.1:8080/api/v1/products/1/images \
-  -H "Authorization: Bearer <access-token>" \
-  -F "files=@./front.png" \
-  -F "files=@./back.png"
-```
-
-## Upload behavior
-
-- Accepted formats: JPEG, PNG, WebP, GIF.
-- Default maximum: 5 MB per image.
-- Default product batch maximum: 10 images.
-- Multer keeps bounded files in memory; Cloudinary stores them permanently.
-- User replacement deletes the previous Cloudinary asset after database update.
-- Partial product upload failures clean up already uploaded assets.
-- Database failures trigger cleanup of newly uploaded assets.
-- Database stores secure URLs and Cloudinary public IDs. User public IDs are not returned publicly.
-
-## Scripts
-
-```bash
-pnpm run build                  # Compile application
-pnpm run format                 # Format source and tests
-pnpm run lint                   # Lint and auto-fix
-pnpm test -- --runInBand       # Unit tests
-pnpm run test:watch             # Watch unit tests
-pnpm run test:cov               # Coverage
-pnpm run test:e2e -- --runInBand
-pnpm run start:dev              # Development watch mode
-pnpm run start:prod             # Run compiled output
-```
-
-## Adding a feature
-
-Follow the existing feature layout where applicable:
+Supported product-list parameters:
 
 ```text
-feature/
-├── dto/
-├── interfaces/
-├── repositories/
-├── feature.controller.ts
-├── feature.service.ts
-└── feature.module.ts
+search
+category=MOBILE|LAPTOP|TABLET|AUDIO|WATCH|ACCESSORY
+brand
+minPrice
+maxPrice
+featured=true|false
+sort=newest|price-asc|price-desc|name-asc
+page
+limit
 ```
 
-Keep DTO validation at the HTTP boundary, business rules in the service, persistence behind a repository abstraction, and external implementations behind symbol-token providers.
+Example:
+
+```http
+GET /api/v1/products?category=LAPTOP&minPrice=50000&sort=price-asc&page=1&limit=20
+```
+
+Product create/update requests use `multipart/form-data`. Repeat the `images`
+field to upload multiple files:
+
+```bash
+curl -X POST http://localhost:8080/api/v1/products \
+  -H "Authorization: Bearer <access-token>" \
+  -F "title=Nova X1 Pro" \
+  -F "sku=MOB-NX1" \
+  -F "description=Flagship smartphone" \
+  -F "brand=Nova" \
+  -F "category=MOBILE" \
+  -F "price=89900" \
+  -F "quantity=12" \
+  -F 'specifications={"Storage":"256 GB","Display":"6.7-inch OLED"}' \
+  -F "images=@./front.png"
+```
+
+### Cart
+
+Cart routes require authentication.
+
+| Method | Route                    | Purpose                    |
+| ------ | ------------------------ | -------------------------- |
+| GET    | `/cart`                  | Get cart, count, and total |
+| POST   | `/cart/items`            | Add a product              |
+| PATCH  | `/cart/items/:productId` | Set an item quantity       |
+| DELETE | `/cart/items/:productId` | Remove an item             |
+| DELETE | `/cart`                  | Clear the cart             |
+
+Add a product:
+
+```json
+{
+  "productId": 1,
+  "quantity": 2
+}
+```
+
+Update a quantity:
+
+```json
+{
+  "quantity": 3
+}
+```
+
+## Response format
+
+Successful response:
+
+```json
+{
+  "success": true,
+  "message": "Request successful",
+  "data": {}
+}
+```
+
+Expected domain error:
+
+```json
+{
+  "success": false,
+  "statusCode": 404,
+  "error": {
+    "code": "PRODUCT_NOT_FOUND",
+    "message": "Product not found"
+  },
+  "timestamp": "2026-07-24T00:00:00.000Z",
+  "path": "/api/v1/products/999",
+  "requestId": "request-id"
+}
+```
+
+## Architecture
+
+Controllers handle HTTP concerns, services own use cases, and repositories own
+persistence.
+
+```text
+HTTP request
+  -> Controller
+  -> Feature service
+  -> Repository port
+  -> Logging repository
+  -> Cached repository
+  -> Prisma repository
+  -> PostgreSQL
+```
+
+The user, product, and cart repositories use this decorator chain. Writes
+invalidate or refresh relevant Redis entries.
+
+Uploads are infrastructure-only. User profile-image routes belong to the user
+feature, while product-image routes belong to the product feature.
+
+## Validation and tests
+
+Backend:
+
+```bash
+cd backend
+pnpm run format
+pnpm run build
+pnpm run lint
+pnpm test --runInBand
+pnpm exec prisma validate
+```
+
+Frontend:
+
+```bash
+cd frontend
+pnpm run lint
+pnpm exec tsc --noEmit
+pnpm run build
+```
+
+## Upload rules
+
+- Accepted formats: JPEG, PNG, WebP, and GIF
+- Default maximum size: 5 MB per image
+- Default product limit: 10 images
+- User profile replacement removes the previous Cloudinary asset
+- Product upload failures clean up partially uploaded assets
+- Secure URLs and Cloudinary public IDs are persisted
+- User profile-image public IDs are never exposed
+
+## Not implemented yet
+
+- Order creation
+- Shipping address and delivery selection
+- Stock reservation during checkout
+- Payment gateway integration
+- Order history and status tracking
