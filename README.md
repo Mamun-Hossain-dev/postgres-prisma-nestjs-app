@@ -94,6 +94,7 @@ There is no shared root `node_modules`, `pnpm-lock.yaml`, or
 - pnpm
 - PostgreSQL
 - Redis
+- RabbitMQ
 - Cloudinary credentials for image uploads
 
 ## Backend setup
@@ -121,6 +122,9 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/nestjs_app
 REDIS_HOST=localhost
 REDIS_PORT=6379
 
+RABBITMQ_URL=amqp://localhost:5672
+RABBITMQ_PREFETCH_COUNT=10
+
 BCRYPT_SALT_ROUNDS=10
 JWT_SECRET=replace-with-at-least-16-characters
 JWT_EXPIRES_IN=15m
@@ -136,6 +140,9 @@ UPLOAD_MAX_PRODUCT_IMAGES=10
 
 MAIL_ENABLED=false
 ```
+
+The API publishes `user.created` events to RabbitMQ. Separate durable queues
+process welcome emails, notification logs, and analytics logs.
 
 Do not commit real secrets. If email is enabled, also configure the SMTP
 variables documented in `backend/src/config/env.validation.ts`.

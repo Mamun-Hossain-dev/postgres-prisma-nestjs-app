@@ -7,8 +7,7 @@ import { USER_REPOSITORY } from '../users/constants/user.tokens';
 import * as bcrypt from 'bcrypt';
 import { AuthSessionService } from './auth-session.service';
 import { Role } from '../users/interfaces/user.interface';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { UserEvents } from '../users/events/user.events';
+import { UserEventsPublisher } from '../users/events/user-events.publisher';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -25,8 +24,8 @@ describe('AuthService', () => {
     rotate: jest.Mock;
     revoke: jest.Mock;
   };
-  let eventEmitter: {
-    emit: jest.Mock;
+  let userEventsPublisher: {
+    publishCreated: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -46,8 +45,8 @@ describe('AuthService', () => {
       rotate: jest.fn(),
       revoke: jest.fn(),
     };
-    eventEmitter = {
-      emit: jest.fn(),
+    userEventsPublisher = {
+      publishCreated: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -72,8 +71,8 @@ describe('AuthService', () => {
           useValue: authSessionService,
         },
         {
-          provide: EventEmitter2,
-          useValue: eventEmitter,
+          provide: UserEventsPublisher,
+          useValue: userEventsPublisher,
         },
       ],
     }).compile();
@@ -115,7 +114,7 @@ describe('AuthService', () => {
       /^\$2[aby]\$/,
     );
     expect(result).not.toHaveProperty('password');
-    expect(eventEmitter.emit).toHaveBeenCalledWith(UserEvents.CREATED, result);
+    expect(userEventsPublisher.publishCreated).toHaveBeenCalledWith(result);
   });
 
   it('should return a signed JWT with the public user on successful login', async () => {

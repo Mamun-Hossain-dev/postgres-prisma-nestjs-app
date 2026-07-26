@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { AnalyticsListener } from './analytics.listener';
+import { AnalyticsConsumer } from './analytics.consumer';
 
 @Module({
-  providers: [AnalyticsListener],
+  providers: [AnalyticsConsumer],
 })
 export class AnalyticsModule {}

@@ -8,11 +8,14 @@ import { RedisModule } from '../../infrastructure/redis/redis.module';
 import { RedisService } from '../../infrastructure/redis/redis.service';
 import { UploadsModule } from '../../infrastructure/uploads/uploads.module';
 import { USER_REPOSITORY } from './constants/user.tokens';
+import { RabbitMqModule } from '../../infrastructure/rabbitmq/rabbitmq.module';
+import { UserEventsPublisher } from './events/user-events.publisher';
 
 @Module({
-  imports: [RedisModule, UploadsModule],
+  imports: [RedisModule, UploadsModule, RabbitMqModule],
   providers: [
     UserService,
+    UserEventsPublisher,
     PrismaUserRepository,
     {
       provide: USER_REPOSITORY,
@@ -31,6 +34,6 @@ import { USER_REPOSITORY } from './constants/user.tokens';
     },
   ],
   controllers: [UserController],
-  exports: [UserService, USER_REPOSITORY],
+  exports: [UserService, USER_REPOSITORY, UserEventsPublisher],
 })
 export class UserModule {}

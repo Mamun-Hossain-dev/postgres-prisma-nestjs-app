@@ -1,5 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { PublicUser, Role, User } from '../users/interfaces/user.interface';
@@ -17,7 +16,7 @@ import {
 import { AppException } from '../../common/exceptions/app.exception';
 import { AuthSessionService } from './auth-session.service';
 import { USER_REPOSITORY } from '../users/constants/user.tokens';
-import { UserEvents } from '../users/events/user.events';
+import { UserEventsPublisher } from '../users/events/user-events.publisher';
 
 @Injectable()
 export class AuthService {
@@ -27,7 +26,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
     private readonly authSessionService: AuthSessionService,
-    private readonly eventEmitter: EventEmitter2,
+    private readonly userEventsPublisher: UserEventsPublisher,
   ) {}
 
   async register(dto: RegisterDto): Promise<PublicUser> {
@@ -53,7 +52,7 @@ export class AuthService {
     });
     const publicUser = toPublicUser(user);
 
-    this.eventEmitter.emit(UserEvents.CREATED, publicUser);
+    await this.userEventsPublisher.publishCreated(publicUser);
 
     return publicUser;
   }

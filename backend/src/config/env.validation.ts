@@ -16,6 +16,11 @@ const envSchema = z
     DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
     REDIS_HOST: z.string().min(1).default('localhost'),
     REDIS_PORT: z.coerce.number().int().min(1).max(65535).default(6379),
+    RABBITMQ_URL: z
+      .string()
+      .regex(/^amqps?:\/\//, 'RABBITMQ_URL must use amqp:// or amqps://')
+      .default('amqp://localhost:5672'),
+    RABBITMQ_PREFETCH_COUNT: z.coerce.number().int().positive().default(10),
     CLOUDINARY_CLOUD_NAME: z
       .string()
       .min(1, 'CLOUDINARY_CLOUD_NAME is required'),
