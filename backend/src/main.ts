@@ -8,18 +8,13 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
 import compression from 'compression';
-import { createRabbitMqConsumerOptions } from './infrastructure/rabbitmq/rabbitmq.options';
-import { RabbitMqQueues } from './infrastructure/rabbitmq/constants/rabbitmq.constants';
-import { UserEvents } from './modules/users/events/user.events';
-import { EmailWorkerModule } from './workers/email-worker.module';
-import { NotificationWorkerModule } from './workers/notification-worker.module';
-import { AnalyticsWorkerModule } from './workers/analytics-worker.module';
 
 const logger = new Logger('Bootstrap');
 
 async function bootstrap() {
   logger.log('Creating Nest application');
   const app = await NestFactory.create(AppModule);
+  app.enableShutdownHooks();
   logger.log('Nest application created');
 
   const configService = app.get(ConfigService);
@@ -27,40 +22,6 @@ async function bootstrap() {
   const isProduction = configService.getOrThrow<boolean>('app.isProduction');
   const port = configService.getOrThrow<number>('app.port');
   const host = configService.getOrThrow<string>('app.host');
-
-  const [emailWorker, notificationWorker, analyticsWorker] = await Promise.all([
-    NestFactory.createMicroservice(
-      EmailWorkerModule,
-      createRabbitMqConsumerOptions(
-        configService,
-        RabbitMqQueues.EMAILS,
-        UserEvents.CREATED,
-      ),
-    ),
-    NestFactory.createMicroservice(
-      NotificationWorkerModule,
-      createRabbitMqConsumerOptions(
-        configService,
-        RabbitMqQueues.NOTIFICATIONS,
-        UserEvents.CREATED,
-      ),
-    ),
-    NestFactory.createMicroservice(
-      AnalyticsWorkerModule,
-      createRabbitMqConsumerOptions(
-        configService,
-        RabbitMqQueues.ANALYTICS,
-        UserEvents.CREATED,
-      ),
-    ),
-  ]);
-
-  await Promise.all([
-    emailWorker.listen(),
-    notificationWorker.listen(),
-    analyticsWorker.listen(),
-  ]);
-  logger.log('RabbitMQ workers started');
 
   app.use(helmet());
 

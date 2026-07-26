@@ -1,19 +1,8 @@
 import { Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { ClientsModule } from '@nestjs/microservices';
-import { RABBITMQ_CLIENT } from './constants/rabbitmq.constants';
-import { createRabbitMqPublisherOptions } from './rabbitmq.options';
+import { RabbitMqService } from './rabbitmq.service';
 
 @Module({
-  imports: [
-    ClientsModule.registerAsync([
-      {
-        name: RABBITMQ_CLIENT,
-        inject: [ConfigService],
-        useFactory: createRabbitMqPublisherOptions,
-      },
-    ]),
-  ],
-  exports: [ClientsModule],
+  providers: [RabbitMqService],
+  exports: [RabbitMqService],
 })
 export class RabbitMqModule {}
