@@ -1,34 +1,34 @@
-import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
-import { RabbitMqQueues } from '../../infrastructure/rabbitmq/constants/rabbitmq.constants';
-import { RabbitMqService } from '../../infrastructure/rabbitmq/rabbitmq.service';
+import { Controller, Logger } from '@nestjs/common';
+import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
+import type { RabbitMqChannel } from '../../infrastructure/rabbitmq/interfaces/rabbitmq-channel.interface';
 import { UserEvents } from '../users/events/user.events';
 import type { UserCreatedEvent } from '../users/events/user.events';
 import { EmailsService } from './emails.service';
 
-@Injectable()
-export class EmailConsumer implements OnApplicationBootstrap {
+@Controller()
+export class EmailConsumer {
   private readonly logger = new Logger(EmailConsumer.name);
 
-  constructor(
-    private readonly emailsService: EmailsService,
-    private readonly rabbitMqService: RabbitMqService,
-  ) {}
+  constructor(private readonly emailsService: EmailsService) {}
 
-  async onApplicationBootstrap(): Promise<void> {
-    await this.rabbitMqService.consume(
-      RabbitMqQueues.EMAILS,
-      UserEvents.CREATED,
-      (user: UserCreatedEvent) => this.handleUserCreated(user),
-    );
-  }
+  @EventPattern(UserEvents.CREATED)
+  async handleUserCreated(
+    @Payload() user: UserCreatedEvent,
+    @Ctx() context: RmqContext,
+  ): Promise<void> {
+    const channel = context.getChannelRef() as RabbitMqChannel;
+    const message: unknown = context.getMessage();
 
-  async handleUserCreated(user: UserCreatedEvent): Promise<void> {
     try {
       await this.emailsService.sendWelcomeEmail(user.email, user.name);
+      channel.ack(message);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Welcome email failed for ${user.email}: ${message}`);
-      throw error;
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Welcome email failed for ${user.email}: ${errorMessage}`,
+      );
+      channel.nack(message, false, false);
     }
   }
 }

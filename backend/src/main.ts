@@ -5,9 +5,18 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import type { MicroserviceOptions } from '@nestjs/microservices';
+import type { INestMicroservice } from '@nestjs/common';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
 import compression from 'compression';
+import { RabbitMqQueues } from './infrastructure/rabbitmq/constants/rabbitmq.constants';
+import { createRabbitMqOptions } from './infrastructure/rabbitmq/rabbitmq.options';
+import {
+  AnalyticsWorkerModule,
+  EmailWorkerModule,
+  NotificationWorkerModule,
+} from './workers/rabbitmq-workers.module';
 
 const logger = new Logger('Bootstrap');
 
@@ -52,6 +61,31 @@ async function bootstrap() {
     disableErrorMessages: isProduction,
   };
   app.useGlobalPipes(new ValidationPipe(validationPipeOptions));
+
+  const workers: Array<
+    [
+      string,
+      typeof EmailWorkerModule,
+      (typeof RabbitMqQueues)[keyof typeof RabbitMqQueues],
+    ]
+  > = [
+    ['email', EmailWorkerModule, RabbitMqQueues.EMAILS],
+    ['notification', NotificationWorkerModule, RabbitMqQueues.NOTIFICATIONS],
+    ['analytics', AnalyticsWorkerModule, RabbitMqQueues.ANALYTICS],
+  ];
+
+  const microservices: INestMicroservice[] = [];
+  for (const [name, module, queue] of workers) {
+    const microservice =
+      await NestFactory.createMicroservice<MicroserviceOptions>(
+        module,
+        createRabbitMqOptions(configService, queue),
+      );
+    microservice.enableShutdownHooks();
+    await microservice.listen();
+    microservices.push(microservice);
+    logger.log(`RabbitMQ ${name} worker listening on queue "${queue}"`);
+  }
 
   logger.log(`Attempting to listen on ${host}:${port}`);
   await app.listen(port, host);

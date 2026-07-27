@@ -18,9 +18,6 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { ErrorInterceptor } from './common/interceptors/error.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { CartModule } from './modules/cart/cart.module';
-import { EmailsModule } from './modules/emails/emails.module';
-import { NotificationsModule } from './modules/notifications/notifications.module';
-import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
   imports: [
@@ -42,9 +39,6 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
     ProductsModule,
     UserModule,
     AuthModule,
-    EmailsModule,
-    NotificationsModule,
-    AnalyticsModule,
     CartModule,
   ],
   controllers: [AppController],

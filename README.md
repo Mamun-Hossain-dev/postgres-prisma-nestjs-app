@@ -122,7 +122,7 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/nestjs_app
 REDIS_HOST=localhost
 REDIS_PORT=6379
 
-RABBITMQ_URL=amqp://localhost:5672
+RABBITMQ_URL=amqp://devicedock:devicedock_local_password@localhost:5672
 RABBITMQ_PREFETCH_COUNT=10
 
 BCRYPT_SALT_ROUNDS=10
@@ -144,8 +144,51 @@ MAIL_ENABLED=false
 The API publishes `user.created` events to RabbitMQ. Separate durable queues
 process welcome emails, notification logs, and analytics logs.
 
+To run only the infrastructure while developing the backend locally:
+
+```bash
+cd backend
+docker compose up -d postgres redis rabbitmq
+```
+
+RabbitMQ Management UI is available at `http://localhost:15672`. Sign in with
+`devicedock` / `devicedock_local_password`. These credentials are for local
+development only.
+
+The integration uses NestJS's built-in RMQ transport: `ClientsModule` and
+`ClientProxy` publish persistent events, while three `createMicroservice()`
+workers consume through `@EventPattern()` with manual acknowledgements. The
+application code does not call `amqplib` or `amqp-connection-manager` directly.
+
 Do not commit real secrets. If email is enabled, also configure the SMTP
 variables documented in `backend/src/config/env.validation.ts`.
+
+### Production-style Docker deployment
+
+The backend includes a multi-stage `Dockerfile`. Its final image contains only
+production dependencies and compiled output, runs as a non-root user, and uses
+`dumb-init` for correct signal handling. Database migrations run in a separate
+one-shot container before the backend starts.
+
+Create the environment file and replace every placeholder secret before a real
+deployment:
+
+```bash
+cd backend
+cp .env.example .env
+docker compose up -d --build
+```
+
+The Compose stack starts PostgreSQL, Redis, RabbitMQ, migrations, and the
+backend. Only the backend port is publicly bound. RabbitMQ Management UI is
+bound to localhost at `http://localhost:15672`.
+
+Check container state and application logs with:
+
+```bash
+docker compose ps
+docker compose logs -f backend
+```
 
 ### 3. Prepare Prisma
 

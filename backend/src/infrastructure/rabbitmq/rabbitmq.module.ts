@@ -1,8 +1,36 @@
 import { Module } from '@nestjs/common';
-import { RabbitMqService } from './rabbitmq.service';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ClientsModule, Transport } from '@nestjs/microservices';
+import {
+  RabbitMqClients,
+  RabbitMqQueues,
+} from './constants/rabbitmq.constants';
+
+const clients = [
+  [RabbitMqClients.EMAILS, RabbitMqQueues.EMAILS],
+  [RabbitMqClients.NOTIFICATIONS, RabbitMqQueues.NOTIFICATIONS],
+  [RabbitMqClients.ANALYTICS, RabbitMqQueues.ANALYTICS],
+] as const;
 
 @Module({
-  providers: [RabbitMqService],
-  exports: [RabbitMqService],
+  imports: [
+    ClientsModule.registerAsync(
+      clients.map(([name, queue]) => ({
+        name,
+        imports: [ConfigModule],
+        inject: [ConfigService],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.RMQ,
+          options: {
+            urls: [configService.getOrThrow<string>('rabbitmq.url')],
+            queue,
+            queueOptions: { durable: true },
+            persistent: true,
+          },
+        }),
+      })),
+    ),
+  ],
+  exports: [ClientsModule],
 })
 export class RabbitMqModule {}
