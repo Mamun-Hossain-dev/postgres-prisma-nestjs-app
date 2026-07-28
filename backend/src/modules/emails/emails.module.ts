@@ -4,9 +4,10 @@ import emailConfig from '../../config/email.config';
 import { EmailConsumer } from './email.consumer';
 import { EmailsService } from './emails.service';
 import { emailTransporterProvider } from './providers/email-transporter.provider';
+import { RabbitMqModule } from '../../infrastructure/rabbitmq/rabbitmq.module';
 
 @Module({
-  imports: [ConfigModule.forFeature(emailConfig)],
+  imports: [ConfigModule.forFeature(emailConfig), RabbitMqModule],
   controllers: [EmailConsumer],
   providers: [emailTransporterProvider, EmailsService],
   exports: [EmailsService],

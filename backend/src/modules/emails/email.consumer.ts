@@ -1,6 +1,11 @@
 import { Controller, Logger } from '@nestjs/common';
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
-import type { RabbitMqChannel } from '../../infrastructure/rabbitmq/interfaces/rabbitmq-channel.interface';
+import { RabbitMqQueues } from '../../infrastructure/rabbitmq/constants/rabbitmq.constants';
+import type {
+  RabbitMqChannel,
+  RabbitMqMessage,
+} from '../../infrastructure/rabbitmq/interfaces/rabbitmq-channel.interface';
+import { RabbitMqRetryService } from '../../infrastructure/rabbitmq/rabbitmq-retry.service';
 import { UserEvents } from '../users/events/user.events';
 import type { UserCreatedEvent } from '../users/events/user.events';
 import { EmailsService } from './emails.service';
@@ -9,7 +14,10 @@ import { EmailsService } from './emails.service';
 export class EmailConsumer {
   private readonly logger = new Logger(EmailConsumer.name);
 
-  constructor(private readonly emailsService: EmailsService) {}
+  constructor(
+    private readonly emailsService: EmailsService,
+    private readonly retryService: RabbitMqRetryService,
+  ) {}
 
   @EventPattern(UserEvents.CREATED_EMAIL)
   async handleUserCreated(
@@ -17,7 +25,7 @@ export class EmailConsumer {
     @Ctx() context: RmqContext,
   ): Promise<void> {
     const channel = context.getChannelRef() as RabbitMqChannel;
-    const message: unknown = context.getMessage();
+    const message = context.getMessage() as RabbitMqMessage;
 
     try {
       await this.emailsService.sendWelcomeEmail(user.email, user.name);
@@ -28,7 +36,11 @@ export class EmailConsumer {
       this.logger.error(
         `Welcome email failed for ${user.email}: ${errorMessage}`,
       );
-      channel.nack(message, false, false);
+      await this.retryService.handleFailure(
+        context,
+        RabbitMqQueues.EMAILS,
+        error,
+      );
     }
   }
 }

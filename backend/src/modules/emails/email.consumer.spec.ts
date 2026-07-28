@@ -5,7 +5,11 @@ describe('EmailConsumer', () => {
     const emailsService = {
       sendWelcomeEmail: jest.fn().mockResolvedValue(undefined),
     };
-    const consumer = new EmailConsumer(emailsService as never);
+    const retryService = { handleFailure: jest.fn() };
+    const consumer = new EmailConsumer(
+      emailsService as never,
+      retryService as never,
+    );
     const channel = { ack: jest.fn(), nack: jest.fn() };
     const message = {};
     const context = {
@@ -34,13 +38,20 @@ describe('EmailConsumer', () => {
     expect(channel.nack).not.toHaveBeenCalled();
   });
 
-  it('rejects a failed welcome email without requeueing it', async () => {
+  it('routes a failed welcome email through the retry service', async () => {
+    const error = new Error('SMTP offline');
     const emailsService = {
-      sendWelcomeEmail: jest.fn().mockRejectedValue(new Error('SMTP offline')),
+      sendWelcomeEmail: jest.fn().mockRejectedValue(error),
     };
-    const consumer = new EmailConsumer(emailsService as never);
+    const retryService = {
+      handleFailure: jest.fn().mockResolvedValue(undefined),
+    };
+    const consumer = new EmailConsumer(
+      emailsService as never,
+      retryService as never,
+    );
     const channel = { ack: jest.fn(), nack: jest.fn() };
-    const message = {};
+    const message = { content: Buffer.from('{}') };
     const context = {
       getChannelRef: () => channel,
       getMessage: () => message,
@@ -60,6 +71,11 @@ describe('EmailConsumer', () => {
     );
 
     expect(channel.ack).not.toHaveBeenCalled();
-    expect(channel.nack).toHaveBeenCalledWith(message, false, false);
+    expect(channel.nack).not.toHaveBeenCalled();
+    expect(retryService.handleFailure).toHaveBeenCalledWith(
+      context,
+      'user.events.emails',
+      error,
+    );
   });
 });

@@ -5,6 +5,7 @@ import {
   RabbitMqClients,
   RabbitMqQueues,
 } from './constants/rabbitmq.constants';
+import { RabbitMqRetryService } from './rabbitmq-retry.service';
 
 const clients = [
   [RabbitMqClients.EMAILS, RabbitMqQueues.EMAILS],
@@ -31,6 +32,7 @@ const clients = [
       })),
     ),
   ],
-  exports: [ClientsModule],
+  providers: [RabbitMqRetryService],
+  exports: [ClientsModule, RabbitMqRetryService],
 })
 export class RabbitMqModule {}

@@ -165,6 +165,13 @@ code does not call `amqplib` or `amqp-connection-manager` directly.
 Registration uses best-effort event publication: it does not wait for RabbitMQ,
 and individual publish failures are logged without failing the HTTP response.
 
+Consumer failures use destination-specific durable retry queues. A failed
+message is retried after 30 seconds, 1 minute, 5 minutes, 15 minutes, and 30
+minutes. If the fifth retry also fails, the message is moved to the source
+queue's `.dlq` queue. Retry queues use RabbitMQ message TTL and dead-letter
+routing to return messages to their source queues; the original delivery is
+acknowledged only after the retry or DLQ copy has been published successfully.
+
 Do not commit real secrets. If email is enabled, also configure the SMTP
 variables documented in `backend/src/config/env.validation.ts`.
 
