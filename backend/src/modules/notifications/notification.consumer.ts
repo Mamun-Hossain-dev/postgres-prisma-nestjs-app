@@ -8,7 +8,7 @@ import type { UserCreatedEvent } from '../users/events/user.events';
 export class NotificationConsumer {
   private readonly logger = new Logger(NotificationConsumer.name);
 
-  @EventPattern(UserEvents.CREATED)
+  @EventPattern(UserEvents.CREATED_NOTIFICATION)
   handleUserCreated(
     @Payload() user: UserCreatedEvent,
     @Ctx() context: RmqContext,

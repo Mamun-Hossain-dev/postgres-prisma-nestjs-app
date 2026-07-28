@@ -117,6 +117,34 @@ describe('AuthService', () => {
     expect(userEventsPublisher.publishCreated).toHaveBeenCalledWith(result);
   });
 
+  it('does not delay registration while user-created events are publishing', async () => {
+    userRepository.findByEmail.mockResolvedValue(null);
+    userRepository.create.mockImplementation((data: object) =>
+      Promise.resolve({
+        id: 1,
+        age: 0,
+        isBlocked: false,
+        ...data,
+      }),
+    );
+    userEventsPublisher.publishCreated.mockReturnValue(
+      new Promise<void>(() => undefined),
+    );
+
+    await expect(
+      service.register({
+        name: 'Mamun',
+        email: 'mamun@example.com',
+        password: 'secret123',
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: 1,
+        email: 'mamun@example.com',
+      }),
+    );
+  });
+
   it('should return a signed JWT with the public user on successful login', async () => {
     userRepository.findByEmail.mockResolvedValue({
       id: 1,

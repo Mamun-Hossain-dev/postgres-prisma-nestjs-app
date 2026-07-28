@@ -141,8 +141,9 @@ UPLOAD_MAX_PRODUCT_IMAGES=10
 MAIL_ENABLED=false
 ```
 
-The API publishes `user.created` events to RabbitMQ. Separate durable queues
-process welcome emails, notification logs, and analytics logs.
+The API publishes destination-specific `user.created.*` events to RabbitMQ.
+Separate durable queues process welcome emails, notification logs, and
+analytics logs.
 
 To run only the infrastructure while developing the backend locally:
 
@@ -153,12 +154,16 @@ docker compose up -d postgres redis rabbitmq
 
 RabbitMQ Management UI is available at `http://localhost:15672`. Sign in with
 `devicedock` / `devicedock_local_password`. These credentials are for local
-development only.
+development only. Local backend processes connect to AMQP on
+`localhost:5672`; both ports are bound to the loopback interface.
 
 The integration uses NestJS's built-in RMQ transport: `ClientsModule` and
-`ClientProxy` publish persistent events, while three `createMicroservice()`
-workers consume through `@EventPattern()` with manual acknowledgements. The
-application code does not call `amqplib` or `amqp-connection-manager` directly.
+`ClientProxy` publish persistent events. The HTTP application connects three
+RMQ listeners as a hybrid Nest application, and feature-owned consumers handle
+events through `@EventPattern()` with manual acknowledgements. The application
+code does not call `amqplib` or `amqp-connection-manager` directly.
+Registration uses best-effort event publication: it does not wait for RabbitMQ,
+and individual publish failures are logged without failing the HTTP response.
 
 Do not commit real secrets. If email is enabled, also configure the SMTP
 variables documented in `backend/src/config/env.validation.ts`.

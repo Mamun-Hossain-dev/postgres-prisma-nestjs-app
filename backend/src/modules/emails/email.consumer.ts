@@ -11,7 +11,7 @@ export class EmailConsumer {
 
   constructor(private readonly emailsService: EmailsService) {}
 
-  @EventPattern(UserEvents.CREATED)
+  @EventPattern(UserEvents.CREATED_EMAIL)
   async handleUserCreated(
     @Payload() user: UserCreatedEvent,
     @Ctx() context: RmqContext,

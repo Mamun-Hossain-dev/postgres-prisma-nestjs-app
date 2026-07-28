@@ -8,7 +8,7 @@ import type { UserCreatedEvent } from '../users/events/user.events';
 export class AnalyticsConsumer {
   private readonly logger = new Logger(AnalyticsConsumer.name);
 
-  @EventPattern(UserEvents.CREATED)
+  @EventPattern(UserEvents.CREATED_ANALYTICS)
   handleUserCreated(
     @Payload() user: UserCreatedEvent,
     @Ctx() context: RmqContext,

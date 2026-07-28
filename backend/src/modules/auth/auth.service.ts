@@ -52,7 +52,7 @@ export class AuthService {
     });
     const publicUser = toPublicUser(user);
 
-    await this.userEventsPublisher.publishCreated(publicUser);
+    void this.userEventsPublisher.publishCreated(publicUser);
 
     return publicUser;
   }
