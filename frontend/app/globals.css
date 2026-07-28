@@ -53,3 +53,9 @@ input:focus,
 select:focus {
   border-color: #d96c3d;
 }
+
+@layer components {
+  .field {
+    @apply h-14 w-full rounded-2xl border bg-white/60 px-4 transition;
+  }
+}

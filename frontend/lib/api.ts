@@ -17,22 +17,26 @@ export async function apiFetch<T>(
   init: RequestInit = {},
   accessToken?: string | null,
 ): Promise<T> {
+  const isFormData = init.body instanceof FormData;
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
     credentials: 'include',
     headers: {
-      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(init.body && !isFormData
+        ? { 'Content-Type': 'application/json' }
+        : {}),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...init.headers,
     },
   });
   const payload = (await response.json().catch(() => null)) as
-    | ApiEnvelope<T>
-    | { message?: string }
-    | null;
+    ApiEnvelope<T> | { message?: string } | null;
 
   if (!response.ok) {
-    throw new ApiError(payload?.message ?? 'Something went wrong', response.status);
+    throw new ApiError(
+      payload?.message ?? 'Something went wrong',
+      response.status,
+    );
   }
 
   return (payload as ApiEnvelope<T>).data;

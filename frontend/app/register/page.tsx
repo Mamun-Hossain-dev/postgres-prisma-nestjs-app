@@ -36,9 +36,12 @@ export default function RegisterPage() {
     try {
       await createAccount(values.name, values.email, values.password);
       toast.success('Your account is ready');
-      router.push('/shop');
+      router.push('/profile');
+      router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Unable to create account');
+      toast.error(
+        error instanceof Error ? error.message : 'Unable to create account',
+      );
     }
   });
 
@@ -50,7 +53,10 @@ export default function RegisterPage() {
       footer={
         <>
           Already have an account?{' '}
-          <Link href="/login" className="font-bold text-ink underline underline-offset-4">
+          <Link
+            href="/login"
+            className="font-bold text-ink underline underline-offset-4"
+          >
             Sign in
           </Link>
         </>
@@ -96,7 +102,11 @@ export default function RegisterPage() {
           disabled={isSubmitting}
           className="flex h-14 w-full items-center justify-center rounded-full bg-ink font-bold text-white hover:bg-accent disabled:opacity-60"
         >
-          {isSubmitting ? <LoaderCircle className="animate-spin" /> : 'Create account'}
+          {isSubmitting ? (
+            <LoaderCircle className="animate-spin" />
+          ) : (
+            'Create account'
+          )}
         </button>
       </form>
     </AuthShell>
@@ -116,7 +126,9 @@ function Field({
     <label className="block">
       <span className="mb-2 block text-sm font-bold">{label}</span>
       {children}
-      {error && <span className="mt-1 block text-xs text-red-600">{error}</span>}
+      {error && (
+        <span className="mt-1 block text-xs text-red-600">{error}</span>
+      )}
     </label>
   );
 }

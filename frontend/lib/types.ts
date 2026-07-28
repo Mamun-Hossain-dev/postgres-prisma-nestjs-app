@@ -1,10 +1,5 @@
 export type Category =
-  | 'MOBILE'
-  | 'LAPTOP'
-  | 'TABLET'
-  | 'AUDIO'
-  | 'WATCH'
-  | 'ACCESSORY';
+  'MOBILE' | 'LAPTOP' | 'TABLET' | 'AUDIO' | 'WATCH' | 'ACCESSORY';
 
 export interface ProductImage {
   id: number;
@@ -38,12 +33,21 @@ export interface PaginatedProducts {
   };
 }
 
+export type Role = 'USER' | 'SELLER' | 'ADMIN';
+
 export interface User {
   id: number;
   name: string;
   email: string;
-  role: 'USER' | 'SELLER' | 'ADMIN';
+  age?: number;
+  role: Role;
+  isBlocked: boolean;
   profileImageUrl: string | null;
+}
+
+export interface PaginatedUsers {
+  data: User[];
+  meta: PaginatedProducts['meta'];
 }
 
 export interface AuthResult {

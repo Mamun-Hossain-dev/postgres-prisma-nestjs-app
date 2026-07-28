@@ -67,6 +67,21 @@ export class UserController {
     return this.userService.removeProfileImage(user.id);
   }
 
+  @Patch('me')
+  @UseInterceptors(FileInterceptor('image'))
+  @ResponseMessage('Profile updated successfully')
+  updateMe(
+    @CurrentUser() user: PublicUser,
+    @Body() dto: UpdateUserDto,
+    @UploadedFile(ImageFileValidationPipe) image?: Express.Multer.File,
+  ) {
+    return this.userService.updateUser(
+      user.id,
+      dto,
+      image ? toFileToStore(image) : undefined,
+    );
+  }
+
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Patch(':id')

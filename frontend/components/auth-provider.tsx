@@ -1,8 +1,9 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useMemo } from 'react';
+import { signIn, signOut, useSession } from 'next-auth/react';
 import { apiFetch } from '@/lib/api';
-import type { AuthResult, User } from '@/lib/types';
+import type { User } from '@/lib/types';
 
 interface AuthContextValue {
   user: User | null;
@@ -11,57 +12,47 @@ interface AuthContextValue {
   login(email: string, password: string): Promise<void>;
   register(name: string, email: string, password: string): Promise<void>;
   logout(): Promise<void>;
+  syncUser(user: User): Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    apiFetch<AuthResult>('/auth/refresh', { method: 'POST' })
-      .then((result) => {
-        setAccessToken(result.accessToken);
-        setUser(result.user);
-      })
-      .catch(() => undefined)
-      .finally(() => setLoading(false));
-  }, []);
+  const { data: session, status, update } = useSession();
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      user,
-      accessToken,
-      loading,
+      user: session?.user ?? null,
+      accessToken: session?.accessToken ?? null,
+      loading: status === 'loading',
       async login(email, password) {
-        const result = await apiFetch<AuthResult>('/auth/login', {
-          method: 'POST',
-          body: JSON.stringify({ email, password }),
+        const result = await signIn('credentials', {
+          email,
+          password,
+          redirect: false,
         });
-        setAccessToken(result.accessToken);
-        setUser(result.user);
+        if (!result?.ok) throw new Error(result?.error ?? 'Unable to sign in');
       },
       async register(name, email, password) {
         await apiFetch<User>('/auth/register', {
           method: 'POST',
           body: JSON.stringify({ name, email, password }),
         });
-        const result = await apiFetch<AuthResult>('/auth/login', {
-          method: 'POST',
-          body: JSON.stringify({ email, password }),
+        const result = await signIn('credentials', {
+          email,
+          password,
+          redirect: false,
         });
-        setAccessToken(result.accessToken);
-        setUser(result.user);
+        if (!result?.ok) throw new Error(result?.error ?? 'Unable to sign in');
       },
       async logout() {
-        await apiFetch('/auth/logout', { method: 'POST' });
-        setAccessToken(null);
-        setUser(null);
+        await signOut({ redirect: false });
+      },
+      async syncUser(user) {
+        await update({ user });
       },
     }),
-    [accessToken, loading, user],
+    [session, status, update],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

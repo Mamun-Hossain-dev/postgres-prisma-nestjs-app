@@ -29,7 +29,11 @@ export default function LoginPage() {
     try {
       await login(values.email, values.password);
       toast.success('Welcome back');
-      router.push('/shop');
+      const callbackUrl = new URLSearchParams(window.location.search).get(
+        'callbackUrl',
+      );
+      router.push(callbackUrl?.startsWith('/') ? callbackUrl : '/profile');
+      router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unable to sign in');
     }
@@ -43,7 +47,10 @@ export default function LoginPage() {
       footer={
         <>
           New to DeviceDock?{' '}
-          <Link href="/register" className="font-bold text-ink underline underline-offset-4">
+          <Link
+            href="/register"
+            className="font-bold text-ink underline underline-offset-4"
+          >
             Create an account
           </Link>
         </>
@@ -92,7 +99,9 @@ function Field({
     <label className="block">
       <span className="mb-2 block text-sm font-bold">{label}</span>
       {children}
-      {error && <span className="mt-1 block text-xs text-red-600">{error}</span>}
+      {error && (
+        <span className="mt-1 block text-xs text-red-600">{error}</span>
+      )}
     </label>
   );
 }

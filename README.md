@@ -92,9 +92,7 @@ There is no shared root `node_modules`, `pnpm-lock.yaml`, or
 
 - Node.js 20 or later
 - pnpm
-- PostgreSQL
-- Redis
-- RabbitMQ
+- Docker with Docker Compose (recommended for local infrastructure)
 - Cloudinary credentials for image uploads
 
 ## Backend setup
@@ -117,7 +115,7 @@ PORT=8080
 Global_API_PREFIX=api/v1/
 CORS_ORIGIN=http://localhost:3000
 
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/nestjs_app
+DATABASE_URL=postgresql://devicedock:replace_with_a_strong_database_password@localhost:5432/devicedock?schema=public
 
 REDIS_HOST=localhost
 REDIS_PORT=6379
@@ -138,24 +136,34 @@ CLOUDINARY_FOLDER=device-dock
 UPLOAD_MAX_FILE_SIZE=5242880
 UPLOAD_MAX_PRODUCT_IMAGES=10
 
-MAIL_ENABLED=false
+MAIL_ENABLED=true
+SMTP_HOST=localhost
+SMTP_PORT=1025
+SMTP_SECURE=false
+SMTP_USER=
+SMTP_PASSWORD=
+MAIL_FROM=DeviceDock <no-reply@devicedock.local>
 ```
 
 The API publishes destination-specific `user.created.*` events to RabbitMQ.
 Separate durable queues process welcome emails, notification logs, and
 analytics logs.
 
-To run only the infrastructure while developing the backend locally:
+To build and run the complete application from the repository root:
 
 ```bash
-cd backend
-docker compose up -d postgres redis rabbitmq
+docker compose up -d --build
 ```
 
 RabbitMQ Management UI is available at `http://localhost:15672`. Sign in with
-`devicedock` / `devicedock_local_password`. These credentials are for local
+`devicedock` / `devicedock_121869`. These credentials are for local
 development only. Local backend processes connect to AMQP on
 `localhost:5672`; both ports are bound to the loopback interface.
+
+Mailpit captures local emails instead of delivering them. Its inbox is
+available at `http://localhost:8025`, and the backend connects to its SMTP
+server on `localhost:1025`. PostgreSQL and Redis are also exposed only on the
+loopback interface at ports `5432` and `6379`.
 
 The integration uses NestJS's built-in RMQ transport: `ClientsModule` and
 `ClientProxy` publish persistent events. The HTTP application connects three
@@ -175,25 +183,25 @@ acknowledged only after the retry or DLQ copy has been published successfully.
 Do not commit real secrets. If email is enabled, also configure the SMTP
 variables documented in `backend/src/config/env.validation.ts`.
 
-### Production-style Docker deployment
+### Full Docker stack
 
 The backend includes a multi-stage `Dockerfile`. Its final image contains only
 production dependencies and compiled output, runs as a non-root user, and uses
 `dumb-init` for correct signal handling. Database migrations run in a separate
 one-shot container before the backend starts.
 
-Create the environment file and replace every placeholder secret before a real
-deployment:
+Create the backend environment file if it does not exist, then run Compose from
+the repository root:
 
 ```bash
-cd backend
-cp .env.example .env
+cp backend/.env.example backend/.env
 docker compose up -d --build
 ```
 
-The Compose stack starts PostgreSQL, Redis, RabbitMQ, migrations, and the
-backend. Only the backend port is publicly bound. RabbitMQ Management UI is
-bound to localhost at `http://localhost:15672`.
+The Compose stack starts PostgreSQL, Redis, RabbitMQ, Mailpit, migrations, the
+NestJS backend, and the Next.js storefront. All published ports are bound to
+localhost. RabbitMQ Management UI is at `http://localhost:15672`, Mailpit is at
+`http://localhost:8025`, and the storefront runs at `http://localhost:3000`.
 
 Check container state and application logs with:
 
