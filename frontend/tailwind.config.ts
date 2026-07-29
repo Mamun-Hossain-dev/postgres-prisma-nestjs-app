@@ -8,13 +8,13 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: '#171816',
-        paper: '#f4f1e9',
-        accent: '#d96c3d',
-        sage: '#77816b',
+        ink: '#0a0a0b',
+        paper: '#f7f7f8',
+        accent: '#b4472f',
+        sage: '#667085',
       },
       boxShadow: {
-        soft: '0 20px 70px rgba(23, 24, 22, 0.08)',
+        soft: '0 18px 60px rgba(10, 10, 11, 0.08)',
       },
     },
   },

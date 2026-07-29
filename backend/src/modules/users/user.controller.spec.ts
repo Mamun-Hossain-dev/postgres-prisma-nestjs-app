@@ -5,8 +5,10 @@ import { ConfigService } from '@nestjs/config';
 
 describe('UserController', () => {
   let controller: UserController;
+  let deleteUser: jest.Mock;
 
   beforeEach(async () => {
+    deleteUser = jest.fn();
     const module: TestingModule = await Test.createTestingModule({
       controllers: [UserController],
       providers: [
@@ -21,7 +23,7 @@ describe('UserController', () => {
             getUserById: jest.fn(),
             createUser: jest.fn(),
             updateUser: jest.fn(),
-            deleteUser: jest.fn(),
+            deleteUser,
           },
         },
       ],
@@ -32,5 +34,10 @@ describe('UserController', () => {
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
+  });
+
+  it('deletes the authenticated user account', async () => {
+    await expect(controller.deleteMe({ id: 42 } as never)).resolves.toBeNull();
+    expect(deleteUser).toHaveBeenCalledWith(42);
   });
 });

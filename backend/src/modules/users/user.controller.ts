@@ -82,6 +82,14 @@ export class UserController {
     );
   }
 
+  @Delete('me')
+  @ResponseMessage('Account deleted successfully')
+  async deleteMe(@CurrentUser() user: PublicUser) {
+    await this.userService.deleteUser(user.id);
+
+    return null;
+  }
+
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Patch(':id')
