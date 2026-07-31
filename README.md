@@ -54,6 +54,7 @@ There is no shared root `node_modules`, `pnpm-lock.yaml`, or
 - Webhook-confirmed payment and order status transitions
 - Idempotent RabbitMQ payment consumers and PDF invoice emails
 - PostgreSQL persistence through Prisma
+- Neon serverless PostgreSQL as the database, with Prisma migrations applied at deploy time
 - Redis caching, throttling, and session storage
 - Cloudinary image storage behind the `FileStorage` abstraction
 - Consistent API success/error envelopes
@@ -78,7 +79,7 @@ There is no shared root `node_modules`, `pnpm-lock.yaml`, or
 ### Backend
 
 - NestJS 11 and TypeScript
-- PostgreSQL and Prisma
+- Neon serverless PostgreSQL and Prisma
 - Redis and ioredis
 - Passport JWT and bcrypt
 - Multer and Cloudinary
@@ -101,6 +102,7 @@ There is no shared root `node_modules`, `pnpm-lock.yaml`, or
 - Node.js 20 or later
 - pnpm
 - Docker with Docker Compose (recommended for local infrastructure)
+- A Neon serverless PostgreSQL project (used for the database instead of a local Postgres)
 - Cloudinary credentials for image uploads
 
 ## Backend setup
@@ -123,7 +125,10 @@ PORT=8080
 Global_API_PREFIX=api/v1/
 CORS_ORIGIN=http://localhost:3000
 
-DATABASE_URL=postgresql://devicedock:replace_with_a_strong_database_password@localhost:5432/devicedock?schema=public
+# Neon serverless PostgreSQL. Paste your Neon connection string (Project -> Connect,
+# unpooled/direct connection) and append ?sslmode=require. Example:
+# DATABASE_URL=postgresql://neondb_owner:password@ep-xxxx-xxxx.region.aws.neon.tech/devicedock?sslmode=require
+DATABASE_URL=postgresql://neondb_owner:replace_with_your_neon_password@ep-your-project-xxxx.us-east-2.aws.neon.tech/devicedock?sslmode=require
 
 REDIS_HOST=localhost
 REDIS_PORT=6379
@@ -185,8 +190,8 @@ development only. Local backend processes connect to AMQP on
 
 Mailpit captures local emails instead of delivering them. Its inbox is
 available at `http://localhost:8025`, and the backend connects to its SMTP
-server on `localhost:1025`. PostgreSQL and Redis are also exposed only on the
-loopback interface at ports `5432` and `6379`.
+server on `localhost:1025`. Redis is also exposed only on the loopback
+interface at port `6379`.
 
 The integration uses NestJS's built-in RMQ transport: `ClientsModule` and
 `ClientProxy` publish persistent events. The HTTP application connects three
@@ -232,10 +237,12 @@ cp backend/.env.example backend/.env
 docker compose up -d --build
 ```
 
-The Compose stack starts PostgreSQL, Redis, RabbitMQ, Mailpit, migrations, the
-NestJS backend, and the Next.js storefront. All published ports are bound to
-localhost. RabbitMQ Management UI is at `http://localhost:15672`, Mailpit is at
-`http://localhost:8025`, and the storefront runs at `http://localhost:3000`.
+The Compose stack starts Redis, RabbitMQ, Mailpit, database migrations, the
+NestJS backend, and the Next.js storefront. The database itself is a Neon
+serverless PostgreSQL project, so no local Postgres container is required. All
+published ports are bound to localhost. RabbitMQ Management UI is at
+`http://localhost:15672`, Mailpit is at `http://localhost:8025`, and the
+storefront runs at `http://localhost:3000`.
 
 Check container state and application logs with:
 

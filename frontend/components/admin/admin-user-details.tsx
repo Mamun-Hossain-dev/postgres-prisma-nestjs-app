@@ -12,6 +12,7 @@ import {
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth-provider';
+import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/api';
 import type { User } from '@/lib/types';
 
@@ -63,7 +64,7 @@ export function AdminUserDetails({ userId }: { userId: string }) {
       >
         <ArrowLeft size={16} /> Customer directory
       </Link>
-      <section className="mt-7 overflow-hidden rounded-[2.25rem] border bg-white/55 shadow-soft">
+      <section className="mt-6 overflow-hidden rounded-[2.25rem] border bg-white/55 shadow-soft">
         <div className="bg-ink p-8 text-white sm:p-10">
           <span className="grid h-20 w-20 place-items-center rounded-[1.75rem] bg-accent text-3xl font-bold">
             {user.name[0]}
@@ -71,25 +72,31 @@ export function AdminUserDetails({ userId }: { userId: string }) {
           <p className="mt-7 text-xs uppercase tracking-[0.2em] text-white/40">
             DD-{String(user.id).padStart(5, '0')} · {user.role}
           </p>
-          <h1 className="display mt-2 text-5xl">{user.name}</h1>
+          <h1 className="display mt-2 text-4xl leading-tight md:text-5xl">
+            {user.name}
+          </h1>
           <p className="mt-2 text-white/50">{user.email}</p>
         </div>
         <div className="grid gap-4 p-7 sm:grid-cols-2 sm:p-10">
-          <button
+          <Button
+            variant="outline"
             disabled={status.isPending || user.role === 'ADMIN'}
             onClick={() => status.mutate(!user.isBlocked)}
-            className="flex items-center justify-center gap-2 rounded-full border px-6 py-4 font-bold hover:bg-ink hover:text-white disabled:opacity-40"
+            loading={status.isPending}
+            className="h-12"
           >
             {user.isBlocked ? <ShieldCheck size={18} /> : <Ban size={18} />}
             {user.isBlocked ? 'Unblock account' : 'Block account'}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="danger"
             disabled={remove.isPending || user.role === 'ADMIN'}
             onClick={() => remove.mutate()}
-            className="flex items-center justify-center gap-2 rounded-full border border-red-200 px-6 py-4 font-bold text-red-700 hover:bg-red-700 hover:text-white disabled:opacity-40"
+            loading={remove.isPending}
+            className="h-12"
           >
             <Trash2 size={18} /> Delete account
-          </button>
+          </Button>
         </div>
       </section>
     </main>

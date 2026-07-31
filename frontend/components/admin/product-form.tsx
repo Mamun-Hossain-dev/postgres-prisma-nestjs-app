@@ -9,8 +9,11 @@ import { ArrowLeft, ImagePlus, Save, Star, Trash2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/auth-provider';
+import { AdminPageHeader } from '@/components/admin/admin-page-header';
 import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/field';
+import { Select, type SelectOption } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { apiFetch } from '@/lib/api';
 import type { Category, Product } from '@/lib/types';
 
@@ -21,6 +24,17 @@ const categories: Category[] = [
   'AUDIO',
   'WATCH',
   'ACCESSORY',
+];
+
+const categoryOptions: SelectOption[] = categories.map((category) => ({
+  value: category,
+  label: category,
+}));
+
+const statusOptions: SelectOption[] = [
+  { value: 'ACTIVE', label: 'Active' },
+  { value: 'DRAFT', label: 'Draft' },
+  { value: 'ARCHIVED', label: 'Archived' },
 ];
 
 interface Values {
@@ -63,6 +77,8 @@ export function ProductForm({ product }: { product?: Product }) {
     register,
     handleSubmit,
     setError,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<Values>({
     defaultValues: {
@@ -178,26 +194,22 @@ export function ProductForm({ product }: { product?: Product }) {
       >
         <ArrowLeft size={16} /> Back to products
       </Link>
-      <div className="mt-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent">
-            {product ? 'Catalog editor' : 'New catalog item'}
-          </p>
-          <h1 className="display mt-2 text-5xl sm:text-6xl">
-            {product ? 'Edit product.' : 'Create product.'}
-          </h1>
-        </div>
-        <Button
-          form="product-form"
-          type="submit"
-          loading={isSubmitting}
-          className="h-12"
-        >
-          <Save size={17} /> {product ? 'Save changes' : 'Publish product'}
-        </Button>
-      </div>
+      <AdminPageHeader
+        eyebrow={product ? 'Catalog editor' : 'New catalog item'}
+        title={product ? 'Edit product.' : 'Create product.'}
+        action={
+          <Button
+            form="product-form"
+            type="submit"
+            loading={isSubmitting}
+            className="h-12"
+          >
+            <Save size={17} /> {product ? 'Save changes' : 'Publish product'}
+          </Button>
+        }
+      />
 
-      <form id="product-form" onSubmit={save} className="mt-9 grid gap-6">
+      <form id="product-form" onSubmit={save} className="mt-6 grid gap-6">
         <FormSection
           title="Product information"
           intro="The details customers use to identify this product."
@@ -234,14 +246,17 @@ export function ProductForm({ product }: { product?: Product }) {
               />
             </Field>
             <Field label="Category" error={errors.category?.message}>
-              <select
-                className="field"
-                {...register('category', { required: true })}
-              >
-                {categories.map((category) => (
-                  <option key={category}>{category}</option>
-                ))}
-              </select>
+              <Select
+                value={watch('category')}
+                onValueChange={(value) =>
+                  setValue('category', value as Category, {
+                    shouldValidate: true,
+                  })
+                }
+                options={categoryOptions}
+                ariaLabel="Product category"
+                className="w-full"
+              />
             </Field>
             <Field
               label="Short description"
@@ -251,9 +266,8 @@ export function ProductForm({ product }: { product?: Product }) {
             </Field>
           </div>
           <Field label="Full description" error={errors.description?.message}>
-            <textarea
+            <Textarea
               rows={6}
-              className="w-full rounded-2xl border bg-white/65 p-4 text-sm focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent/10"
               {...register('description', {
                 required: 'Description is required.',
               })}
@@ -298,11 +312,15 @@ export function ProductForm({ product }: { product?: Product }) {
               />
             </Field>
             <Field label="Catalog status">
-              <select className="field" {...register('status')}>
-                <option value="ACTIVE">Active</option>
-                <option value="DRAFT">Draft</option>
-                <option value="ARCHIVED">Archived</option>
-              </select>
+              <Select
+                value={watch('status')}
+                onValueChange={(value) =>
+                  setValue('status', value as Product['status'])
+                }
+                options={statusOptions}
+                ariaLabel="Catalog status"
+                className="w-full"
+              />
             </Field>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -432,10 +450,10 @@ export function ProductForm({ product }: { product?: Product }) {
               'Example: { "Display": "6.3-inch OLED", "Storage": "256 GB" }'
             }
           >
-            <textarea
+            <Textarea
               rows={8}
               spellCheck={false}
-              className="w-full rounded-2xl border bg-[#1d1f1c] p-4 font-mono text-sm text-white focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent/10"
+              className="bg-[#1d1f1c] font-mono text-white"
               {...register('specifications')}
             />
           </Field>
@@ -474,8 +492,8 @@ function FormSection({
 }) {
   return (
     <section className="rounded-[2rem] border bg-white/55 p-6 shadow-soft sm:p-8">
-      <div className="mb-7">
-        <h2 className="display text-3xl">{title}</h2>
+      <div className="mb-6">
+        <h2 className="display text-2xl font-medium md:text-3xl">{title}</h2>
         <p className="mt-1 text-sm text-black/45">{intro}</p>
       </div>
       <div className="grid gap-5">{children}</div>

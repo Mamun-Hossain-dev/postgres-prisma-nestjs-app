@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowUpRight, LoaderCircle } from 'lucide-react';
 import { useAuth } from '@/components/auth-provider';
+import { AdminPageHeader } from '@/components/admin/admin-page-header';
 import { apiFetch } from '@/lib/api';
 import type { PaginatedUsers } from '@/lib/types';
 
@@ -17,11 +18,12 @@ export function AdminUsers() {
   });
   return (
     <main>
-      <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent">
-        Account directory
-      </p>
-      <h1 className="display mt-2 text-6xl">Customers.</h1>
-      <div className="mt-9 overflow-hidden rounded-[2rem] border bg-white/55 shadow-soft">
+      <AdminPageHeader
+        eyebrow="Account directory"
+        title="Customers."
+        description="Manage storefront accounts and account status."
+      />
+      <div className="mt-6 overflow-hidden rounded-[2rem] border bg-white/55 shadow-soft">
         {query.isLoading ? (
           <div className="grid min-h-72 place-items-center">
             <LoaderCircle className="animate-spin" />

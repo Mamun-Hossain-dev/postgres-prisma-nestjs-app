@@ -5,13 +5,22 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Mail, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/auth-provider';
+import { AdminPageHeader } from '@/components/admin/admin-page-header';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/field';
+import { Select, type SelectOption } from '@/components/ui/select';
 import { apiFetch } from '@/lib/api';
 import type {
   ContactMessage,
   ContactStatus,
   PaginatedContactMessages,
 } from '@/lib/types';
+
+const statusOptions: SelectOption[] = [
+  { value: 'NEW', label: 'New' },
+  { value: 'IN_PROGRESS', label: 'In progress' },
+  { value: 'RESOLVED', label: 'Resolved' },
+];
 
 export function AdminContactMessages() {
   const { accessToken } = useAuth();
@@ -49,26 +58,31 @@ export function AdminContactMessages() {
 
   return (
     <section>
-      <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent">
-        Support inbox
-      </p>
-      <h1 className="display mt-2 text-5xl sm:text-6xl">Messages.</h1>
-      <div className="mt-8 overflow-hidden rounded-[2rem] border bg-white/55 shadow-soft">
-        <label className="flex items-center gap-3 border-b p-5">
-          <Search size={17} className="text-black/35" />
-          <input
+      <AdminPageHeader
+        eyebrow="Support inbox"
+        title="Messages."
+        description="Review customer inquiries and update their resolution status."
+      />
+      <div className="mt-6 overflow-hidden rounded-[2rem] border bg-white/55 shadow-soft">
+        <div className="relative border-b p-4">
+          <Search
+            size={17}
+            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-black/35"
+          />
+          <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search name, email or subject"
-            className="h-10 flex-1 bg-transparent text-sm"
+            aria-label="Search messages"
+            className="h-11 pl-11"
           />
-        </label>
+        </div>
         <div className="divide-y">
           {messages.data?.data.length ? (
             messages.data.data.map((message) => (
               <article
                 key={message.id}
-                className="grid gap-4 p-5 sm:p-6 lg:grid-cols-[1fr_180px]"
+                className="grid gap-4 p-5 sm:p-6 lg:grid-cols-[1fr_200px]"
               >
                 <div>
                   <div className="flex flex-wrap items-center gap-3">
@@ -92,22 +106,18 @@ export function AdminContactMessages() {
                     {message.message}
                   </p>
                 </div>
-                <select
+                <Select
                   value={message.status}
-                  disabled={updateStatus.isPending}
-                  onChange={(event) =>
+                  onValueChange={(value) =>
                     updateStatus.mutate({
                       id: message.id,
-                      status: event.target.value as ContactStatus,
+                      status: value as ContactStatus,
                     })
                   }
-                  aria-label={`Status for ${message.subject}`}
-                  className="h-11 rounded-xl border bg-white/70 px-3 text-sm"
-                >
-                  <option value="NEW">New</option>
-                  <option value="IN_PROGRESS">In progress</option>
-                  <option value="RESOLVED">Resolved</option>
-                </select>
+                  options={statusOptions}
+                  ariaLabel={`Status for ${message.subject}`}
+                  className="w-full"
+                />
               </article>
             ))
           ) : (

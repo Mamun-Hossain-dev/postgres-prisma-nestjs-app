@@ -15,22 +15,39 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/auth-provider';
+import { AdminPageHeader } from '@/components/admin/admin-page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Input } from '@/components/ui/field';
 import { Pagination } from '@/components/ui/pagination';
+import { Select, type SelectOption } from '@/components/ui/select';
 import { apiFetch, money } from '@/lib/api';
 import type { Category, PaginatedProducts, Product } from '@/lib/types';
 
-const categories: Array<Category | ''> = [
-  '',
-  'MOBILE',
-  'LAPTOP',
-  'TABLET',
-  'AUDIO',
-  'WATCH',
-  'ACCESSORY',
+const categoryOptions: SelectOption[] = [
+  { value: '', label: 'All categories' },
+  { value: 'MOBILE', label: 'MOBILE' },
+  { value: 'LAPTOP', label: 'LAPTOP' },
+  { value: 'TABLET', label: 'TABLET' },
+  { value: 'AUDIO', label: 'AUDIO' },
+  { value: 'WATCH', label: 'WATCH' },
+  { value: 'ACCESSORY', label: 'ACCESSORY' },
+];
+
+const sortOptions: SelectOption[] = [
+  { value: 'newest', label: 'Newest first' },
+  { value: 'name-asc', label: 'Name A–Z' },
+  { value: 'price-asc', label: 'Lowest price' },
+  { value: 'price-desc', label: 'Highest price' },
 ];
 
 export function AdminProducts() {
@@ -41,7 +58,6 @@ export function AdminProducts() {
   const [category, setCategory] = useState<Category | ''>('');
   const [sort, setSort] = useState('newest');
   const [page, setPage] = useState(1);
-  const [menu, setMenu] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<Product | null>(null);
 
   const params = new URLSearchParams({
@@ -81,67 +97,55 @@ export function AdminProducts() {
 
   return (
     <section>
-      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent">
-            Inventory desk
-          </p>
-          <h1 className="display mt-2 text-5xl sm:text-6xl">Products.</h1>
-          <p className="mt-3 text-sm text-black/50">
-            Search, organize and maintain the DeviceDock catalog.
-          </p>
-        </div>
-        <Link href="/admin/products/new">
-          <Button className="h-12">
-            <Plus size={17} /> Add product
-          </Button>
-        </Link>
-      </div>
+      <AdminPageHeader
+        eyebrow="Inventory desk"
+        title="Products."
+        description="Search, organize and maintain the DeviceDock catalog."
+        action={
+          <Link href="/admin/products/new">
+            <Button className="h-12">
+              <Plus size={17} /> Add product
+            </Button>
+          </Link>
+        }
+      />
 
-      <div className="mt-8 overflow-hidden rounded-[2rem] border bg-white/55 shadow-soft">
+      <div className="mt-6 overflow-hidden rounded-[2rem] border bg-white/55 shadow-soft">
         <div className="grid gap-3 border-b p-4 lg:grid-cols-[1fr_190px_190px]">
-          <label className="flex items-center gap-3 rounded-xl border bg-white/70 px-3">
-            <Search size={17} className="text-black/35" />
-            <span className="sr-only">Search products</span>
-            <input
+          <div className="relative">
+            <Search
+              size={17}
+              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-black/35"
+            />
+            <Input
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);
                 setPage(1);
               }}
               placeholder="Search name, brand or SKU"
-              className="h-11 w-full bg-transparent text-sm"
+              aria-label="Search products"
+              className="h-11 pl-11"
             />
-          </label>
-          <select
+          </div>
+          <Select
             value={category}
-            onChange={(event) => {
-              setCategory(event.target.value as Category | '');
+            onValueChange={(value) => {
+              setCategory(value as Category | '');
               setPage(1);
             }}
-            aria-label="Filter by category"
-            className="h-11 rounded-xl border bg-white/70 px-3 text-sm"
-          >
-            {categories.map((item) => (
-              <option key={item || 'all'} value={item}>
-                {item || 'All categories'}
-              </option>
-            ))}
-          </select>
-          <select
+            options={categoryOptions}
+            ariaLabel="Filter by category"
+          />
+          <Select
             value={sort}
-            onChange={(event) => {
-              setSort(event.target.value);
+            onValueChange={(value) => {
+              setSort(value);
               setPage(1);
             }}
-            aria-label="Sort products"
-            className="h-11 rounded-xl border bg-white/70 px-3 text-sm"
-          >
-            <option value="newest">Newest first</option>
-            <option value="name-asc">Name A–Z</option>
-            <option value="price-asc">Lowest price</option>
-            <option value="price-desc">Highest price</option>
-          </select>
+            options={sortOptions}
+            ariaLabel="Sort products"
+          />
         </div>
 
         {query.isLoading ? (
@@ -241,36 +245,34 @@ export function AdminProducts() {
                         <Badge>Standard</Badge>
                       )}
                     </td>
-                    <td className="relative px-5 py-4 text-right">
-                      <button
-                        onClick={() =>
-                          setMenu(menu === product.id ? null : product.id)
-                        }
-                        className="rounded-xl p-2 hover:bg-black/5 focus-visible:ring-2 focus-visible:ring-accent"
-                        aria-label={`Actions for ${product.title}`}
-                        aria-expanded={menu === product.id}
-                      >
-                        <MoreHorizontal size={19} />
-                      </button>
-                      {menu === product.id && (
-                        <div className="absolute right-5 top-12 z-20 w-44 rounded-2xl border bg-paper p-2 text-left shadow-xl">
-                          <Link
-                            href={`/admin/products/${product.id}/edit`}
-                            className="flex items-center gap-2 rounded-xl px-3 py-2.5 hover:bg-black/5"
+                    <td className="px-5 py-4 text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            className="h-10 w-10 rounded-xl px-0"
+                            aria-label={`Actions for ${product.title}`}
                           >
-                            <Pencil size={15} /> Edit product
-                          </Link>
-                          <button
-                            onClick={() => {
-                              setDeleting(product);
-                              setMenu(null);
-                            }}
-                            className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-red-700 hover:bg-red-50"
+                            <MoreHorizontal size={19} />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link
+                              href={`/admin/products/${product.id}/edit`}
+                            >
+                              <Pencil size={15} /> Edit product
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            variant="danger"
+                            onSelect={() => setDeleting(product)}
                           >
                             <Trash2 size={15} /> Delete
-                          </button>
-                        </div>
-                      )}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
                   </tr>
                 ))}

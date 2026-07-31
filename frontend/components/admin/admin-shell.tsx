@@ -80,7 +80,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </Button>
           </div>
         </header>
-        <main className="p-5 sm:p-8 xl:p-10">{children}</main>
+        <main className="mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-8">
+          {children}
+        </main>
       </div>
       <ConfirmDialog
         open={logoutOpen}

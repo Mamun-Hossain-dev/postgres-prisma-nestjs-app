@@ -10,6 +10,7 @@ import {
   UsersRound,
 } from 'lucide-react';
 import { useAuth } from '@/components/auth-provider';
+import { AdminPageHeader } from '@/components/admin/admin-page-header';
 import { apiFetch, money } from '@/lib/api';
 import type { PaginatedProducts, PaginatedUsers } from '@/lib/types';
 
@@ -39,21 +40,17 @@ export function AdminOverview() {
 
   return (
     <main>
-      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent">
-            Live operations
-          </p>
-          <h1 className="display mt-2 text-6xl">
-            Good day, {user?.name.split(' ')[0]}.
-          </h1>
-        </div>
-        <span className="inline-flex w-fit items-center gap-2 rounded-full border bg-white/55 px-4 py-2 text-xs font-bold">
-          <span className="h-2 w-2 rounded-full bg-emerald-500" /> Systems
-          online
-        </span>
-      </div>
-      <div className="mt-10 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <AdminPageHeader
+        eyebrow="Live operations"
+        title={`Good day, ${user?.name.split(' ')[0]}.`}
+        action={
+          <span className="inline-flex w-fit items-center gap-2 rounded-full border bg-white/55 px-4 py-2 text-xs font-bold">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" /> Systems
+            online
+          </span>
+        }
+      />
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Metric
           icon={<UsersRound />}
           label="Customers"
@@ -75,13 +72,13 @@ export function AdminOverview() {
           value={money(inventoryValue)}
         />
       </div>
-      <section className="mt-7 rounded-[2rem] bg-ink p-7 text-white sm:p-9">
+      <section className="mt-6 rounded-[2rem] bg-ink p-7 text-white sm:p-9">
         <div className="flex items-end justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/40">
               Catalog pulse
             </p>
-            <h2 className="display mt-2 text-4xl">
+            <h2 className="display mt-2 text-2xl font-medium md:text-3xl">
               Products needing attention.
             </h2>
           </div>

@@ -5,9 +5,11 @@ import { useForm } from 'react-hook-form';
 import { MailCheck, Send, UsersRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/auth-provider';
+import { AdminPageHeader } from '@/components/admin/admin-page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/field';
+import { Textarea } from '@/components/ui/textarea';
 import { apiFetch } from '@/lib/api';
 import type {
   NewsletterBroadcast,
@@ -81,15 +83,13 @@ export function AdminNewsletter() {
 
   return (
     <section>
-      <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent">
-        Audience messaging
-      </p>
-      <h1 className="display mt-2 text-5xl sm:text-6xl">Broadcasts.</h1>
-      <p className="mt-3 max-w-2xl text-sm leading-6 text-black/50">
-        Send consent-based email updates and review every campaign result.
-      </p>
+      <AdminPageHeader
+        eyebrow="Audience messaging"
+        title="Broadcasts."
+        description="Send consent-based email updates and review every campaign result."
+      />
 
-      <div className="mt-8 grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+      <div className="mt-6 grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
         <form
           onSubmit={handleSubmit((values) => send.mutate(values))}
           className="grid content-start gap-5 rounded-[2rem] border bg-white/55 p-6 shadow-soft sm:p-8"
@@ -120,9 +120,8 @@ export function AdminNewsletter() {
             <Input {...register('previewText')} />
           </Field>
           <Field label="Message" error={errors.content?.message}>
-            <textarea
+            <Textarea
               rows={10}
-              className="w-full rounded-2xl border bg-white/65 p-4 text-sm focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent/10"
               {...register('content', {
                 required: 'Message is required.',
                 minLength: {

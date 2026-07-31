@@ -1,24 +1,6 @@
 name: devicedock
 
 services:
-  postgres:
-    image: postgres:17-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: devicedock
-      POSTGRES_PASSWORD: devicedock_121869
-      POSTGRES_DB: devicedock
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - '127.0.0.1:5433:5432'
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U devicedock -d devicedock']
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks: [app]
-
   redis:
     image: redis:7.4-alpine
     restart: unless-stopped
@@ -69,11 +51,7 @@ services:
       context: ./backend
       target: migration
     restart: 'no'
-    environment:
-      DATABASE_URL: postgresql://devicedock:devicedock_121869@postgres:5432/devicedock?schema=public
-    depends_on:
-      postgres:
-        condition: service_healthy
+    env_file: ./backend/.env
     networks: [app]
 
   backend:
@@ -87,7 +65,6 @@ services:
       HOST: 0.0.0.0
       PORT: 8080
       CORS_ORIGIN: http://localhost:3000
-      DATABASE_URL: postgresql://devicedock:devicedock_121869@postgres:5432/devicedock?schema=public
       REDIS_HOST: redis
       REDIS_PORT: 6379
       RABBITMQ_URL: amqp://devicedock:devicedock_121869@rabbitmq:5672
@@ -132,7 +109,6 @@ networks:
   app:
 
 volumes:
-  postgres_data:
   redis_data:
   rabbitmq_data:
   mailpit_data:
