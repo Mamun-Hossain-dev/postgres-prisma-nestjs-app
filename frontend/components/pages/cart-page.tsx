@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import {
   ArrowRight,
   LoaderCircle,
@@ -13,8 +14,8 @@ import {
   Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { apiFetch, money } from '@/lib/api';
-import type { Cart } from '@/lib/types';
+import { ApiError, apiFetch, money } from '@/lib/api';
+import type { Cart, CheckoutSession } from '@/lib/types';
 import { useAuth } from '@/components/auth-provider';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -22,6 +23,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 
 export function CartPage() {
   const { accessToken, user, loading } = useAuth();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [clearOpen, setClearOpen] = useState(false);
   const cart = useQuery({
@@ -60,6 +62,32 @@ export function CartPage() {
       toast.success('Cart cleared');
     },
     onError: (error: Error) => toast.error(error.message),
+  });
+  const checkout = useMutation({
+    mutationFn: () => {
+      const storageKey = 'devicedock-checkout-idempotency';
+      const idempotencyKey =
+        window.sessionStorage.getItem(storageKey) ?? crypto.randomUUID();
+      window.sessionStorage.setItem(storageKey, idempotencyKey);
+      return apiFetch<CheckoutSession>(
+        '/payments/checkout',
+        {
+          method: 'POST',
+          body: JSON.stringify({ idempotencyKey }),
+        },
+        accessToken,
+      );
+    },
+    onSuccess: (session) => {
+      window.sessionStorage.removeItem('devicedock-checkout-idempotency');
+      router.push(`/checkout?paymentId=${session.paymentId}`);
+    },
+    onError: (error: Error) => {
+      if (error instanceof ApiError && error.status === 409) {
+        window.sessionStorage.removeItem('devicedock-checkout-idempotency');
+      }
+      toast.error(error.message);
+    },
   });
 
   if (loading) {
@@ -237,13 +265,15 @@ export function CartPage() {
             <span className="display text-3xl">{money(data.subtotal)}</span>
           </div>
           <button
-            disabled
-            className="mt-7 w-full rounded-full bg-white/15 px-6 py-4 font-bold text-white/50"
+            onClick={() => checkout.mutate()}
+            disabled={checkout.isPending}
+            className="mt-7 w-full rounded-full bg-white px-6 py-4 font-bold text-ink transition hover:bg-accent hover:text-white disabled:opacity-50"
           >
-            Checkout — coming next
+            {checkout.isPending ? 'Preparing checkout…' : 'Secure checkout'}
           </button>
           <p className="mt-4 text-center text-xs leading-5 text-white/35">
-            Order placement and payment will be added in the next phase.
+            Payment is processed securely by Stripe. Your order is confirmed
+            only after Stripe verifies the payment.
           </p>
         </aside>
       </div>

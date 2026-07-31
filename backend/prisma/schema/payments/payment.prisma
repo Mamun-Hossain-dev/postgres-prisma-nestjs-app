@@ -1,0 +1,112 @@
+enum OrderStatus {
+  PAYMENT_PENDING
+  PAYMENT_PROCESSING
+  PAID
+  PAYMENT_FAILED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  STRIPE
+}
+
+enum ConsumerEventStatus {
+  PROCESSING
+  PROCESSED
+}
+
+model Order {
+  id            Int         @id @default(autoincrement())
+  orderNumber   String      @unique
+  userId        Int
+  user          User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  customerName  String
+  customerEmail String
+  totalAmount   Int
+  currency      String
+  status        OrderStatus @default(PAYMENT_PENDING)
+  items         OrderItem[]
+  payments      Payment[]
+  paidAt        DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id           Int      @id @default(autoincrement())
+  orderId      Int
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId    Int?
+  product      Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productTitle String
+  productSku   String
+  unitAmount   Int
+  quantity     Int
+  totalAmount  Int
+  createdAt    DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+model Payment {
+  id               Int             @id @default(autoincrement())
+  orderId          Int
+  order            Order           @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  provider         PaymentProvider @default(STRIPE)
+  status           PaymentStatus   @default(PENDING)
+  amount           Int
+  currency         String
+  idempotencyKey   String          @unique
+  providerIntentId String?         @unique
+  failureCode      String?
+  failureMessage   String?
+  paidAt           DateTime?
+  refundedAt       DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([orderId, createdAt])
+  @@index([status])
+  @@map("payments")
+}
+
+model PaymentWebhookEvent {
+  id          Int      @id @default(autoincrement())
+  provider    String
+  eventId     String   @unique
+  eventType   String
+  processedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([provider, eventType])
+  @@map("payment_webhook_events")
+}
+
+model ProcessedConsumerEvent {
+  id          Int                 @id @default(autoincrement())
+  consumer    String
+  eventId     String
+  status      ConsumerEventStatus @default(PROCESSING)
+  processedAt DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@unique([consumer, eventId])
+  @@index([status, updatedAt])
+  @@map("processed_consumer_events")
+}

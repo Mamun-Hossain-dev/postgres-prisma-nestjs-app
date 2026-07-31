@@ -9,6 +9,13 @@ import { RabbitMqRetryService } from '../../infrastructure/rabbitmq/rabbitmq-ret
 import { UserEvents } from '../users/events/user.events';
 import type { UserCreatedEvent } from '../users/events/user.events';
 import { EmailsService } from './emails.service';
+import {
+  PaymentEvents,
+  PaymentConsumerNames,
+} from '../payments/constants/payment.constants';
+import type { PaymentSucceededEvent } from '../payments/interfaces/payment.interface';
+import { EventProcessingService } from '../event-processing/event-processing.service';
+import { InvoiceService } from '../orders/invoices/invoice.service';
 
 @Controller()
 export class EmailConsumer {
@@ -17,6 +24,8 @@ export class EmailConsumer {
   constructor(
     private readonly emailsService: EmailsService,
     private readonly retryService: RabbitMqRetryService,
+    private readonly eventProcessing: EventProcessingService,
+    private readonly invoiceService: InvoiceService,
   ) {}
 
   @EventPattern(UserEvents.CREATED_EMAIL)
@@ -36,6 +45,35 @@ export class EmailConsumer {
       this.logger.error(
         `Welcome email failed for ${user.email}: ${errorMessage}`,
       );
+      await this.retryService.handleFailure(
+        context,
+        RabbitMqQueues.EMAILS,
+        error,
+      );
+    }
+  }
+
+  @EventPattern(PaymentEvents.SUCCEEDED_EMAIL)
+  async handlePaymentSucceeded(
+    @Payload() event: PaymentSucceededEvent,
+    @Ctx() context: RmqContext,
+  ): Promise<void> {
+    const channel = context.getChannelRef() as RabbitMqChannel;
+    const message = context.getMessage() as RabbitMqMessage;
+    const consumer = PaymentConsumerNames.EMAIL;
+
+    try {
+      const claimed = await this.eventProcessing.claim(consumer, event.eventId);
+      if (!claimed) {
+        channel.ack(message);
+        return;
+      }
+      const invoice = await this.invoiceService.generate(event);
+      await this.emailsService.sendPaymentConfirmation(event, invoice);
+      await this.eventProcessing.complete(consumer, event.eventId);
+      channel.ack(message);
+    } catch (error) {
+      await this.eventProcessing.release(consumer, event.eventId);
       await this.retryService.handleFailure(
         context,
         RabbitMqQueues.EMAILS,

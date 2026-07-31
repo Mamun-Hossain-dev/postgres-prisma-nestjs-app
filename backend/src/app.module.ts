@@ -23,6 +23,8 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { ContactModule } from './modules/contact/contact.module';
 import { NewsletterModule } from './modules/newsletter/newsletter.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { OrdersModule } from './modules/orders/orders.module';
 
 @Module({
   imports: [
@@ -50,6 +52,8 @@ import { NewsletterModule } from './modules/newsletter/newsletter.module';
     AnalyticsModule,
     ContactModule,
     NewsletterModule,
+    PaymentsModule,
+    OrdersModule,
   ],
   controllers: [AppController],
   providers: [

@@ -42,10 +42,39 @@ export async function apiFetch<T>(
   return (payload as ApiEnvelope<T>).data;
 }
 
+export async function apiFetchBlob(
+  path: string,
+  accessToken?: string | null,
+): Promise<Blob> {
+  const response = await fetch(`${API_URL}${path}`, {
+    credentials: 'include',
+    headers: accessToken
+      ? { Authorization: `Bearer ${accessToken}` }
+      : undefined,
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as {
+      message?: string;
+    } | null;
+    throw new ApiError(
+      payload?.message ?? 'Unable to download file',
+      response.status,
+    );
+  }
+  return response.blob();
+}
+
 export function money(value: number): string {
   return new Intl.NumberFormat('en-BD', {
     style: 'currency',
     currency: 'BDT',
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+export function minorMoney(value: number, currency: string): string {
+  return new Intl.NumberFormat('en-BD', {
+    style: 'currency',
+    currency: currency.toUpperCase(),
+  }).format(value / 100);
 }

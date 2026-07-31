@@ -124,4 +124,26 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     const result = await this.client.exists(key);
     return result === 1;
   }
+
+  async acquireLock(
+    key: string,
+    token: string,
+    ttlSeconds: number,
+  ): Promise<boolean> {
+    if (!this.isReady) return false;
+    const result = await this.client.set(key, token, 'EX', ttlSeconds, 'NX');
+    return result === 'OK';
+  }
+
+  async releaseLock(key: string, token: string): Promise<boolean> {
+    if (!this.isReady) return false;
+
+    const result = await this.client.eval(
+      "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
+      1,
+      key,
+      token,
+    );
+    return result === 1;
+  }
 }

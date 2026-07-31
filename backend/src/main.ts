@@ -15,7 +15,7 @@ const logger = new Logger('Bootstrap');
 
 async function bootstrap() {
   logger.log('Creating Nest application');
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   app.enableShutdownHooks();
   logger.log('Nest application created');
 

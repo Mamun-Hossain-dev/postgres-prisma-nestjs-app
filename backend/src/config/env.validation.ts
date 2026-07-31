@@ -60,6 +60,20 @@ const envSchema = z
     SMTP_USER: z.string().optional(),
     SMTP_PASSWORD: z.string().optional(),
     MAIL_FROM: z.string().optional(),
+    STRIPE_ENABLED: booleanString,
+    STRIPE_SECRET_KEY: z.string().optional(),
+    STRIPE_WEBHOOK_SECRET: z.string().optional(),
+    STRIPE_CURRENCY: z
+      .string()
+      .regex(/^[a-zA-Z]{3}$/)
+      .default('bdt'),
+    STRIPE_MINOR_UNIT: z.coerce.number().int().positive().default(100),
+    PAYMENT_LOCK_TTL_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(10)
+      .max(300)
+      .default(30),
   })
   .superRefine((env, context) => {
     if (!env.MAIL_ENABLED) return;
@@ -85,6 +99,23 @@ const envSchema = z
         code: 'custom',
         path: ['SMTP_USER'],
         message: 'SMTP_USER and SMTP_PASSWORD must be provided together',
+      });
+    }
+
+    if (env.STRIPE_ENABLED && !env.STRIPE_SECRET_KEY) {
+      context.addIssue({
+        code: 'custom',
+        path: ['STRIPE_SECRET_KEY'],
+        message: 'STRIPE_SECRET_KEY is required when STRIPE_ENABLED is true',
+      });
+    }
+
+    if (env.STRIPE_ENABLED && !env.STRIPE_WEBHOOK_SECRET) {
+      context.addIssue({
+        code: 'custom',
+        path: ['STRIPE_WEBHOOK_SECRET'],
+        message:
+          'STRIPE_WEBHOOK_SECRET is required when STRIPE_ENABLED is true',
       });
     }
   });

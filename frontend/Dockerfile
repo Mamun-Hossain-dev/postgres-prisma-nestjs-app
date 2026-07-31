@@ -12,7 +12,9 @@ RUN --mount=type=cache,id=frontend-pnpm-store,target=/pnpm/store pnpm install --
 
 FROM dependencies AS build
 ARG NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 COPY . .
 RUN pnpm run build
 

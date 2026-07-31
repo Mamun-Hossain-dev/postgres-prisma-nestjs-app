@@ -6,6 +6,7 @@ import redisConfig from './redis.config';
 import cloudinaryConfig from './cloudinary.config';
 import emailConfig from './email.config';
 import rabbitmqConfig from './rabbitmq.config';
+import stripeConfig from './stripe.config';
 
 export const configFactories = [
   appConfig,
@@ -16,6 +17,7 @@ export const configFactories = [
   cloudinaryConfig,
   emailConfig,
   rabbitmqConfig,
+  stripeConfig,
 ];
 
 export {
@@ -27,4 +29,5 @@ export {
   jwtConfig,
   rabbitmqConfig,
   redisConfig,
+  stripeConfig,
 };

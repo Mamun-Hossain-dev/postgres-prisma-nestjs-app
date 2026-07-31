@@ -6,9 +6,13 @@ import { Footer } from './footer';
 
 export function SiteChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isAdmin = pathname.startsWith('/admin');
+  const isStandalone =
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/account') ||
+    pathname === '/profile' ||
+    pathname === '/settings';
 
-  if (isAdmin) return <>{children}</>;
+  if (isStandalone) return <>{children}</>;
 
   return (
     <>

@@ -140,3 +140,67 @@ export interface PaginatedNewsletterBroadcasts {
   data: NewsletterBroadcast[];
   meta: PaginatedProducts['meta'];
 }
+
+export type PaymentStatus =
+  'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED' | 'REFUNDED';
+
+export type OrderStatus =
+  | 'PAYMENT_PENDING'
+  | 'PAYMENT_PROCESSING'
+  | 'PAID'
+  | 'PAYMENT_FAILED'
+  | 'CANCELLED';
+
+export interface OrderItem {
+  id: number;
+  productId: number | null;
+  productTitle: string;
+  productSku: string;
+  unitAmount: number;
+  quantity: number;
+  totalAmount: number;
+}
+
+export interface Order {
+  id: number;
+  orderNumber: string;
+  userId: number;
+  customerName: string;
+  customerEmail: string;
+  totalAmount: number;
+  currency: string;
+  status: OrderStatus;
+  paidAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  items: OrderItem[];
+}
+
+export interface Payment {
+  id: number;
+  orderId: number;
+  status: PaymentStatus;
+  amount: number;
+  currency: string;
+  failureCode: string | null;
+  failureMessage: string | null;
+  paidAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  order: Order;
+}
+
+export interface CheckoutSession {
+  paymentId: number;
+  orderId: number;
+  orderNumber: string;
+  clientSecret: string;
+  amount: number;
+  currency: string;
+  paymentStatus: PaymentStatus;
+}
+
+export interface PaginatedOrders {
+  data: Order[];
+  meta: PaginatedProducts['meta'];
+}

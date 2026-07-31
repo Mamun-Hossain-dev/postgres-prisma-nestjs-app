@@ -17,6 +17,7 @@ model User {
   profileImageUrl      String?
   profileImagePublicId String?               @unique
   cart                 Cart?
+  orders               Order[]
   newsletterSubscriber NewsletterSubscriber?
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt

@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { LoaderCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { getSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { AuthShell } from '@/components/auth-shell';
 import { useAuth } from '@/components/auth-provider';
@@ -30,10 +31,12 @@ export function LoginPage() {
     try {
       await login(values.email, values.password);
       toast.success('Welcome back');
+      const session = await getSession();
+      const fallback = session?.user?.role === 'ADMIN' ? '/admin' : '/profile';
       const callbackUrl = new URLSearchParams(window.location.search).get(
         'callbackUrl',
       );
-      router.push(callbackUrl?.startsWith('/') ? callbackUrl : '/profile');
+      router.push(callbackUrl?.startsWith('/') ? callbackUrl : fallback);
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unable to sign in');

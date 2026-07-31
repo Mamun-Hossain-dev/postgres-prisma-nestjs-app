@@ -2,8 +2,8 @@
 
 DeviceDock is a full-stack gadget store for mobiles, laptops, tablets, audio
 devices, watches, and accessories. The purchase journey currently covers
-authentication, product discovery, product details, and a persistent cart.
-Order placement and payment are intentionally reserved for the next phase.
+authentication, product discovery, product details, a persistent cart,
+Stripe checkout, webhook-confirmed payments, order history, and PDF invoices.
 
 The repository contains two independent pnpm projects. Each project owns its
 dependencies, lockfile, and pnpm settings.
@@ -48,6 +48,11 @@ There is no shared root `node_modules`, `pnpm-lock.yaml`, or
 - One persistent cart per authenticated user
 - Add, update, remove, and clear cart operations
 - Cart stock validation, item count, and subtotal
+- Order and immutable order-item snapshots
+- Stripe Payment Intents behind a gateway abstraction
+- Redis checkout locks and Stripe/webhook idempotency
+- Webhook-confirmed payment and order status transitions
+- Idempotent RabbitMQ payment consumers and PDF invoice emails
 - PostgreSQL persistence through Prisma
 - Redis caching, throttling, and session storage
 - Cloudinary image storage behind the `FileStorage` abstraction
@@ -62,9 +67,11 @@ There is no shared root `node_modules`, `pnpm-lock.yaml`, or
 - Login and registration pages
 - Refresh-cookie authentication flow
 - Persistent server-backed cart
+- Stripe Payment Element checkout
+- Webhook-backed payment status screen
+- Order history and authenticated PDF invoice downloads
 - Loading, empty, and error states
 - Local preview products when the public catalog API is unavailable
-- Checkout placeholder for the future order/payment phase
 
 ## Technology
 
@@ -76,6 +83,7 @@ There is no shared root `node_modules`, `pnpm-lock.yaml`, or
 - Passport JWT and bcrypt
 - Multer and Cloudinary
 - Nodemailer
+- Stripe SDK and PDFKit
 - Jest, ESLint, and Prettier
 
 ### Frontend
@@ -143,6 +151,13 @@ SMTP_SECURE=false
 SMTP_USER=
 SMTP_PASSWORD=
 MAIL_FROM=DeviceDock <no-reply@devicedock.local>
+
+STRIPE_ENABLED=true
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_CURRENCY=bdt
+STRIPE_MINOR_UNIT=100
+PAYMENT_LOCK_TTL_SECONDS=30
 ```
 
 The API publishes destination-specific `user.created.*` events to RabbitMQ.
@@ -152,6 +167,14 @@ analytics logs.
 To build and run the complete application from the repository root:
 
 ```bash
+docker compose up -d --build
+```
+
+For a Docker frontend build, expose the publishable key to Compose before
+building:
+
+```bash
+export NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 docker compose up -d --build
 ```
 
@@ -182,6 +205,17 @@ acknowledged only after the retry or DLQ copy has been published successfully.
 
 Do not commit real secrets. If email is enabled, also configure the SMTP
 variables documented in `backend/src/config/env.validation.ts`.
+
+For local Stripe webhooks, use the Stripe CLI and copy the generated `whsec_`
+secret into `STRIPE_WEBHOOK_SECRET`:
+
+```bash
+stripe listen \
+  --forward-to localhost:8080/api/v1/payments/webhooks/stripe
+```
+
+Stripe webhook events are the payment source of truth. Browser confirmation
+never marks an order paid.
 
 ### Full Docker stack
 
@@ -252,6 +286,7 @@ pnpm run dev
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 ```
 
 The storefront runs at:
@@ -373,6 +408,26 @@ Add a product:
 }
 ```
 
+### Payments and orders
+
+| Method | Route                       | Access        | Purpose                            |
+| ------ | --------------------------- | ------------- | ---------------------------------- |
+| POST   | `/payments/checkout`        | Authenticated | Create or resume a Payment Intent  |
+| GET    | `/payments/:id`             | Owner         | Read webhook-backed payment status |
+| GET    | `/payments/:id/session`     | Owner         | Restore a Stripe checkout session  |
+| POST   | `/payments/webhooks/stripe` | Stripe        | Verify and process webhook events  |
+| GET    | `/orders`                   | Authenticated | List the current user's orders     |
+| GET    | `/orders/:id`               | Owner         | Read an order                      |
+| GET    | `/orders/:id/invoice`       | Owner         | Download a paid PDF invoice        |
+
+Checkout creation requires a UUID idempotency key:
+
+```json
+{
+  "idempotencyKey": "9cf8ed35-c195-49af-a2f1-e747d802b023"
+}
+```
+
 Update a quantity:
 
 ```json
@@ -465,8 +520,7 @@ pnpm run build
 
 ## Not implemented yet
 
-- Order creation
 - Shipping address and delivery selection
 - Stock reservation during checkout
-- Payment gateway integration
-- Order history and status tracking
+- Automated refunds; the gateway refund contract and Stripe implementation are
+  ready for a future authorized refund use case
