@@ -20,7 +20,6 @@ import { ResponseMessage } from '../../common/utils/api-response.util';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from './interfaces/user.interface';
-import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { PublicUser } from './interfaces/user.interface';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -32,15 +31,17 @@ import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @Public()
   @Get()
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
   @ResponseMessage('Users fetched successfully')
   findAll(@Query() query: PaginationQueryDto) {
     return this.userService.getAllUsers(query);
   }
 
-  @Public()
   @Get(':id')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
   @ResponseMessage('User fetched successfully')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.userService.getUserById(id);

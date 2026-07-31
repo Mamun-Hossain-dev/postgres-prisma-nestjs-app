@@ -1,6 +1,7 @@
 import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsDateString,
   IsEnum,
   IsInt,
   IsNumber,
@@ -11,7 +12,10 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { ProductCategory } from '../interfaces/product.interface';
+import {
+  ProductCategory,
+  ProductStatus,
+} from '../interfaces/product.interface';
 
 export class UpdateProductDto {
   @IsOptional()
@@ -66,9 +70,35 @@ export class UpdateProductDto {
   quantity?: number;
 
   @IsOptional()
+  @IsEnum(ProductStatus)
+  status?: ProductStatus;
+
+  @IsOptional()
   @Transform(({ value }) => value === true || value === 'true')
   @IsBoolean()
   isFeatured?: boolean;
+
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  isTrending?: boolean;
+
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  isBestSeller?: boolean;
+
+  @IsOptional()
+  @IsDateString()
+  offerStartsAt?: string;
+
+  @IsOptional()
+  @IsDateString()
+  offerEndsAt?: string;
+
+  @IsOptional()
+  @IsDateString()
+  publishedAt?: string;
 
   @IsOptional()
   @Transform(({ value }) => {

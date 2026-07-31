@@ -1,0 +1,88 @@
+enum ContactMessageStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum NewsletterSubscriberStatus {
+  ACTIVE
+  UNSUBSCRIBED
+}
+
+enum NewsletterBroadcastStatus {
+  SENDING
+  SENT
+  PARTIAL
+  FAILED
+}
+
+enum NewsletterDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model ContactMessage {
+  id        Int                  @id @default(autoincrement())
+  name      String
+  email     String
+  subject   String
+  message   String
+  status    ContactMessageStatus @default(NEW)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  @@index([status, createdAt])
+  @@index([email])
+  @@map("contact_messages")
+}
+
+model NewsletterSubscriber {
+  id             Int                        @id @default(autoincrement())
+  email          String                     @unique
+  name           String?
+  status         NewsletterSubscriberStatus @default(ACTIVE)
+  userId         Int?                       @unique
+  user           User?                      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  subscribedAt   DateTime                   @default(now())
+  unsubscribedAt DateTime?
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+
+  @@index([status, subscribedAt])
+  @@map("newsletter_subscribers")
+}
+
+model NewsletterBroadcast {
+  id             Int                       @id @default(autoincrement())
+  subject        String
+  previewText    String?
+  content        String
+  status         NewsletterBroadcastStatus @default(SENDING)
+  recipientCount Int                       @default(0)
+  sentCount      Int                       @default(0)
+  failedCount    Int                       @default(0)
+  sentAt         DateTime?
+  deliveries     NewsletterDelivery[]
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  @@index([createdAt])
+  @@map("newsletter_broadcasts")
+}
+
+model NewsletterDelivery {
+  id          Int                      @id @default(autoincrement())
+  broadcastId Int
+  email       String
+  status      NewsletterDeliveryStatus @default(PENDING)
+  error       String?
+  sentAt      DateTime?
+  broadcast   NewsletterBroadcast      @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+
+  @@unique([broadcastId, email])
+  @@index([broadcastId, status])
+  @@map("newsletter_deliveries")
+}

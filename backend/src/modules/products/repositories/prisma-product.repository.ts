@@ -7,6 +7,7 @@ import {
   ProductImage,
   UpdateProductInput,
   ProductListOptions,
+  ProductCollections,
 } from '../interfaces/product.interface';
 import type { ProductRepository } from './product.repository';
 import type { RepositoryPaginatedResult } from '../../../common/interfaces/pagination.interface';
@@ -35,6 +36,18 @@ export class PrismaProductRepository implements ProductRepository {
                 },
               },
               {
+                sku: {
+                  contains: options.search,
+                  mode: 'insensitive' as const,
+                },
+              },
+              {
+                shortDescription: {
+                  contains: options.search,
+                  mode: 'insensitive' as const,
+                },
+              },
+              {
                 description: {
                   contains: options.search,
                   mode: 'insensitive' as const,
@@ -50,6 +63,29 @@ export class PrismaProductRepository implements ProductRepository {
       ...(options.featured === undefined
         ? {}
         : { isFeatured: options.featured }),
+      ...(options.status ? { status: options.status } : {}),
+      ...(options.publishedBefore
+        ? { publishedAt: { lte: options.publishedBefore } }
+        : {}),
+      ...(options.onSale
+        ? {
+            compareAtPrice: { not: null },
+            AND: [
+              {
+                OR: [
+                  { offerStartsAt: null },
+                  { offerStartsAt: { lte: new Date() } },
+                ],
+              },
+              {
+                OR: [
+                  { offerEndsAt: null },
+                  { offerEndsAt: { gte: new Date() } },
+                ],
+              },
+            ],
+          }
+        : {}),
       ...(options.minPrice !== undefined || options.maxPrice !== undefined
         ? {
             price: {
@@ -91,6 +127,80 @@ export class PrismaProductRepository implements ProductRepository {
       where: { id },
       include: { images: { orderBy: { id: 'asc' } } },
     });
+  }
+
+  async findCollections(limit: number): Promise<ProductCollections> {
+    const now = new Date();
+    const include = { images: { orderBy: { id: 'asc' as const } } };
+    const active = {
+      status: 'ACTIVE' as const,
+      publishedAt: { lte: now },
+    };
+    const offerWindow = {
+      ...active,
+      compareAtPrice: { not: null },
+      AND: [
+        {
+          OR: [{ offerStartsAt: null }, { offerStartsAt: { lte: now } }],
+        },
+        {
+          OR: [{ offerEndsAt: null }, { offerEndsAt: { gte: now } }],
+        },
+      ],
+    };
+
+    const [featured, newArrivals, offers, bestSellers, trending, brands] =
+      await this.prisma.$transaction([
+        this.prisma.product.findMany({
+          where: { ...active, isFeatured: true },
+          take: limit,
+          orderBy: { publishedAt: 'desc' },
+          include,
+        }),
+        this.prisma.product.findMany({
+          where: active,
+          take: limit,
+          orderBy: { publishedAt: 'desc' },
+          include,
+        }),
+        this.prisma.product.findMany({
+          where: offerWindow,
+          take: limit,
+          orderBy: { publishedAt: 'desc' },
+          include,
+        }),
+        this.prisma.product.findMany({
+          where: { ...active, isBestSeller: true },
+          take: limit,
+          orderBy: { publishedAt: 'desc' },
+          include,
+        }),
+        this.prisma.product.findMany({
+          where: { ...active, isTrending: true },
+          take: limit,
+          orderBy: { publishedAt: 'desc' },
+          include,
+        }),
+        this.prisma.product.findMany({
+          where: active,
+          distinct: ['brand'],
+          orderBy: { brand: 'asc' },
+          select: { brand: true },
+        }),
+      ]);
+
+    return {
+      featured,
+      newArrivals,
+      offers: offers.filter(
+        (product) =>
+          product.compareAtPrice !== null &&
+          product.compareAtPrice > product.price,
+      ),
+      bestSellers,
+      trending,
+      brands: brands.map(({ brand }) => brand),
+    };
   }
 
   async create(

@@ -43,6 +43,11 @@ export class ProductQueryDto extends PaginationQueryDto {
   featured?: boolean;
 
   @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  onSale?: boolean;
+
+  @IsOptional()
   @IsIn(['newest', 'price-asc', 'price-desc', 'name-asc'])
   sort?: ProductSort;
 }

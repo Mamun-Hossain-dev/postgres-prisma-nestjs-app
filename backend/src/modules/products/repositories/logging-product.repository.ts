@@ -26,6 +26,11 @@ export class LoggingProductRepository implements ProductRepository {
     return await this.repository.findById(id);
   }
 
+  async findCollections(limit: number) {
+    this.logger.log(`Fetching product collections with limit ${limit}`);
+    return this.repository.findCollections(limit);
+  }
+
   async create(input: CreateProductInput, images: NewProductImage[] = []) {
     this.logger.log('Creating product');
     return await this.repository.create(input, images);

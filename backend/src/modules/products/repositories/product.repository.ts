@@ -5,6 +5,7 @@ import {
   ProductImage,
   UpdateProductInput,
   ProductListOptions,
+  ProductCollections,
 } from '../interfaces/product.interface';
 import type { RepositoryPaginatedResult } from '../../../common/interfaces/pagination.interface';
 
@@ -13,6 +14,7 @@ export interface ProductRepository {
     options: ProductListOptions,
   ): Promise<RepositoryPaginatedResult<Product>>;
   findById(id: number): Promise<Product | null>;
+  findCollections(limit: number): Promise<ProductCollections>;
   create(
     input: CreateProductInput,
     images?: NewProductImage[],

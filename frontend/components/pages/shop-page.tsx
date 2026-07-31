@@ -1,15 +1,20 @@
 'use client';
 
-import { Suspense, useDeferredValue, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import {
+  Suspense,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { Search, SlidersHorizontal } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
-import type { PaginatedProducts } from '@/lib/types';
+import { BadgePercent, Search, SlidersHorizontal } from 'lucide-react';
 import { demoProducts } from '@/lib/demo-products';
 import { ProductCard } from '@/components/product-card';
 import { Pagination } from '@/components/ui/pagination';
 import { Select } from '@/components/ui/select';
+import { productListQueryOptions } from '@/lib/queries/products';
 
 const categories = [
   '',
@@ -42,13 +47,23 @@ export function ShopPage() {
 }
 
 function ShopContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(searchParams.get('search') ?? '');
   const deferredSearch = useDeferredValue(search);
   const [category, setCategory] = useState(searchParams.get('category') ?? '');
   const featuredOnly = searchParams.get('featured') === 'true';
   const [sort, setSort] = useState('newest');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [onSale, setOnSale] = useState(false);
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setCategory(searchParams.get('category') ?? '');
+    setPage(1);
+  }, [searchParams]);
+
   const query = useMemo(() => {
     const params = new URLSearchParams({
       page: String(page),
@@ -58,12 +73,21 @@ function ShopContent() {
     if (category) params.set('category', category);
     if (deferredSearch.trim()) params.set('search', deferredSearch.trim());
     if (featuredOnly) params.set('featured', 'true');
+    if (minPrice) params.set('minPrice', minPrice);
+    if (maxPrice) params.set('maxPrice', maxPrice);
+    if (onSale) params.set('onSale', 'true');
     return params.toString();
-  }, [category, deferredSearch, featuredOnly, page, sort]);
-  const products = useQuery({
-    queryKey: ['products', query],
-    queryFn: () => apiFetch<PaginatedProducts>(`/products?${query}`),
-  });
+  }, [
+    category,
+    deferredSearch,
+    featuredOnly,
+    maxPrice,
+    minPrice,
+    onSale,
+    page,
+    sort,
+  ]);
+  const products = useQuery(productListQueryOptions(query));
   const list = products.data?.data ?? (products.isError ? demoProducts : []);
 
   return (
@@ -78,6 +102,46 @@ function ShopContent() {
         <p className="mt-5 max-w-xl leading-7 text-black/55">
           Compare carefully selected technology without the noise.
         </p>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <input
+          type="number"
+          min="0"
+          value={minPrice}
+          onChange={(event) => {
+            setMinPrice(event.target.value);
+            setPage(1);
+          }}
+          placeholder="Min price"
+          aria-label="Minimum price"
+          className="h-10 w-32 rounded-full border bg-white/60 px-4 text-xs"
+        />
+        <input
+          type="number"
+          min="0"
+          value={maxPrice}
+          onChange={(event) => {
+            setMaxPrice(event.target.value);
+            setPage(1);
+          }}
+          placeholder="Max price"
+          aria-label="Maximum price"
+          className="h-10 w-32 rounded-full border bg-white/60 px-4 text-xs"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            setOnSale((value) => !value);
+            setPage(1);
+          }}
+          aria-pressed={onSale}
+          className={`inline-flex h-10 items-center gap-2 rounded-full px-4 text-xs font-bold ${
+            onSale ? 'bg-accent text-white' : 'border bg-white/60'
+          }`}
+        >
+          <BadgePercent size={15} /> On sale
+        </button>
       </div>
 
       <div className="mt-14 flex flex-col gap-4 border-y py-5 lg:flex-row lg:items-center">
@@ -100,6 +164,13 @@ function ShopContent() {
               onClick={() => {
                 setCategory(item);
                 setPage(1);
+                const params = new URLSearchParams(searchParams.toString());
+                if (item) params.set('category', item);
+                else params.delete('category');
+                const queryString = params.toString();
+                router.replace(queryString ? `/shop?${queryString}` : '/shop', {
+                  scroll: false,
+                });
               }}
               className={`whitespace-nowrap rounded-full px-4 py-2.5 text-xs font-bold ${
                 category === item ? 'bg-ink text-white' : 'border'

@@ -1,16 +1,7 @@
 import type { Metadata } from 'next';
-import { Bell } from 'lucide-react';
-import { AdminFeaturePage } from '@/components/admin/admin-feature-page';
+import { AdminNewsletter } from '@/components/admin/admin-newsletter';
 
-export const metadata: Metadata = { title: 'Notifications — DeviceDock Admin' };
+export const metadata: Metadata = { title: 'Broadcasts — DeviceDock Admin' };
 export default function Page() {
-  return (
-    <AdminFeaturePage
-      eyebrow="Operations feed"
-      title="Notifications."
-      description="See important store events and operational alerts."
-      icon={<Bell />}
-      dependency="Persisted admin notification feed and read-state endpoints."
-    />
-  );
+  return <AdminNewsletter />;
 }

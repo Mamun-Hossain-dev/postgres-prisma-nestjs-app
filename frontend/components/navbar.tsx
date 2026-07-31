@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname, useSearchParams } from 'next/navigation';
 import {
   ChevronDown,
   LayoutDashboard,
@@ -12,7 +13,7 @@ import {
   UserRound,
   X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useAuth } from './auth-provider';
 import { ConfirmDialog } from './ui/confirm-dialog';
 
@@ -25,6 +26,37 @@ const links = [
 ];
 
 export function Navbar() {
+  const pathname = usePathname();
+
+  return (
+    <Suspense
+      fallback={
+        <NavbarContent pathname={pathname} activeCategory={undefined} />
+      }
+    >
+      <RouteAwareNavbar pathname={pathname} />
+    </Suspense>
+  );
+}
+
+function RouteAwareNavbar({ pathname }: { pathname: string }) {
+  const searchParams = useSearchParams();
+
+  return (
+    <NavbarContent
+      pathname={pathname}
+      activeCategory={searchParams.get('category')}
+    />
+  );
+}
+
+function NavbarContent({
+  pathname,
+  activeCategory,
+}: {
+  pathname: string;
+  activeCategory: string | null | undefined;
+}) {
   const [open, setOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
@@ -56,7 +88,16 @@ export function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="transition hover:text-accent"
+                  aria-current={
+                    isActiveLink(link.href, pathname, activeCategory)
+                      ? 'page'
+                      : undefined
+                  }
+                  className={`relative py-1 transition after:absolute after:inset-x-0 after:-bottom-1 after:h-0.5 after:origin-left after:bg-accent after:transition-transform hover:text-accent ${
+                    isActiveLink(link.href, pathname, activeCategory)
+                      ? 'text-accent after:scale-x-100'
+                      : 'after:scale-x-0'
+                  }`}
                 >
                   {link.label}
                 </Link>
@@ -155,7 +196,16 @@ export function Navbar() {
                   key={link.href}
                   href={link.href}
                   onClick={() => setOpen(false)}
-                  className="flex items-center justify-between border-b py-3.5 text-sm font-bold last:border-0"
+                  aria-current={
+                    isActiveLink(link.href, pathname, activeCategory)
+                      ? 'page'
+                      : undefined
+                  }
+                  className={`flex items-center justify-between border-b py-3.5 text-sm font-bold last:border-0 ${
+                    isActiveLink(link.href, pathname, activeCategory)
+                      ? 'text-accent'
+                      : ''
+                  }`}
                 >
                   {link.label} <span className="text-black/25">↗</span>
                 </Link>
@@ -190,6 +240,26 @@ export function Navbar() {
       />
     </>
   );
+}
+
+function isActiveLink(
+  href: string,
+  pathname: string,
+  activeCategory: string | null | undefined,
+) {
+  const [linkPath, query = ''] = href.split('?');
+  if (
+    linkPath !== pathname ||
+    linkPath !== '/shop' ||
+    activeCategory === undefined
+  ) {
+    return false;
+  }
+
+  const linkCategory = new URLSearchParams(query).get('category');
+  return linkCategory
+    ? linkCategory === activeCategory
+    : activeCategory === null;
 }
 
 function AccountLink({

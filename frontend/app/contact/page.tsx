@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   ShoppingBag,
 } from 'lucide-react';
+import { ContactForm } from '@/components/pages/contact-form';
 
 export const metadata: Metadata = {
   title: 'Contact — DeviceDock',
@@ -96,6 +97,8 @@ export default function Page() {
           ))}
         </div>
       </section>
+
+      <ContactForm />
 
       <section className="bg-[#ded7c7] px-5 py-24 lg:px-8">
         <div className="mx-auto flex max-w-7xl flex-col justify-between gap-8 lg:flex-row lg:items-center">

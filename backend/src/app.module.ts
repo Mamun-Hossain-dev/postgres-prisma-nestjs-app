@@ -21,6 +21,8 @@ import { CartModule } from './modules/cart/cart.module';
 import { EmailsModule } from './modules/emails/emails.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { ContactModule } from './modules/contact/contact.module';
+import { NewsletterModule } from './modules/newsletter/newsletter.module';
 
 @Module({
   imports: [
@@ -46,6 +48,8 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
     EmailsModule,
     NotificationsModule,
     AnalyticsModule,
+    ContactModule,
+    NewsletterModule,
   ],
   controllers: [AppController],
   providers: [

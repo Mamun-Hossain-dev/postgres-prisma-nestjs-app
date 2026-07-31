@@ -7,6 +7,12 @@ enum ProductCategory {
   ACCESSORY
 }
 
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
 model Product {
   id               Int             @id @default(autoincrement())
   slug             String          @unique
@@ -19,7 +25,13 @@ model Product {
   price            Float
   compareAtPrice   Float?
   quantity         Int
+  status           ProductStatus   @default(ACTIVE)
   isFeatured       Boolean         @default(false)
+  isTrending       Boolean         @default(false)
+  isBestSeller     Boolean         @default(false)
+  offerStartsAt    DateTime?
+  offerEndsAt      DateTime?
+  publishedAt      DateTime        @default(now())
   specifications   Json?
   images           ProductImage[]
   cartItems        CartItem[]
@@ -29,6 +41,9 @@ model Product {
   @@index([category])
   @@index([brand])
   @@index([isFeatured])
+  @@index([status, publishedAt])
+  @@index([isTrending])
+  @@index([isBestSeller])
   @@map("products")
 }
 

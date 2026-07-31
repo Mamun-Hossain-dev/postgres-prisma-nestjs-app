@@ -10,6 +10,14 @@ export const ProductCategory = {
 export type ProductCategory =
   (typeof ProductCategory)[keyof typeof ProductCategory];
 
+export const ProductStatus = {
+  DRAFT: 'DRAFT',
+  ACTIVE: 'ACTIVE',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type ProductStatus = (typeof ProductStatus)[keyof typeof ProductStatus];
+
 export interface Product {
   id: number;
   slug: string;
@@ -22,7 +30,13 @@ export interface Product {
   price: number;
   compareAtPrice: number | null;
   quantity: number;
+  status: ProductStatus;
   isFeatured: boolean;
+  isTrending: boolean;
+  isBestSeller: boolean;
+  offerStartsAt: Date | null;
+  offerEndsAt: Date | null;
+  publishedAt: Date;
   specifications: unknown;
   images: ProductImage[];
 }
@@ -50,12 +64,24 @@ export interface CreateProductInput {
   price: number;
   compareAtPrice?: number;
   quantity: number;
+  status?: ProductStatus;
   isFeatured?: boolean;
+  isTrending?: boolean;
+  isBestSeller?: boolean;
+  offerStartsAt?: Date;
+  offerEndsAt?: Date;
+  publishedAt?: Date;
   specifications?: Record<string, string>;
 }
 
-export type CreateProductRequest = Omit<CreateProductInput, 'slug'> & {
+export type CreateProductRequest = Omit<
+  CreateProductInput,
+  'slug' | 'offerStartsAt' | 'offerEndsAt' | 'publishedAt'
+> & {
   slug?: string;
+  offerStartsAt?: string;
+  offerEndsAt?: string;
+  publishedAt?: string;
 };
 
 export interface UpdateProductInput {
@@ -69,9 +95,24 @@ export interface UpdateProductInput {
   price?: number;
   compareAtPrice?: number;
   quantity?: number;
+  status?: ProductStatus;
   isFeatured?: boolean;
+  isTrending?: boolean;
+  isBestSeller?: boolean;
+  offerStartsAt?: Date | null;
+  offerEndsAt?: Date | null;
+  publishedAt?: Date;
   specifications?: Record<string, string>;
 }
+
+export type UpdateProductRequest = Omit<
+  UpdateProductInput,
+  'offerStartsAt' | 'offerEndsAt' | 'publishedAt'
+> & {
+  offerStartsAt?: string;
+  offerEndsAt?: string;
+  publishedAt?: string;
+};
 
 export type ProductSort = 'newest' | 'price-asc' | 'price-desc' | 'name-asc';
 
@@ -84,5 +125,17 @@ export interface ProductListOptions {
   minPrice?: number;
   maxPrice?: number;
   featured?: boolean;
+  status?: ProductStatus;
+  onSale?: boolean;
+  publishedBefore?: Date;
   sort?: ProductSort;
+}
+
+export interface ProductCollections {
+  featured: Product[];
+  newArrivals: Product[];
+  offers: Product[];
+  bestSellers: Product[];
+  trending: Product[];
+  brands: string[];
 }

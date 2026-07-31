@@ -6,12 +6,14 @@ import {
   Product,
   UpdateProductInput,
   ProductListOptions,
+  ProductCollections,
 } from '../interfaces/product.interface';
 import type { ProductRepository } from './product.repository';
 
 @Injectable()
 export class CachedProductRepository implements ProductRepository {
   private readonly cacheTtlInSeconds = 60 * 5;
+  private readonly collectionsCachePrefix = 'product:collections:';
 
   constructor(
     private readonly redis: RedisService,
@@ -39,6 +41,20 @@ export class CachedProductRepository implements ProductRepository {
     return product;
   }
 
+  async findCollections(limit: number): Promise<ProductCollections> {
+    const cacheKey = `${this.collectionsCachePrefix}${limit}`;
+    const cached = await this.redis.get(cacheKey);
+    if (cached) return JSON.parse(cached) as ProductCollections;
+
+    const collections = await this.repository.findCollections(limit);
+    await this.redis.set(
+      cacheKey,
+      JSON.stringify(collections),
+      this.cacheTtlInSeconds,
+    );
+    return collections;
+  }
+
   async create(
     input: CreateProductInput,
     images: NewProductImage[] = [],
@@ -46,6 +62,7 @@ export class CachedProductRepository implements ProductRepository {
     const product = await this.repository.create(input, images);
 
     await this.cacheProduct(product);
+    await this.invalidateCollections();
 
     return product;
   }
@@ -62,6 +79,7 @@ export class CachedProductRepository implements ProductRepository {
     }
 
     await this.cacheProduct(updatedProduct);
+    await this.invalidateCollections();
 
     return updatedProduct;
   }
@@ -70,6 +88,7 @@ export class CachedProductRepository implements ProductRepository {
     await this.repository.delete(id);
 
     await this.redis.del(this.getIdCacheKey(id));
+    await this.invalidateCollections();
   }
 
   async addImages(
@@ -81,6 +100,7 @@ export class CachedProductRepository implements ProductRepository {
     if (!product) return null;
 
     await this.cacheProduct(product);
+    await this.invalidateCollections();
     return product;
   }
 
@@ -91,6 +111,7 @@ export class CachedProductRepository implements ProductRepository {
   async deleteImage(productId: number, imageId: number): Promise<void> {
     await this.repository.deleteImage(productId, imageId);
     await this.redis.del(this.getIdCacheKey(productId));
+    await this.invalidateCollections();
   }
 
   private async cacheProduct(product: Product): Promise<void> {
@@ -103,5 +124,9 @@ export class CachedProductRepository implements ProductRepository {
 
   private getIdCacheKey(id: number): string {
     return `product:id:${id}`;
+  }
+
+  private async invalidateCollections(): Promise<void> {
+    await this.redis.deleteByPattern(`${this.collectionsCachePrefix}*`);
   }
 }

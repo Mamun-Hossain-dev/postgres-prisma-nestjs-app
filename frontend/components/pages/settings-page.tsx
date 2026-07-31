@@ -15,7 +15,9 @@ import type { User } from '@/lib/types';
 interface Values {
   name: string;
   email: string;
+  phone: string;
   age?: number;
+  marketingConsent: boolean;
 }
 
 export function SettingsPage() {
@@ -42,21 +44,42 @@ export function SettingsPage() {
   } = useForm<Values>();
 
   useEffect(() => {
-    if (user) reset({ name: user.name, email: user.email, age: user.age });
+    if (user) {
+      reset({
+        name: user.name,
+        email: user.email,
+        phone: user.phone ?? '',
+        age: user.age,
+        marketingConsent: user.marketingConsent,
+      });
+    }
   }, [reset, user]);
 
   const submit = handleSubmit(async (values) => {
     const body = new FormData();
     body.set('name', values.name.trim());
     body.set('email', values.email.trim());
+    body.set('phone', values.phone.trim());
     if (values.age && !Number.isNaN(values.age))
       body.set('age', String(values.age));
+    body.set('marketingConsent', String(values.marketingConsent));
     if (image) body.set('image', image);
 
     try {
       const updated = await apiFetch<User>(
         '/users/me',
         { method: 'PATCH', body },
+        accessToken,
+      );
+      await apiFetch(
+        '/newsletter/subscribers',
+        {
+          method: values.marketingConsent ? 'POST' : 'DELETE',
+          body: JSON.stringify({
+            email: updated.email,
+            name: updated.name,
+          }),
+        },
         accessToken,
       );
       await syncUser(updated);
@@ -184,6 +207,30 @@ export function SettingsPage() {
               })}
             />
           </Field>
+          <Field label="Phone number">
+            <Input
+              type="tel"
+              autoComplete="tel"
+              placeholder="+880..."
+              {...register('phone')}
+            />
+          </Field>
+          <label className="flex items-center gap-3 rounded-2xl border bg-white/65 px-4 py-3 sm:col-span-2">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-[#b4472f]"
+              {...register('marketingConsent')}
+            />
+            <span>
+              <span className="block text-sm font-bold">
+                DeviceDock email updates
+              </span>
+              <span className="mt-0.5 block text-xs text-black/45">
+                Receive product drops and offer broadcasts. You can opt out here
+                anytime.
+              </span>
+            </span>
+          </label>
           <div className="self-end">
             <Button
               loading={isSubmitting}

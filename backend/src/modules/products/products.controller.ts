@@ -24,6 +24,7 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { ImageFilesValidationPipe } from '../../infrastructure/uploads/pipes/image-files-validation.pipe';
 import { toFileToStore } from '../../infrastructure/uploads/utils/multer-file.util';
 import { ProductQueryDto } from './dto/product-query.dto';
+import { AdminProductQueryDto } from './dto/admin-product-query.dto';
 
 @Controller('products')
 export class ProductsController {
@@ -37,10 +38,33 @@ export class ProductsController {
   }
 
   @Public()
+  @Get('collections/home')
+  @ResponseMessage('Home product collections fetched successfully')
+  getHomeCollections() {
+    return this.productsService.getHomeCollections();
+  }
+
+  @Get('admin/list')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.SELLER)
+  @ResponseMessage('Admin products fetched successfully')
+  findAllForAdmin(@Query() query: AdminProductQueryDto) {
+    return this.productsService.getAdminProducts(query);
+  }
+
+  @Get('admin/:id')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.SELLER)
+  @ResponseMessage('Admin product fetched successfully')
+  findOneForAdmin(@Param('id', ParseIntPipe) id: number) {
+    return this.productsService.getProductById(id);
+  }
+
+  @Public()
   @Get(':id')
   @ResponseMessage('Product fetched successfully')
   findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.productsService.getProductById(id);
+    return this.productsService.getPublicProductById(id);
   }
 
   @Post()

@@ -34,7 +34,13 @@ interface Values {
   price: number;
   compareAtPrice?: number;
   quantity: number;
+  status: Product['status'];
   isFeatured: boolean;
+  isTrending: boolean;
+  isBestSeller: boolean;
+  offerStartsAt: string;
+  offerEndsAt: string;
+  publishedAt: string;
   specifications: string;
 }
 
@@ -70,7 +76,15 @@ export function ProductForm({ product }: { product?: Product }) {
       price: product?.price,
       compareAtPrice: product?.compareAtPrice ?? undefined,
       quantity: product?.quantity ?? 0,
+      status: product?.status ?? 'ACTIVE',
       isFeatured: product?.isFeatured ?? false,
+      isTrending: product?.isTrending ?? false,
+      isBestSeller: product?.isBestSeller ?? false,
+      offerStartsAt: toDateTimeLocal(product?.offerStartsAt),
+      offerEndsAt: toDateTimeLocal(product?.offerEndsAt),
+      publishedAt:
+        toDateTimeLocal(product?.publishedAt) ||
+        toDateTimeLocal(new Date().toISOString()),
       specifications: JSON.stringify(product?.specifications ?? {}, null, 2),
     },
   });
@@ -103,7 +117,19 @@ export function ProductForm({ product }: { product?: Product }) {
       data.set('compareAtPrice', String(values.compareAtPrice));
     }
     data.set('quantity', String(values.quantity));
+    data.set('status', values.status);
     data.set('isFeatured', String(values.isFeatured));
+    data.set('isTrending', String(values.isTrending));
+    data.set('isBestSeller', String(values.isBestSeller));
+    if (values.offerStartsAt) {
+      data.set('offerStartsAt', new Date(values.offerStartsAt).toISOString());
+    }
+    if (values.offerEndsAt) {
+      data.set('offerEndsAt', new Date(values.offerEndsAt).toISOString());
+    }
+    if (values.publishedAt) {
+      data.set('publishedAt', new Date(values.publishedAt).toISOString());
+    }
     data.set('specifications', JSON.stringify(specifications));
     files.forEach((file) => data.append('images', file));
 
@@ -271,6 +297,15 @@ export function ProductForm({ product }: { product?: Product }) {
                 })}
               />
             </Field>
+            <Field label="Catalog status">
+              <select className="field" {...register('status')}>
+                <option value="ACTIVE">Active</option>
+                <option value="DRAFT">Draft</option>
+                <option value="ARCHIVED">Archived</option>
+              </select>
+            </Field>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
             <label className="flex min-h-12 items-center gap-3 self-end rounded-2xl border bg-white/65 px-4">
               <input
                 type="checkbox"
@@ -280,6 +315,38 @@ export function ProductForm({ product }: { product?: Product }) {
               <Star size={16} />
               <span className="text-sm font-bold">Featured product</span>
             </label>
+            <label className="flex min-h-12 items-center gap-3 self-end rounded-2xl border bg-white/65 px-4">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-[#b4472f]"
+                {...register('isTrending')}
+              />
+              <Star size={16} />
+              <span className="text-sm font-bold">Trending</span>
+            </label>
+            <label className="flex min-h-12 items-center gap-3 self-end rounded-2xl border bg-white/65 px-4">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-[#b4472f]"
+                {...register('isBestSeller')}
+              />
+              <Star size={16} />
+              <span className="text-sm font-bold">Best seller</span>
+            </label>
+          </div>
+          <div className="grid gap-5 sm:grid-cols-3">
+            <Field label="Published at">
+              <Input type="datetime-local" {...register('publishedAt')} />
+            </Field>
+            <Field
+              label="Offer starts"
+              hint="Optional; requires a compare-at price."
+            >
+              <Input type="datetime-local" {...register('offerStartsAt')} />
+            </Field>
+            <Field label="Offer ends">
+              <Input type="datetime-local" {...register('offerEndsAt')} />
+            </Field>
           </div>
         </FormSection>
 
@@ -387,6 +454,13 @@ export function ProductForm({ product }: { product?: Product }) {
       </form>
     </section>
   );
+}
+
+function toDateTimeLocal(value?: string | null): string {
+  if (!value) return '';
+  const date = new Date(value);
+  const timezoneOffset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 16);
 }
 
 function FormSection({

@@ -15,6 +15,7 @@ import {
   TicketPercent,
   UsersRound,
   Warehouse,
+  MessagesSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -34,7 +35,8 @@ const operations = [
 ];
 
 const system = [
-  { href: '/admin/notifications', label: 'Notifications', icon: Bell },
+  { href: '/admin/notifications', label: 'Broadcasts', icon: Bell },
+  { href: '/admin/contact', label: 'Messages', icon: MessagesSquare },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 

@@ -13,7 +13,8 @@ export function EditProduct({ productId }: { productId: string }) {
   const { accessToken } = useAuth();
   const query = useQuery({
     queryKey: ['admin', 'product', productId],
-    queryFn: () => apiFetch<Product>(`/products/${productId}`, {}, accessToken),
+    queryFn: () =>
+      apiFetch<Product>(`/products/admin/${productId}`, {}, accessToken),
     enabled: Boolean(accessToken),
   });
 

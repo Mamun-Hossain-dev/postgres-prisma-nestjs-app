@@ -65,6 +65,10 @@ button {
   font: inherit;
 }
 
+button:not(:disabled) {
+  cursor: pointer;
+}
+
 input,
 select {
   outline: none;

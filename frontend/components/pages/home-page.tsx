@@ -2,7 +2,9 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
+import { useState, type FormEvent } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   ArrowRight,
   BadgeCheck,
@@ -23,10 +25,15 @@ import {
   Zap,
 } from 'lucide-react';
 import { apiFetch, money } from '@/lib/api';
-import type { PaginatedProducts, Product } from '@/lib/types';
+import type {
+  NewsletterSubscriber,
+  Product,
+  ProductCollections,
+} from '@/lib/types';
 import { demoProducts } from '@/lib/demo-products';
 import { ProductCard } from '@/components/product-card';
 import { AddToCartButton } from '@/components/add-to-cart-button';
+import { homeProductCollectionsQueryOptions } from '@/lib/queries/products';
 
 const categories = [
   {
@@ -87,26 +94,33 @@ const faqs = [
 ];
 
 export function HomePage() {
-  const productsQuery = useQuery({
-    queryKey: ['products', 'home-merchandising'],
-    queryFn: () =>
-      apiFetch<PaginatedProducts>('/products?sort=newest&limit=24&page=1'),
-  });
-  const products = productsQuery.data?.data.length
-    ? productsQuery.data.data
-    : demoProducts;
-  const featured = products.filter((product) => product.isFeatured);
-  const featuredProducts = (featured.length ? featured : products).slice(0, 4);
-  const offers = products.filter(
-    (product) =>
-      product.compareAtPrice && product.compareAtPrice > product.price,
-  );
-  const offer = offers[0] ?? products[0];
-  const newest = products.slice(0, 5);
-  const trending = [...products]
-    .sort((a, b) => Number(b.isFeatured) - Number(a.isFeatured))
-    .slice(0, 3);
-  const brands = Array.from(new Set(products.map((product) => product.brand)));
+  const productsQuery = useQuery(homeProductCollectionsQueryOptions());
+  const fallbackCollections: ProductCollections = {
+    featured: demoProducts.filter((product) => product.isFeatured),
+    newArrivals: demoProducts,
+    offers: demoProducts.filter(
+      (product) =>
+        product.compareAtPrice && product.compareAtPrice > product.price,
+    ),
+    bestSellers: demoProducts.filter((product) => product.isBestSeller),
+    trending: demoProducts.filter((product) => product.isTrending),
+    brands: Array.from(new Set(demoProducts.map((product) => product.brand))),
+  };
+  const collections = productsQuery.data ?? fallbackCollections;
+  const featuredProducts = (
+    collections.featured.length ? collections.featured : collections.newArrivals
+  ).slice(0, 4);
+  const offer = collections.offers[0];
+  const newest = collections.newArrivals.slice(0, 5);
+  const bestSellers = (
+    collections.bestSellers.length
+      ? collections.bestSellers
+      : collections.newArrivals
+  ).slice(0, 4);
+  const trending = (
+    collections.trending.length ? collections.trending : collections.featured
+  ).slice(0, 3);
+  const brands = collections.brands;
 
   return (
     <>
@@ -204,7 +218,7 @@ export function HomePage() {
           action="Browse everything"
         />
         <div className="mt-8 grid overflow-hidden rounded-[1.75rem] border bg-white md:grid-cols-2">
-          {products.slice(0, 4).map((product, index) => (
+          {bestSellers.map((product, index) => (
             <CompactProduct
               key={product.id}
               product={product}
@@ -622,6 +636,26 @@ function ReviewsReady() {
 }
 
 function NewsletterReady() {
+  const [email, setEmail] = useState('');
+  const subscribe = useMutation({
+    mutationFn: (subscriberEmail: string) =>
+      apiFetch<NewsletterSubscriber>('/newsletter/subscribers', {
+        method: 'POST',
+        body: JSON.stringify({ email: subscriberEmail }),
+      }),
+    onSuccess: () => {
+      setEmail('');
+      toast.success('You are subscribed to DeviceDock updates');
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const normalizedEmail = email.trim().toLowerCase();
+    if (normalizedEmail) subscribe.mutate(normalizedEmail);
+  };
+
   return (
     <section className="px-5 py-8 lg:px-8">
       <div className="mx-auto grid max-w-[1440px] gap-8 rounded-[2rem] bg-[#111216] p-8 text-white sm:p-10 lg:grid-cols-[1fr_auto] lg:items-center">
@@ -633,23 +667,31 @@ function NewsletterReady() {
             Be first to hear what docks next.
           </h2>
           <p className="mt-2 text-sm text-white/45">
-            Newsletter delivery will activate when subscriber consent and email
-            APIs are ready.
+            Product drops, limited offers and practical buying updates—sent only
+            with your consent.
           </p>
         </div>
-        <div className="flex w-full max-w-md rounded-full border border-white/10 bg-white/5 p-1.5 opacity-70">
+        <form
+          onSubmit={submit}
+          className="flex w-full max-w-md rounded-full border border-white/10 bg-white/5 p-1.5"
+        >
           <input
-            disabled
-            placeholder="Email signup coming soon"
+            type="email"
+            required
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="you@example.com"
+            aria-label="Newsletter email"
             className="min-w-0 flex-1 bg-transparent px-4 text-sm placeholder:text-white/35"
           />
           <button
-            disabled
-            className="rounded-full bg-white/15 px-5 py-3 text-xs font-bold text-white/50"
+            type="submit"
+            disabled={subscribe.isPending}
+            className="rounded-full bg-white px-5 py-3 text-xs font-bold text-ink disabled:opacity-50"
           >
-            Notify me
+            {subscribe.isPending ? 'Joining…' : 'Notify me'}
           </button>
-        </div>
+        </form>
       </div>
     </section>
   );

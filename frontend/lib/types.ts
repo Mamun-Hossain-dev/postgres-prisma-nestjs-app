@@ -18,9 +18,24 @@ export interface Product {
   price: number;
   compareAtPrice: number | null;
   quantity: number;
+  status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
   isFeatured: boolean;
+  isTrending: boolean;
+  isBestSeller: boolean;
+  offerStartsAt: string | null;
+  offerEndsAt: string | null;
+  publishedAt: string;
   specifications: Record<string, string> | null;
   images: ProductImage[];
+}
+
+export interface ProductCollections {
+  featured: Product[];
+  newArrivals: Product[];
+  offers: Product[];
+  bestSellers: Product[];
+  trending: Product[];
+  brands: string[];
 }
 
 export interface PaginatedProducts {
@@ -39,9 +54,11 @@ export interface User {
   id: number;
   name: string;
   email: string;
+  phone: string | null;
   age?: number;
   role: Role;
   isBlocked: boolean;
+  marketingConsent: boolean;
   profileImageUrl: string | null;
 }
 
@@ -73,4 +90,53 @@ export interface ApiEnvelope<T> {
   success: boolean;
   message: string;
   data: T;
+}
+
+export type ContactStatus = 'NEW' | 'IN_PROGRESS' | 'RESOLVED';
+
+export interface ContactMessage {
+  id: number;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  status: ContactStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NewsletterSubscriber {
+  id: number;
+  email: string;
+  name: string | null;
+  status: 'ACTIVE' | 'UNSUBSCRIBED';
+  subscribedAt: string;
+}
+
+export interface NewsletterBroadcast {
+  id: number;
+  subject: string;
+  previewText: string | null;
+  content: string;
+  status: 'SENDING' | 'SENT' | 'PARTIAL' | 'FAILED';
+  recipientCount: number;
+  sentCount: number;
+  failedCount: number;
+  sentAt: string | null;
+  createdAt: string;
+}
+
+export interface PaginatedContactMessages {
+  data: ContactMessage[];
+  meta: PaginatedProducts['meta'];
+}
+
+export interface PaginatedNewsletterSubscribers {
+  data: NewsletterSubscriber[];
+  meta: PaginatedProducts['meta'];
+}
+
+export interface PaginatedNewsletterBroadcasts {
+  data: NewsletterBroadcast[];
+  meta: PaginatedProducts['meta'];
 }

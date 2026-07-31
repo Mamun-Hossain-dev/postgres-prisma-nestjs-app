@@ -10,10 +10,12 @@ export interface User {
   id: number;
   email: string;
   name: string;
+  phone: string | null;
   age: number;
   password: string;
   role: Role;
   isBlocked: boolean;
+  marketingConsent: boolean;
   profileImageUrl: string | null;
   profileImagePublicId: string | null;
 }
@@ -29,6 +31,8 @@ export interface CreateUserInput {
   name: string;
   email: string;
   age?: number;
+  phone?: string;
+  marketingConsent?: boolean;
   role: Role;
   password: string;
 }
@@ -37,4 +41,6 @@ export interface UpdateUserInput {
   name?: string;
   email?: string;
   age?: number;
+  phone?: string;
+  marketingConsent?: boolean;
 }

@@ -25,7 +25,7 @@ export function AdminOverview() {
     queryKey: ['admin', 'products'],
     queryFn: () =>
       apiFetch<PaginatedProducts>(
-        '/products?page=1&limit=100',
+        '/products/admin/list?page=1&limit=100',
         {},
         accessToken,
       ),

@@ -4,8 +4,11 @@ import {
   CreateProductInput,
   CreateProductRequest,
   Product,
+  ProductCollections,
   ProductListOptions,
+  ProductStatus,
   UpdateProductInput,
+  UpdateProductRequest,
 } from './interfaces/product.interface';
 import { AppException } from '../../common/exceptions/app.exception';
 import { UploadsService } from '../../infrastructure/uploads/uploads.service';
@@ -41,9 +44,35 @@ export class ProductsService {
       minPrice: options.minPrice,
       maxPrice: options.maxPrice,
       featured: options.featured,
+      status: ProductStatus.ACTIVE,
+      onSale: options.onSale,
+      publishedBefore: new Date(),
       sort: options.sort,
     });
     return toPaginatedResult(result, options);
+  }
+
+  async getAdminProducts(
+    options: PaginationOptions & Omit<ProductListOptions, 'skip' | 'take'>,
+  ): Promise<PaginatedResult<Product>> {
+    const result = await this.productsRepository.findAll({
+      ...toRepositoryPagination(options),
+      search: options.search?.trim(),
+      category: options.category,
+      brand: options.brand?.trim(),
+      minPrice: options.minPrice,
+      maxPrice: options.maxPrice,
+      featured: options.featured,
+      status: options.status,
+      onSale: options.onSale,
+      publishedBefore: options.publishedBefore,
+      sort: options.sort,
+    });
+    return toPaginatedResult(result, options);
+  }
+
+  getHomeCollections(limit = 8): Promise<ProductCollections> {
+    return this.productsRepository.findCollections(limit);
   }
 
   async getProductById(id: number): Promise<Product> {
@@ -59,6 +88,20 @@ export class ProductsService {
     return product;
   }
 
+  async getPublicProductById(id: number): Promise<Product> {
+    const product = await this.getProductById(id);
+    if (
+      product.status !== ProductStatus.ACTIVE ||
+      new Date(product.publishedAt) > new Date()
+    ) {
+      throw new AppException('Product not found', {
+        code: 'PRODUCT_NOT_FOUND',
+        status: 404,
+      });
+    }
+    return product;
+  }
+
   async createProduct(
     input: CreateProductRequest,
     files: FileToStore[] = [],
@@ -71,7 +114,17 @@ export class ProductsService {
         slug: this.toSlug(input.slug ?? input.title),
         sku: input.sku.trim().toUpperCase(),
         brand: input.brand.trim(),
+        offerStartsAt: input.offerStartsAt
+          ? new Date(input.offerStartsAt)
+          : undefined,
+        offerEndsAt: input.offerEndsAt
+          ? new Date(input.offerEndsAt)
+          : undefined,
+        publishedAt: input.publishedAt
+          ? new Date(input.publishedAt)
+          : undefined,
       };
+      this.validateOffer(normalizedInput);
       return await this.productsRepository.create(
         normalizedInput,
         uploadedImages.map(({ url, publicId }) => ({ url, publicId })),
@@ -86,7 +139,7 @@ export class ProductsService {
 
   async updateProduct(
     id: number,
-    input: UpdateProductInput,
+    input: UpdateProductRequest,
     files: FileToStore[] = [],
   ): Promise<Product> {
     await this.getProductById(id);
@@ -94,12 +147,18 @@ export class ProductsService {
     let updatedProduct: Product | null;
 
     try {
+      const { offerStartsAt, offerEndsAt, publishedAt, ...productInput } =
+        input;
       const normalizedInput: UpdateProductInput = {
-        ...input,
+        ...productInput,
         ...(input.slug ? { slug: this.toSlug(input.slug) } : {}),
         ...(input.sku ? { sku: input.sku.trim().toUpperCase() } : {}),
         ...(input.brand ? { brand: input.brand.trim() } : {}),
+        ...(offerStartsAt ? { offerStartsAt: new Date(offerStartsAt) } : {}),
+        ...(offerEndsAt ? { offerEndsAt: new Date(offerEndsAt) } : {}),
+        ...(publishedAt ? { publishedAt: new Date(publishedAt) } : {}),
       };
+      this.validateOffer(normalizedInput, await this.getProductById(id));
       updatedProduct = await this.productsRepository.update(
         id,
         normalizedInput,
@@ -160,6 +219,44 @@ export class ProductsService {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
+  }
+
+  private validateOffer(
+    input: CreateProductInput | UpdateProductInput,
+    existing?: Product,
+  ): void {
+    const price = input.price ?? existing?.price;
+    const compareAtPrice =
+      input.compareAtPrice === undefined
+        ? existing?.compareAtPrice
+        : input.compareAtPrice;
+    const startsAt =
+      input.offerStartsAt === undefined
+        ? existing?.offerStartsAt
+        : input.offerStartsAt;
+    const endsAt =
+      input.offerEndsAt === undefined
+        ? existing?.offerEndsAt
+        : input.offerEndsAt;
+
+    if (
+      compareAtPrice !== null &&
+      compareAtPrice !== undefined &&
+      price !== undefined &&
+      compareAtPrice <= price
+    ) {
+      throw new AppException('Compare-at price must be greater than price', {
+        code: 'INVALID_OFFER_PRICE',
+        status: 400,
+      });
+    }
+
+    if (startsAt && endsAt && startsAt >= endsAt) {
+      throw new AppException('Offer end must be after its start', {
+        code: 'INVALID_OFFER_WINDOW',
+        status: 400,
+      });
+    }
   }
 
   private async deleteFilesSafely(publicIds: string[]): Promise<void> {

@@ -55,7 +55,11 @@ export function AdminProducts() {
   const query = useQuery({
     queryKey: ['admin', 'products', params.toString()],
     queryFn: () =>
-      apiFetch<PaginatedProducts>(`/products?${params}`, {}, accessToken),
+      apiFetch<PaginatedProducts>(
+        `/products/admin/list?${params}`,
+        {},
+        accessToken,
+      ),
     enabled: Boolean(accessToken),
     placeholderData: (previous) => previous,
   });
