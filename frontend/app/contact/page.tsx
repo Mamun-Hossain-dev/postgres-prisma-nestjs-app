@@ -11,7 +11,7 @@ import {
 import { ContactForm } from '@/components/pages/contact-form';
 
 export const metadata: Metadata = {
-  title: 'Contact — DeviceDock',
+  title: 'Contact - DeviceDock',
   description:
     'Find the right DeviceDock support route for products, accounts and orders.',
 };
@@ -44,7 +44,7 @@ export default function Page() {
   return (
     <>
       <section className="overflow-hidden bg-ink px-5 py-24 text-white sm:py-32 lg:px-8">
-        <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1fr_0.65fr] lg:items-end">
+        <div className="mx-auto grid gap-12 lg:grid-cols-[1fr_0.65fr] lg:items-end">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-accent">
               Contact & support
@@ -69,7 +69,7 @@ export default function Page() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 py-24 lg:px-8">
+      <section className="mx-auto px-5 py-24 lg:px-8">
         <div className="grid gap-5 lg:grid-cols-3">
           {channels.map(({ icon: Icon, title, text, href, action }) => (
             <article
@@ -101,7 +101,7 @@ export default function Page() {
       <ContactForm />
 
       <section className="bg-[#ded7c7] px-5 py-24 lg:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col justify-between gap-8 lg:flex-row lg:items-center">
+        <div className="mx-auto flex flex-col justify-between gap-8 lg:flex-row lg:items-center">
           <div>
             <CircleHelp size={28} />
             <h2 className="display mt-5 text-5xl">

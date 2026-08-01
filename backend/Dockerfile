@@ -26,7 +26,7 @@ FROM dependencies AS migration
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 
-CMD ["pnpm", "exec", "prisma", "migrate", "deploy"]
+CMD ["sh", "-c", "for i in 1 2 3 4 5; do pnpm exec prisma migrate deploy && exit 0; echo \"migration attempt $i failed (Neon may be waking up); retrying...\"; sleep 10; done; exit 1"]
 
 
 FROM dependencies AS build

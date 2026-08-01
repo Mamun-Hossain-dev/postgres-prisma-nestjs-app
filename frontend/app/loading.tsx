@@ -1,7 +1,7 @@
 export default function Loading() {
   return (
     <div
-      className="mx-auto min-h-[70vh] max-w-7xl px-5 py-16 lg:px-8"
+      className="min-h-[70vh] px-5 py-16 lg:px-8"
       aria-busy="true"
     >
       <span className="sr-only">Loading page</span>

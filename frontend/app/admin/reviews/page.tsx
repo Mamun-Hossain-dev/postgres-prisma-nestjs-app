@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Star } from 'lucide-react';
 import { AdminFeaturePage } from '@/components/admin/admin-feature-page';
 
-export const metadata: Metadata = { title: 'Reviews — DeviceDock Admin' };
+export const metadata: Metadata = { title: 'Reviews - DeviceDock Admin' };
 export default function Page() {
   return (
     <AdminFeaturePage

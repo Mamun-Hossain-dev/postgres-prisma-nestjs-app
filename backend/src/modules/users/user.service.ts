@@ -35,11 +35,12 @@ export class UserService {
   ) {}
 
   async getAllUsers(
-    options: PaginationOptions,
+    options: PaginationOptions & { role?: Role },
   ): Promise<PaginatedResult<PublicUser>> {
-    const result = await this.userRepository.findAll(
-      toRepositoryPagination(options),
-    );
+    const result = await this.userRepository.findAll({
+      ...toRepositoryPagination(options),
+      role: options.role,
+    });
 
     return toPaginatedResult(
       { ...result, data: result.data.map(toPublicUser) },

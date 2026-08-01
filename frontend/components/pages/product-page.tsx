@@ -9,6 +9,7 @@ import { apiFetch, money } from '@/lib/api';
 import type { Product } from '@/lib/types';
 import { demoProducts } from '@/lib/demo-products';
 import { AddToCartButton } from '@/components/add-to-cart-button';
+import { ProductImageFallback } from '@/components/product-image-fallback';
 
 export function ProductPage({ productId }: { productId: string }) {
   const [quantity, setQuantity] = useState(1);
@@ -24,7 +25,7 @@ export function ProductPage({ productId }: { productId: string }) {
 
   if (!product) {
     return (
-      <div className="mx-auto min-h-[70vh] max-w-7xl px-5 py-20">
+      <div className="min-h-[70vh] px-5 py-20 lg:px-8">
         <div className="h-[34rem] animate-pulse rounded-[2rem] bg-black/5" />
       </div>
     );
@@ -33,7 +34,7 @@ export function ProductPage({ productId }: { productId: string }) {
   const image = product.images[0]?.url;
 
   return (
-    <div className="mx-auto max-w-7xl px-5 py-10 lg:px-8 lg:py-16">
+    <div className="px-5 py-10 lg:px-8 lg:py-16">
       <Link
         href="/shop"
         className="mb-8 inline-flex items-center gap-2 text-sm font-semibold"
@@ -51,11 +52,7 @@ export function ProductPage({ productId }: { productId: string }) {
               priority
             />
           ) : (
-            <div className="absolute inset-0 grid place-items-center">
-              <div className="h-3/5 w-2/5 rotate-6 rounded-[3rem] border-2 border-white/40 bg-ink shadow-2xl">
-                <div className="m-3 h-[calc(100%-1.5rem)] rounded-[2.4rem] bg-gradient-to-br from-[#372e2a] to-black" />
-              </div>
-            </div>
+            <ProductImageFallback category={product.category} />
           )}
         </div>
         <div className="flex flex-col justify-center">

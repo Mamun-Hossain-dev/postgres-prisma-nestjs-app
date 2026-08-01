@@ -159,7 +159,7 @@ export function CartPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
+    <div className="px-5 py-16 lg:px-8">
       <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent">
         Your selection
       </p>

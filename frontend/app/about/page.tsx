@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'About — DeviceDock',
+  title: 'About - DeviceDock',
   description: 'Why DeviceDock is building a clearer way to choose technology.',
 };
 
@@ -36,7 +36,7 @@ export default function Page() {
     <>
       <section className="relative overflow-hidden bg-ink px-5 py-24 text-white sm:py-32 lg:px-8">
         <div className="absolute -right-20 -top-24 h-96 w-96 rounded-full bg-accent/20 blur-3xl" />
-        <div className="relative mx-auto max-w-7xl">
+        <div className="relative mx-auto">
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-accent">
             About DeviceDock
           </p>
@@ -51,7 +51,7 @@ export default function Page() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-12 px-5 py-24 lg:grid-cols-2 lg:px-8">
+      <section className="mx-auto grid gap-12 px-5 py-24 lg:grid-cols-2 lg:px-8">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent">
             Our point of view
@@ -77,7 +77,7 @@ export default function Page() {
       </section>
 
       <section className="bg-[#ded7c7] px-5 py-24 lg:px-8">
-        <div className="mx-auto max-w-7xl">
+        <div className="mx-auto">
           <div className="grid gap-5 md:grid-cols-3">
             {principles.map(({ icon: Icon, title, text }, index) => (
               <article
@@ -98,7 +98,7 @@ export default function Page() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 py-24 lg:px-8">
+      <section className="mx-auto px-5 py-24 lg:px-8">
         <div className="flex flex-col justify-between gap-8 rounded-[2.5rem] bg-ink p-8 text-white sm:p-12 lg:flex-row lg:items-end">
           <div>
             <ShieldCheck className="text-accent" />

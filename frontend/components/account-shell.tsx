@@ -190,7 +190,7 @@ export function AccountShell({
             </Button>
           </div>
         </header>
-        <main className="p-5 sm:p-8 xl:p-10">{children}</main>
+        <main className="p-5 sm:p-8">{children}</main>
       </div>
       <ConfirmDialog
         open={logoutOpen}

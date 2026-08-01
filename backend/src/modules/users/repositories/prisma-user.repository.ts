@@ -7,25 +7,25 @@ import {
   User,
   UserProfileImage,
 } from '../interfaces/user.interface';
-import type {
-  RepositoryPaginatedResult,
-  RepositoryPaginationOptions,
-} from '../../../common/interfaces/pagination.interface';
+import type { RepositoryPaginatedResult } from '../../../common/interfaces/pagination.interface';
+import type { UserListOptions } from './user.repository';
 
 @Injectable()
 export class PrismaUserRepository implements UserRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(
-    options: RepositoryPaginationOptions,
+    options: UserListOptions,
   ): Promise<RepositoryPaginatedResult<User>> {
+    const where = options.role ? { role: options.role } : undefined;
     const [data, totalItems] = await this.prisma.$transaction([
       this.prisma.user.findMany({
         skip: options.skip,
         take: options.take,
+        where,
         orderBy: { id: 'asc' },
       }),
-      this.prisma.user.count(),
+      this.prisma.user.count({ where }),
     ]);
 
     return { data, totalItems };

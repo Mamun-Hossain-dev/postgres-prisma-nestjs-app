@@ -20,6 +20,8 @@ RUN pnpm run build
 
 FROM node:22-alpine AS runtime
 WORKDIR /app
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
 RUN apk add --no-cache dumb-init
 COPY --from=build --chown=node:node /app/public ./public
 COPY --from=build --chown=node:node /app/.next/standalone ./

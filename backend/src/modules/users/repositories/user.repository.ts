@@ -5,14 +5,17 @@ import {
   UserProfileImage,
 } from '../interfaces/user.interface';
 import type {
-  RepositoryPaginatedResult,
   RepositoryPaginationOptions,
+  RepositoryPaginatedResult,
 } from '../../../common/interfaces/pagination.interface';
+import type { Role } from '../interfaces/user.interface';
+
+export interface UserListOptions extends RepositoryPaginationOptions {
+  role?: Role;
+}
 
 export interface UserRepository {
-  findAll(
-    options: RepositoryPaginationOptions,
-  ): Promise<RepositoryPaginatedResult<User>>;
+  findAll(options: UserListOptions): Promise<RepositoryPaginatedResult<User>>;
   findByEmail(email: string): Promise<User | null>;
   findByGoogleId(googleId: string): Promise<User | null>;
   findById(id: number): Promise<User | null>;

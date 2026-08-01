@@ -19,7 +19,11 @@ export function AdminOverview() {
   const users = useQuery({
     queryKey: ['admin', 'users'],
     queryFn: () =>
-      apiFetch<PaginatedUsers>('/users?page=1&limit=100', {}, accessToken),
+      apiFetch<PaginatedUsers>(
+        '/users?page=1&limit=100&role=USER',
+        {},
+        accessToken,
+      ),
     enabled: !!accessToken,
   });
   const products = useQuery({

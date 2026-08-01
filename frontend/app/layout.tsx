@@ -9,7 +9,7 @@ import { Providers } from '@/components/providers'
 import { SiteChrome } from '@/components/site-chrome'
 
 export const metadata: Metadata = {
-  title: 'Device Dock-Thoughtful technology',
+  title: 'DeviceDock - Thoughtful technology',
   description: 'A curated destination for phones, laptops, tablets and audio.',
 }
 

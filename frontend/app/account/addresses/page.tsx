@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { MapPin } from 'lucide-react';
 import { AccountFeaturePage } from '@/components/account/account-feature-page';
 
-export const metadata: Metadata = { title: 'Addresses — DeviceDock' };
+export const metadata: Metadata = { title: 'Addresses - DeviceDock' };
 
 export default function Page() {
   return (

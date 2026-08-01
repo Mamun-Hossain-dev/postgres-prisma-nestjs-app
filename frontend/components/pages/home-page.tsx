@@ -127,7 +127,7 @@ export function HomePage() {
       <Hero />
 
       <section className="border-b bg-white">
-        <div className="mx-auto grid max-w-[1440px] grid-cols-2 divide-x px-5 sm:grid-cols-4 lg:px-8">
+        <div className="mx-auto grid grid-cols-2 divide-x px-5 sm:grid-cols-4 lg:px-8">
           {[
             [Truck, 'Fast delivery', 'Selected products'],
             [ShieldCheck, 'Secure account', 'Protected sessions'],
@@ -153,7 +153,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1440px] px-5 py-16 lg:px-8 lg:py-20">
+      <section className="mx-auto px-5 py-16 lg:px-8 lg:py-20">
         <SectionHeading
           eyebrow="Shop by category"
           title="Find the tech that fits."
@@ -191,7 +191,7 @@ export function HomePage() {
       </section>
 
       <section className="bg-white px-5 py-16 lg:px-8 lg:py-20">
-        <div className="mx-auto max-w-[1440px]">
+        <div className="mx-auto">
           <SectionHeading
             eyebrow="Featured products"
             title="The devices to know now."
@@ -209,7 +209,7 @@ export function HomePage() {
 
       {offer && <LimitedOffer product={offer} />}
 
-      <section className="mx-auto max-w-[1440px] px-5 py-16 lg:px-8 lg:py-20">
+      <section className="mx-auto px-5 py-16 lg:px-8 lg:py-20">
         <SectionHeading
           eyebrow="Best sellers"
           title="Popular picks, ready to explore."
@@ -229,7 +229,7 @@ export function HomePage() {
       </section>
 
       <section className="overflow-hidden bg-[#0b0b0e] px-5 py-16 text-white lg:px-8 lg:py-20">
-        <div className="mx-auto max-w-[1440px]">
+        <div className="mx-auto">
           <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#e58a63]">
@@ -278,7 +278,7 @@ export function HomePage() {
       </section>
 
       <section className="bg-white px-5 py-16 lg:px-8 lg:py-20">
-        <div className="mx-auto grid max-w-[1440px] gap-10 lg:grid-cols-[0.75fr_1.25fr]">
+        <div className="mx-auto grid gap-10 lg:grid-cols-[0.75fr_1.25fr]">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">
               New arrivals
@@ -330,7 +330,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1440px] px-5 py-16 lg:px-8 lg:py-20">
+      <section className="mx-auto px-5 py-16 lg:px-8 lg:py-20">
         <div className="rounded-[2rem] border bg-gradient-to-br from-[#f7e7e1] via-white to-[#f4f4f6] p-7 sm:p-10">
           <p className="text-center text-xs font-bold uppercase tracking-[0.18em] text-black/35">
             Popular brands in the catalog
@@ -360,7 +360,7 @@ export function HomePage() {
 function Hero() {
   return (
     <section className="bg-white px-3 pb-3 pt-3 sm:px-5 sm:pb-5 lg:px-8">
-      <div className="relative mx-auto min-h-[560px] max-w-[1440px] overflow-hidden rounded-[1.75rem] bg-[#0c0d10] text-white sm:min-h-[620px]">
+      <div className="relative mx-auto min-h-[560px] overflow-hidden rounded-[1.75rem] bg-[#0c0d10] text-white sm:min-h-[620px]">
         <Image
           src="/images/gadget-hero.png"
           alt="Premium electronics available at DeviceDock"
@@ -427,7 +427,7 @@ function LimitedOffer({ product }: { product: Product }) {
       : null;
   return (
     <section id="offers" className="px-5 py-8 lg:px-8">
-      <div className="mx-auto grid max-w-[1440px] overflow-hidden rounded-[2rem] bg-gradient-to-r from-[#762d36] via-[#a83d32] to-[#d46a36] text-white lg:grid-cols-[1fr_0.8fr]">
+      <div className="mx-auto grid overflow-hidden rounded-[2rem] bg-gradient-to-r from-[#762d36] via-[#a83d32] to-[#d46a36] text-white lg:grid-cols-[1fr_0.8fr]">
         <div className="p-8 sm:p-12">
           <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-xs font-bold">
             <Sparkles size={13} /> Limited offer
@@ -572,7 +572,7 @@ function WhyChooseUs() {
   ];
   return (
     <section className="bg-white px-5 py-16 lg:px-8 lg:py-20">
-      <div className="mx-auto max-w-[1440px]">
+      <div className="mx-auto">
         <div className="text-center">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">
             Why choose DeviceDock
@@ -607,7 +607,7 @@ function WhyChooseUs() {
 
 function ReviewsReady() {
   return (
-    <section className="mx-auto max-w-[1440px] px-5 py-16 lg:px-8">
+    <section className="mx-auto px-5 py-16 lg:px-8">
       <div className="grid overflow-hidden rounded-[2rem] border bg-[#f0f0f2] lg:grid-cols-[0.8fr_1.2fr]">
         <div className="p-8 sm:p-10">
           <Quote className="text-accent" />
@@ -658,7 +658,7 @@ function NewsletterReady() {
 
   return (
     <section className="px-5 py-8 lg:px-8">
-      <div className="mx-auto grid max-w-[1440px] gap-8 rounded-[2rem] bg-[#111216] p-8 text-white sm:p-10 lg:grid-cols-[1fr_auto] lg:items-center">
+      <div className="mx-auto grid gap-8 rounded-[2rem] bg-[#111216] p-8 text-white sm:p-10 lg:grid-cols-[1fr_auto] lg:items-center">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#e58a63]">
             DeviceDock updates
@@ -699,7 +699,7 @@ function NewsletterReady() {
 
 function Faq() {
   return (
-    <section className="mx-auto grid max-w-[1440px] gap-10 px-5 py-16 lg:grid-cols-[0.65fr_1fr] lg:px-8 lg:py-20">
+    <section className="mx-auto grid gap-10 px-5 py-16 lg:grid-cols-[0.65fr_1fr] lg:px-8 lg:py-20">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">
           FAQ

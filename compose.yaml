@@ -18,8 +18,8 @@ services:
     image: rabbitmq:4-management
     restart: unless-stopped
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-devicedock}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-devicedock_local_password}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     ports:
@@ -50,6 +50,7 @@ services:
     build:
       context: ./backend
       target: migration
+      no_cache: true
     restart: 'no'
     env_file: ./backend/.env
     networks: [app]
@@ -58,6 +59,7 @@ services:
     build:
       context: ./backend
       target: runtime
+      no_cache: true
     restart: unless-stopped
     env_file: ./backend/.env
     environment:
@@ -67,12 +69,12 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
-      RABBITMQ_URL: amqp://${RABBITMQ_USER:-devicedock}:${RABBITMQ_PASSWORD}@rabbitmq:5672
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-devicedock}:${RABBITMQ_PASSWORD:-devicedock_local_password}@rabbitmq:5672
       MAIL_ENABLED: ${MAIL_ENABLED:-true}
       SMTP_HOST: ${SMTP_HOST:-mailpit}
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_SECURE: ${SMTP_SECURE:-false}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-78167944498-6ftrc40s37dcj7gdkmlk8oulvunapcta.apps.googleusercontent.com}
     ports:
       - '127.0.0.1:${BACKEND_PORT:-8080}:8080'
     depends_on:
@@ -89,6 +91,7 @@ services:
   frontend:
     build:
       context: ./frontend
+      no_cache: true
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
         NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}

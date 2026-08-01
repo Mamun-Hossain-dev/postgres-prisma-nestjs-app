@@ -25,7 +25,7 @@ import type { PublicUser } from './interfaces/user.interface';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ImageFileValidationPipe } from '../../infrastructure/uploads/pipes/image-file-validation.pipe';
 import { toFileToStore } from '../../infrastructure/uploads/utils/multer-file.util';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { UserQueryDto } from './dto/user-query.dto';
 
 @Controller('users')
 export class UserController {
@@ -35,7 +35,7 @@ export class UserController {
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @ResponseMessage('Users fetched successfully')
-  findAll(@Query() query: PaginationQueryDto) {
+  findAll(@Query() query: UserQueryDto) {
     return this.userService.getAllUsers(query);
   }
 

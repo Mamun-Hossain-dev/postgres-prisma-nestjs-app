@@ -36,7 +36,7 @@ export function ShopPage() {
   return (
     <Suspense
       fallback={
-        <div className="mx-auto min-h-[70vh] max-w-7xl px-5 py-16 lg:px-8">
+        <div className="min-h-[70vh] px-5 py-16 lg:px-8">
           <div className="h-20 w-2/3 animate-pulse rounded-3xl bg-black/5" />
         </div>
       }
@@ -56,6 +56,8 @@ function ShopContent() {
   const [sort, setSort] = useState('newest');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
+  const [appliedMinPrice, setAppliedMinPrice] = useState('');
+  const [appliedMaxPrice, setAppliedMaxPrice] = useState('');
   const [onSale, setOnSale] = useState(false);
   const [page, setPage] = useState(1);
 
@@ -73,16 +75,16 @@ function ShopContent() {
     if (category) params.set('category', category);
     if (deferredSearch.trim()) params.set('search', deferredSearch.trim());
     if (featuredOnly) params.set('featured', 'true');
-    if (minPrice) params.set('minPrice', minPrice);
-    if (maxPrice) params.set('maxPrice', maxPrice);
+    if (appliedMinPrice) params.set('minPrice', appliedMinPrice);
+    if (appliedMaxPrice) params.set('maxPrice', appliedMaxPrice);
     if (onSale) params.set('onSale', 'true');
     return params.toString();
   }, [
     category,
     deferredSearch,
     featuredOnly,
-    maxPrice,
-    minPrice,
+    appliedMaxPrice,
+    appliedMinPrice,
     onSale,
     page,
     sort,
@@ -91,7 +93,7 @@ function ShopContent() {
   const list = products.data?.data ?? (products.isError ? demoProducts : []);
 
   return (
-    <div className="mx-auto min-h-[70vh] max-w-7xl px-5 py-16 lg:px-8">
+    <div className="min-h-[70vh] px-5 py-16 lg:px-8">
       <div className="max-w-3xl">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent">
           The collection
@@ -104,31 +106,39 @@ function ShopContent() {
         </p>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
+      <form
+        className="mt-5 flex flex-wrap items-center gap-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setAppliedMinPrice(minPrice);
+          setAppliedMaxPrice(maxPrice);
+          setPage(1);
+        }}
+      >
         <input
           type="number"
           min="0"
           value={minPrice}
-          onChange={(event) => {
-            setMinPrice(event.target.value);
-            setPage(1);
-          }}
+          onChange={(event) => setMinPrice(event.target.value)}
           placeholder="Min price"
           aria-label="Minimum price"
-          className="h-10 w-32 rounded-full border bg-white/60 px-4 text-xs"
+          className="h-12 w-40 rounded-full border bg-white/70 px-5 text-sm transition-all duration-200 focus:border-accent focus:bg-white focus:ring-4 focus:ring-accent/10 sm:w-44"
         />
         <input
           type="number"
           min="0"
           value={maxPrice}
-          onChange={(event) => {
-            setMaxPrice(event.target.value);
-            setPage(1);
-          }}
+          onChange={(event) => setMaxPrice(event.target.value)}
           placeholder="Max price"
           aria-label="Maximum price"
-          className="h-10 w-32 rounded-full border bg-white/60 px-4 text-xs"
+          className="h-12 w-40 rounded-full border bg-white/70 px-5 text-sm transition-all duration-200 focus:border-accent focus:bg-white focus:ring-4 focus:ring-accent/10 sm:w-44"
         />
+        <button
+          type="submit"
+          className="inline-flex h-12 items-center gap-2 rounded-full bg-ink px-5 text-xs font-bold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent hover:shadow-md active:translate-y-0"
+        >
+          <SlidersHorizontal size={15} /> Apply filters
+        </button>
         <button
           type="button"
           onClick={() => {
@@ -136,16 +146,18 @@ function ShopContent() {
             setPage(1);
           }}
           aria-pressed={onSale}
-          className={`inline-flex h-10 items-center gap-2 rounded-full px-4 text-xs font-bold ${
-            onSale ? 'bg-accent text-white' : 'border bg-white/60'
+          className={`inline-flex h-12 items-center gap-2 rounded-full px-5 text-xs font-bold transition-all duration-200 ${
+            onSale
+              ? 'bg-accent text-white shadow-sm'
+              : 'border bg-white/70 hover:border-accent/40 hover:bg-white'
           }`}
         >
           <BadgePercent size={15} /> On sale
         </button>
-      </div>
+      </form>
 
-      <div className="mt-14 flex flex-col gap-4 border-y py-5 lg:flex-row lg:items-center">
-        <label className="flex flex-1 items-center gap-3 rounded-full border bg-white/50 px-4 py-3">
+      <div className="mt-14 flex flex-col gap-4 border-y py-5 transition-colors duration-300 lg:flex-row lg:items-center">
+        <label className="flex flex-1 items-center gap-3 rounded-full border bg-white/60 px-4 py-3 transition-all duration-200 focus-within:border-accent focus-within:bg-white focus-within:ring-4 focus-within:ring-accent/10">
           <Search size={18} className="text-black/40" />
           <input
             value={search}
@@ -172,16 +184,17 @@ function ShopContent() {
                   scroll: false,
                 });
               }}
-              className={`whitespace-nowrap rounded-full px-4 py-2.5 text-xs font-bold ${
-                category === item ? 'bg-ink text-white' : 'border'
+              className={`whitespace-nowrap rounded-full px-4 py-2.5 text-xs font-bold transition-all duration-200 ${
+                category === item
+                  ? 'bg-ink text-white shadow-sm'
+                  : 'border hover:border-accent/40 hover:bg-white'
               }`}
             >
               {item || 'ALL'}
             </button>
           ))}
         </div>
-        <div className="flex w-full items-center gap-2 lg:w-auto">
-          <SlidersHorizontal size={17} />
+        <div className="flex w-full lg:w-auto">
           <Select
             value={sort}
             onValueChange={(value) => {
@@ -190,13 +203,13 @@ function ShopContent() {
             }}
             options={sortOptions}
             ariaLabel="Sort products"
-            className="w-full border-0 bg-transparent lg:w-auto"
+            className="w-full border-accent/30 bg-accent/10 text-accent shadow-sm hover:bg-accent/15 lg:w-auto"
           />
         </div>
       </div>
 
       {products.isLoading ? (
-        <div className="grid gap-6 py-12 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid animate-in gap-6 py-12 fade-in sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, index) => (
             <div
               key={index}
@@ -205,7 +218,7 @@ function ShopContent() {
           ))}
         </div>
       ) : list.length ? (
-        <div className="grid gap-x-6 gap-y-14 py-12 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid animate-in gap-x-6 gap-y-14 py-12 fade-in duration-300 sm:grid-cols-2 lg:grid-cols-4">
           {list.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}

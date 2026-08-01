@@ -6,6 +6,7 @@ import { ArrowUpRight, ShoppingBag, Sparkles } from 'lucide-react';
 import type { Product } from '@/lib/types';
 import { money } from '@/lib/api';
 import { AddToCartButton } from './add-to-cart-button';
+import { ProductImageFallback } from './product-image-fallback';
 
 const categoryTone: Record<Product['category'], string> = {
   MOBILE: 'from-[#f5e4de] to-[#dfb9aa]',
@@ -40,14 +41,7 @@ export function ProductCard({ product }: { product: Product }) {
             className="object-cover transition duration-500 group-hover:scale-[1.04]"
           />
         ) : (
-          <div className="absolute inset-0 grid place-items-center">
-            <div className="relative flex h-[55%] w-[42%] rotate-3 items-center justify-center rounded-[2rem] border border-white/60 bg-[#111214] shadow-2xl transition duration-500 group-hover:rotate-0 group-hover:scale-105">
-              <div className="absolute inset-2 rounded-[1.5rem] bg-gradient-to-br from-white/10 to-transparent" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/30">
-                {product.category}
-              </span>
-            </div>
-          </div>
+          <ProductImageFallback category={product.category} />
         )}
         <div className="absolute left-4 top-4 flex flex-wrap gap-2">
           {discount && (

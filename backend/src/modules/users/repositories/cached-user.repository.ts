@@ -8,7 +8,7 @@ import {
   UserProfileImage,
 } from '../interfaces/user.interface';
 import { RedisService } from '../../../infrastructure/redis/redis.service';
-import type { RepositoryPaginationOptions } from '../../../common/interfaces/pagination.interface';
+import type { UserListOptions } from './user.repository';
 
 @Injectable()
 export class CachedUserRepository implements UserRepository {
@@ -148,7 +148,7 @@ export class CachedUserRepository implements UserRepository {
     return user;
   }
 
-  findAll(options: RepositoryPaginationOptions) {
+  findAll(options: UserListOptions) {
     return this.repository.findAll(options);
   }
 

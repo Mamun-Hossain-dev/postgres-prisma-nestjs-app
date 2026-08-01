@@ -38,7 +38,7 @@ export function ContactForm() {
 
   return (
     <section className="bg-white px-5 py-24 lg:px-8">
-      <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.7fr_1fr]">
+      <div className="mx-auto grid gap-10 lg:grid-cols-[0.7fr_1fr]">
         <div>
           <MessageSquareText className="text-accent" size={30} />
           <p className="mt-6 text-xs font-bold uppercase tracking-[0.22em] text-accent">

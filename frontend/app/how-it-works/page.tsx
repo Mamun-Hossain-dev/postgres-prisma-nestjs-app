@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'How it works — DeviceDock',
+  title: 'How it works - DeviceDock',
   description:
     'Discover how to find products, create an account and build your DeviceDock cart.',
 };
@@ -54,7 +54,7 @@ export default function Page() {
   return (
     <>
       <section className="px-5 py-24 sm:py-32 lg:px-8">
-        <div className="mx-auto max-w-7xl">
+        <div className="mx-auto">
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-accent">
             How it works
           </p>
@@ -69,7 +69,7 @@ export default function Page() {
       </section>
 
       <section className="border-y bg-[#ded7c7] px-5 py-20 lg:px-8">
-        <div className="mx-auto grid max-w-7xl gap-5 lg:grid-cols-3">
+        <div className="mx-auto grid gap-5 lg:grid-cols-3">
           {steps.map(({ number, icon: Icon, title, text, points }) => (
             <article
               key={number}
@@ -101,7 +101,7 @@ export default function Page() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 py-24 lg:px-8">
+      <section className="mx-auto px-5 py-24 lg:px-8">
         <div className="grid overflow-hidden rounded-[2.5rem] bg-ink text-white lg:grid-cols-2">
           <div className="p-8 sm:p-12">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">

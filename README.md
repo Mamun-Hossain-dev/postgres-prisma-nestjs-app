@@ -74,6 +74,7 @@ There is no shared root `node_modules`, `pnpm-lock.yaml`, or
 - Order history and authenticated PDF invoice downloads
 - Loading, empty, and error states
 - Local preview products when the public catalog API is unavailable
+- Category-based image fallback for products without images
 
 ## Technology
 
@@ -270,6 +271,14 @@ pnpm exec prisma migrate deploy
 
 `migrate deploy` applies the existing migrations, including the gadget catalog
 and cart tables. To create a new development migration:
+
+Seed the catalog with demo products (idempotent upsert by SKU, safe to rerun):
+
+```bash
+pnpm run db:seed
+```
+
+To create a new development migration:
 
 ```bash
 pnpm exec prisma migrate dev --name describe_the_change

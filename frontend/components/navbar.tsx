@@ -13,7 +13,7 @@ import {
   UserRound,
   X,
 } from 'lucide-react';
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useAuth } from './auth-provider';
 import { ConfirmDialog } from './ui/confirm-dialog';
 
@@ -61,7 +61,28 @@ function NavbarContent({
   const [accountOpen, setAccountOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
   const { user, logout } = useAuth();
+
+  useEffect(() => {
+    if (!accountOpen) return;
+
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!accountMenuRef.current?.contains(event.target as Node)) {
+        setAccountOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setAccountOpen(false);
+    };
+
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [accountOpen]);
 
   return (
     <>
@@ -112,7 +133,7 @@ function NavbarContent({
                 <Search size={18} />
               </Link>
               {user ? (
-                <div className="relative">
+                <div ref={accountMenuRef} className="relative">
                   <button
                     onClick={() => setAccountOpen((value) => !value)}
                     className="flex h-10 items-center gap-2 rounded-full px-1.5 pr-3 transition hover:bg-black/5"
@@ -125,7 +146,7 @@ function NavbarContent({
                     <ChevronDown size={13} className="hidden sm:block" />
                   </button>
                   {accountOpen && (
-                    <div className="absolute right-0 mt-3 w-60 rounded-2xl border bg-white p-2 shadow-2xl">
+                    <div className="absolute right-0 mt-3 w-60 origin-top-right animate-in rounded-2xl border bg-white p-2 shadow-2xl fade-in zoom-in-95">
                       <div className="border-b px-3 py-3">
                         <p className="text-sm font-bold">{user.name}</p>
                         <p className="mt-0.5 truncate text-xs text-black/40">
