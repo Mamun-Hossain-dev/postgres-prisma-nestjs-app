@@ -17,7 +17,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Navbar />
-      <main>{children}</main>
+      <main className="container mx-auto">{children}</main>
       <Footer />
     </>
   );
