@@ -18,8 +18,8 @@ services:
     image: rabbitmq:4-management
     restart: unless-stopped
     environment:
-      RABBITMQ_DEFAULT_USER: devicedock
-      RABBITMQ_DEFAULT_PASS: devicedock_121869
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     ports:
@@ -61,19 +61,19 @@ services:
     restart: unless-stopped
     env_file: ./backend/.env
     environment:
-      NODE_ENV: production
-      HOST: 0.0.0.0
-      PORT: 8080
-      CORS_ORIGIN: http://localhost:3000
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      RABBITMQ_URL: amqp://devicedock:devicedock_121869@rabbitmq:5672
-      MAIL_ENABLED: 'true'
-      SMTP_HOST: mailpit
-      SMTP_PORT: 1025
-      SMTP_SECURE: 'false'
+      NODE_ENV: ${BACKEND_NODE_ENV:-production}
+      HOST: ${BACKEND_HOST:-0.0.0.0}
+      PORT: ${BACKEND_PORT:-8080}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-devicedock}:${RABBITMQ_PASSWORD}@rabbitmq:5672
+      MAIL_ENABLED: ${MAIL_ENABLED:-true}
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
     ports:
-      - '127.0.0.1:8080:8080'
+      - '127.0.0.1:${BACKEND_PORT:-8080}:8080'
     depends_on:
       redis:
         condition: service_healthy
@@ -89,17 +89,17 @@ services:
     build:
       context: ./frontend
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:8080/api/v1
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
         NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
     restart: unless-stopped
     environment:
-      NODE_ENV: production
-      NEXTAUTH_URL: http://localhost:3000
-      NEXTAUTH_SECRET: devicedock-nextauth-secret-121869-local-only
-      API_INTERNAL_URL: http://backend:8080/api/v1
-      NEXT_PUBLIC_API_URL: http://localhost:8080/api/v1
+      NODE_ENV: ${FRONTEND_NODE_ENV:-production}
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      API_INTERNAL_URL: ${API_INTERNAL_URL:-http://backend:8080/api/v1}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     ports:
-      - '127.0.0.1:3000:3000'
+      - '127.0.0.1:${FRONTEND_PORT:-3000}:3000'
     depends_on:
       backend:
         condition: service_healthy

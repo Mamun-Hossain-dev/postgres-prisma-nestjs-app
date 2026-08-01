@@ -175,18 +175,17 @@ To build and run the complete application from the repository root:
 docker compose up -d --build
 ```
 
-For a Docker frontend build, expose the publishable key to Compose before
-building:
+For a Docker frontend build, set `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` in the
+root `.env` before building:
 
 ```bash
-export NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 docker compose up -d --build
 ```
 
 RabbitMQ Management UI is available at `http://localhost:15672`. Sign in with
-`devicedock` / `devicedock_121869`. These credentials are for local
-development only. Local backend processes connect to AMQP on
-`localhost:5672`; both ports are bound to the loopback interface.
+the `RABBITMQ_USER` / `RABBITMQ_PASSWORD` values from the root `.env`. These
+credentials are for local development only. Local backend processes connect to
+AMQP on `localhost:5672`; both ports are bound to the loopback interface.
 
 Mailpit captures local emails instead of delivering them. Its inbox is
 available at `http://localhost:8025`, and the backend connects to its SMTP
@@ -229,13 +228,21 @@ production dependencies and compiled output, runs as a non-root user, and uses
 `dumb-init` for correct signal handling. Database migrations run in a separate
 one-shot container before the backend starts.
 
-Create the backend environment file if it does not exist, then run Compose from
-the repository root:
+Create the environment files if they do not exist, then run Compose from the
+repository root:
 
 ```bash
 cp backend/.env.example backend/.env
+cp .env.example .env  # compose orchestration values (gitignored)
 docker compose up -d --build
 ```
+
+`compose.yaml` contains no hardcoded values: every service variable is
+interpolated from the root `.env` (`RABBITMQ_USER`, `RABBITMQ_PASSWORD`,
+`NEXTAUTH_SECRET`, `CORS_ORIGIN`, host ports, in-network hosts). `backend/.env`
+still supplies the application-level secrets (`DATABASE_URL`, `JWT_SECRET`,
+Cloudinary keys). Run Compose from the repository root so the root `.env` is
+loaded automatically.
 
 The Compose stack starts Redis, RabbitMQ, Mailpit, database migrations, the
 NestJS backend, and the Next.js storefront. The database itself is a Neon
