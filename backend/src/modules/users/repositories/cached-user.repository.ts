@@ -37,6 +37,18 @@ export class CachedUserRepository implements UserRepository {
     return user;
   }
 
+  async findByGoogleId(googleId: string): Promise<User | null> {
+    const cacheKey = this.getGoogleCacheKey(googleId);
+    const cachedUser = await this.redis.get(cacheKey);
+
+    if (cachedUser) return JSON.parse(cachedUser) as User;
+
+    const user = await this.repository.findByGoogleId(googleId);
+    if (user) await this.cacheUser(user);
+
+    return user;
+  }
+
   async create(data: CreateUserInput, image?: UserProfileImage): Promise<User> {
     const user = await this.repository.create(data, image);
 
@@ -79,6 +91,17 @@ export class CachedUserRepository implements UserRepository {
     }
 
     await this.cacheUser(user);
+    return user;
+  }
+
+  async linkGoogleAccount(id: number, googleId: string): Promise<User | null> {
+    const existingUser = await this.repository.findById(id);
+    const user = await this.repository.linkGoogleAccount(id, googleId);
+
+    if (!user) return null;
+    if (existingUser) await this.invalidateUserCache(existingUser);
+    await this.cacheUser(user);
+
     return user;
   }
 
@@ -143,6 +166,15 @@ export class CachedUserRepository implements UserRepository {
         serializedUser,
         this.cacheTtlInSeconds,
       ),
+      ...(user.googleId
+        ? [
+            this.redis.set(
+              this.getGoogleCacheKey(user.googleId),
+              serializedUser,
+              this.cacheTtlInSeconds,
+            ),
+          ]
+        : []),
     ]);
   }
 
@@ -150,6 +182,9 @@ export class CachedUserRepository implements UserRepository {
     await Promise.all([
       this.redis.del(this.getIdCacheKey(user.id)),
       this.redis.del(this.getEmailCacheKey(user.email)),
+      ...(user.googleId
+        ? [this.redis.del(this.getGoogleCacheKey(user.googleId))]
+        : []),
     ]);
   }
 
@@ -159,5 +194,9 @@ export class CachedUserRepository implements UserRepository {
 
   private getEmailCacheKey(email: string): string {
     return `user:email:${email}`;
+  }
+
+  private getGoogleCacheKey(googleId: string): string {
+    return `user:google:${googleId}`;
   }
 }

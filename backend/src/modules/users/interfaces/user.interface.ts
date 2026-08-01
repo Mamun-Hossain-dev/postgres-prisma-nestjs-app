@@ -12,7 +12,8 @@ export interface User {
   name: string;
   phone: string | null;
   age: number;
-  password: string;
+  password: string | null;
+  googleId: string | null;
   role: Role;
   isBlocked: boolean;
   marketingConsent: boolean;
@@ -20,7 +21,10 @@ export interface User {
   profileImagePublicId: string | null;
 }
 
-export type PublicUser = Omit<User, 'password' | 'profileImagePublicId'>;
+export type PublicUser = Omit<
+  User,
+  'password' | 'googleId' | 'profileImagePublicId'
+>;
 
 export interface UserProfileImage {
   url: string;
@@ -34,7 +38,8 @@ export interface CreateUserInput {
   phone?: string;
   marketingConsent?: boolean;
   role: Role;
-  password: string;
+  password?: string;
+  googleId?: string;
 }
 
 export interface UpdateUserInput {

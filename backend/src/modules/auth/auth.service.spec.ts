@@ -8,6 +8,7 @@ import * as bcrypt from 'bcrypt';
 import { AuthSessionService } from './auth-session.service';
 import { Role } from '../users/interfaces/user.interface';
 import { UserEventsPublisher } from '../users/events/user-events.publisher';
+import { GOOGLE_TOKEN_VERIFIER } from './constants/auth.tokens';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -15,6 +16,8 @@ describe('AuthService', () => {
     findByEmail: jest.Mock;
     findById: jest.Mock;
     create: jest.MockedFunction<UserRepository['create']>;
+    findByGoogleId: jest.Mock;
+    linkGoogleAccount: jest.Mock;
   };
   let jwtService: {
     signAsync: jest.Mock;
@@ -27,12 +30,15 @@ describe('AuthService', () => {
   let userEventsPublisher: {
     publishCreated: jest.Mock;
   };
+  let googleTokenVerifier: { verify: jest.Mock };
 
   beforeEach(async () => {
     userRepository = {
       findByEmail: jest.fn(),
       findById: jest.fn(),
       create: jest.fn<UserRepository['create']>(),
+      findByGoogleId: jest.fn(),
+      linkGoogleAccount: jest.fn(),
     };
     jwtService = {
       signAsync: jest.fn().mockResolvedValue('signed-jwt-token'),
@@ -48,6 +54,7 @@ describe('AuthService', () => {
     userEventsPublisher = {
       publishCreated: jest.fn().mockResolvedValue(undefined),
     };
+    googleTokenVerifier = { verify: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -73,6 +80,10 @@ describe('AuthService', () => {
         {
           provide: UserEventsPublisher,
           useValue: userEventsPublisher,
+        },
+        {
+          provide: GOOGLE_TOKEN_VERIFIER,
+          useValue: googleTokenVerifier,
         },
       ],
     }).compile();
@@ -241,5 +252,44 @@ describe('AuthService', () => {
       'same-session.old-secret',
       expect.objectContaining({ ip: '127.0.0.1' }),
     );
+  });
+
+  it('creates a password-less user and session from a verified Google identity', async () => {
+    googleTokenVerifier.verify.mockResolvedValue({
+      subject: 'google-123',
+      email: 'Mamun@Example.com',
+      name: 'Mamun',
+    });
+    userRepository.findByGoogleId.mockResolvedValue(null);
+    userRepository.findByEmail.mockResolvedValue(null);
+    userRepository.create.mockImplementation((data: object) =>
+      Promise.resolve({
+        id: 1,
+        age: 0,
+        phone: null,
+        password: null,
+        isBlocked: false,
+        marketingConsent: false,
+        profileImageUrl: null,
+        profileImagePublicId: null,
+        ...data,
+      }),
+    );
+
+    const result = await service.loginWithGoogle('google-id-token', {
+      ip: '127.0.0.1',
+      device: 'desktop',
+      userAgent: 'jest',
+    });
+
+    expect(googleTokenVerifier.verify).toHaveBeenCalledWith('google-id-token');
+    expect(userRepository.create).toHaveBeenCalledWith({
+      name: 'Mamun',
+      email: 'mamun@example.com',
+      googleId: 'google-123',
+      role: Role.USER,
+    });
+    expect(result.auth.user).not.toHaveProperty('googleId');
+    expect(result.auth.accessToken).toBe('signed-jwt-token');
   });
 });

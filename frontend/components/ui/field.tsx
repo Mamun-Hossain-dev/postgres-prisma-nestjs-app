@@ -37,7 +37,7 @@ export const Input = forwardRef<
   <input
     ref={ref}
     className={cn(
-      'h-12 w-full rounded-2xl border bg-white/65 px-4 text-sm transition placeholder:text-black/30 focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent/10 disabled:cursor-not-allowed disabled:opacity-50',
+      'h-14 w-full rounded-2xl border bg-white/65 px-4 text-[15px] text-ink shadow-sm transition duration-200 placeholder:text-black/30 hover:border-black/20 focus:border-accent focus:bg-white focus:outline-none focus:ring-4 focus:ring-accent/10 aria-[invalid=true]:border-red-500 aria-[invalid=true]:ring-red-500/10 disabled:cursor-not-allowed disabled:opacity-50',
       className,
     )}
     {...props}

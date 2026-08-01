@@ -17,6 +17,8 @@ import { AppException } from '../../common/exceptions/app.exception';
 import { AuthSessionService } from './auth-session.service';
 import { USER_REPOSITORY } from '../users/constants/user.tokens';
 import { UserEventsPublisher } from '../users/events/user-events.publisher';
+import { GOOGLE_TOKEN_VERIFIER } from './constants/auth.tokens';
+import type { GoogleTokenVerifier } from './interfaces/google-token-verifier.interface';
 
 @Injectable()
 export class AuthService {
@@ -27,6 +29,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly authSessionService: AuthSessionService,
     private readonly userEventsPublisher: UserEventsPublisher,
+    @Inject(GOOGLE_TOKEN_VERIFIER)
+    private readonly googleTokenVerifier: GoogleTokenVerifier,
   ) {}
 
   async register(dto: RegisterDto): Promise<PublicUser> {
@@ -72,11 +76,77 @@ export class AuthService {
       });
     }
 
-    const isPasswordValid = await bcrypt.compare(dto.password, user.password);
-    if (!isPasswordValid) {
+    if (
+      !user.password ||
+      !(await bcrypt.compare(dto.password, user.password))
+    ) {
       throw new AppException('Invalid email or password', {
         code: 'INVALID_CREDENTIALS',
         status: 401,
+      });
+    }
+
+    if (user.isBlocked) {
+      throw new AppException('User account is blocked', {
+        code: 'USER_BLOCKED',
+        status: 401,
+      });
+    }
+
+    const session = await this.authSessionService.create(user.id, metadata);
+
+    return {
+      auth: await this.buildAuthResponse(user),
+      refreshToken: session.refreshToken,
+      refreshTokenExpiresAt: session.expiresAt,
+    };
+  }
+
+  async loginWithGoogle(
+    idToken: string,
+    metadata: SessionMetadata,
+  ): Promise<AuthSessionResult> {
+    const identity = await this.googleTokenVerifier.verify(idToken);
+    const email = this.normalizeEmail(identity.email);
+    let user = await this.userRepository.findByGoogleId(identity.subject);
+
+    if (!user) {
+      user = await this.userRepository.findByEmail(email);
+
+      if (user) {
+        if (user.isBlocked) {
+          throw new AppException('User account is blocked', {
+            code: 'USER_BLOCKED',
+            status: 401,
+          });
+        }
+
+        if (user.googleId && user.googleId !== identity.subject) {
+          throw new AppException('Email is linked to another Google account', {
+            code: 'GOOGLE_ACCOUNT_MISMATCH',
+            status: 409,
+          });
+        }
+
+        user = await this.userRepository.linkGoogleAccount(
+          user.id,
+          identity.subject,
+        );
+      } else {
+        user = await this.userRepository.create({
+          name: identity.name,
+          email,
+          googleId: identity.subject,
+          role: Role.USER,
+        });
+        void this.userEventsPublisher.publishCreated(toPublicUser(user));
+      }
+    }
+
+    if (!user) {
+      throw new AppException('Unable to create Google account', {
+        code: 'GOOGLE_ACCOUNT_CREATION_FAILED',
+        status: 500,
       });
     }
 

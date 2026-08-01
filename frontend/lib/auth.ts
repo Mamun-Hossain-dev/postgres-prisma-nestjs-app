@@ -1,5 +1,6 @@
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import GoogleProvider from 'next-auth/providers/google';
 import type { ApiEnvelope, AuthResult } from './types';
 import type { JWT } from 'next-auth/jwt';
 
@@ -47,6 +48,11 @@ export const authOptions: NextAuthOptions = {
     signIn: '/login',
   },
   providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID ?? '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+      authorization: { params: { prompt: 'select_account' } },
+    }),
     CredentialsProvider({
       name: 'DeviceDock account',
       credentials: {
@@ -87,6 +93,30 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    async signIn({ user, account }) {
+      if (account?.provider !== 'google') return true;
+      if (!account.id_token) return false;
+
+      const response = await fetch(`${internalApiUrl}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: account.id_token }),
+        cache: 'no-store',
+      });
+      const payload = (await response
+        .json()
+        .catch(() => null)) as ApiEnvelope<AuthResult> | null;
+
+      if (!response.ok || !payload?.data) return false;
+
+      const refreshToken = readRefreshToken(response);
+      if (!refreshToken) return false;
+
+      user.backendUser = payload.data.user;
+      user.accessToken = payload.data.accessToken;
+      user.refreshToken = refreshToken;
+      return true;
+    },
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.user = user.backendUser;

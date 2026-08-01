@@ -6,4 +6,5 @@ export default registerAs('auth', () => ({
     process.env.REFRESH_TOKEN_TTL_SECONDS ?? 60 * 60 * 24 * 30,
   ),
   refreshCookieName: process.env.REFRESH_COOKIE_NAME ?? 'refresh_token',
+  googleClientId: process.env.GOOGLE_CLIENT_ID,
 }));

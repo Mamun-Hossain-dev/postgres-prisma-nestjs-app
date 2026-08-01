@@ -11,9 +11,11 @@ import { useRouter } from 'next/navigation';
 import { AuthShell } from '@/components/auth-shell';
 import { useAuth } from '@/components/auth-provider';
 import { PasswordInput } from '@/components/ui/password-input';
+import { Field, Input } from '@/components/ui/field';
+import { AuthDivider, GoogleAuthButton } from '@/components/google-auth-button';
 
 const schema = z.object({
-  email: z.email('Enter a valid email'),
+  email: z.string().trim().pipe(z.email('Enter a valid email address')),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 type Values = z.infer<typeof schema>;
@@ -60,50 +62,38 @@ export function LoginPage() {
         </>
       }
     >
-      <form onSubmit={submit} className="space-y-5">
+      <div className="space-y-5">
+        <GoogleAuthButton />
+        <AuthDivider />
+      </div>
+      <form onSubmit={submit} className="mt-5 space-y-5" noValidate>
         <Field label="Email address" error={errors.email?.message}>
-          <input
+          <Input
             type="email"
             autoComplete="email"
-            placeholder="you@example.com"
+            autoCapitalize="none"
+            spellCheck={false}
+            placeholder="name@example.com"
+            aria-invalid={Boolean(errors.email)}
             {...register('email')}
-            className="h-14 w-full rounded-2xl border bg-white/50 px-4"
           />
         </Field>
         <Field label="Password" error={errors.password?.message}>
           <PasswordInput
             autoComplete="current-password"
-            placeholder="At least 6 characters"
+            placeholder="Enter your password"
+            aria-invalid={Boolean(errors.password)}
             {...register('password')}
           />
         </Field>
         <button
+          type="submit"
           disabled={isSubmitting}
-          className="flex h-14 w-full items-center justify-center rounded-full bg-ink font-bold text-white hover:bg-accent disabled:opacity-60"
+          className="flex h-14 w-full items-center justify-center rounded-full bg-ink font-bold text-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-accent hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20 disabled:cursor-wait disabled:opacity-60"
         >
           {isSubmitting ? <LoaderCircle className="animate-spin" /> : 'Sign in'}
         </button>
       </form>
     </AuthShell>
-  );
-}
-
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-sm font-bold">{label}</span>
-      {children}
-      {error && (
-        <span className="mt-1 block text-xs text-red-600">{error}</span>
-      )}
-    </label>
   );
 }

@@ -10,6 +10,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { AuthSessionService } from './auth-session.service';
 import { RedisModule } from '../../infrastructure/redis/redis.module';
+import { googleTokenVerifierProvider } from './providers/google-token-verifier.provider';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { RedisModule } from '../../infrastructure/redis/redis.module';
     JwtStrategy,
     JwtAuthGuard,
     RolesGuard,
+    googleTokenVerifierProvider,
   ],
   controllers: [AuthController],
   exports: [JwtAuthGuard, RolesGuard],

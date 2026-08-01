@@ -30,6 +30,11 @@ export class LoggingUserRepository implements UserRepository {
     }
   }
 
+  async findByGoogleId(googleId: string) {
+    this.logger.log('Finding user by Google identity');
+    return this.repo.findByGoogleId(googleId);
+  }
+
   async create(input: CreateUserInput, image?: UserProfileImage) {
     this.logger.log('Creating user');
 
@@ -46,6 +51,11 @@ export class LoggingUserRepository implements UserRepository {
     this.logger.log(`${isBlocked ? 'Blocking' : 'Unblocking'} user ${id}`);
 
     return this.repo.setBlocked(id, isBlocked);
+  }
+
+  async linkGoogleAccount(id: number, googleId: string) {
+    this.logger.log(`Linking Google identity to user ${id}`);
+    return this.repo.linkGoogleAccount(id, googleId);
   }
 
   async updateProfileImage(id: number, image: UserProfileImage | null) {

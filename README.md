@@ -38,6 +38,7 @@ There is no shared root `node_modules`, `pnpm-lock.yaml`, or
 
 ### Backend
 
+- Email/password and Google authentication
 - JWT access tokens and rotating Redis-backed refresh sessions
 - HTTP-only refresh-token cookie
 - `USER`, `SELLER`, and `ADMIN` roles
@@ -65,7 +66,7 @@ There is no shared root `node_modules`, `pnpm-lock.yaml`, or
 - Responsive storefront homepage
 - Product catalog with search, categories, and sorting
 - Product details and quantity selection
-- Login and registration pages
+- Polished login and registration pages with Google sign-in
 - Refresh-cookie authentication flow
 - Persistent server-backed cart
 - Stripe Payment Element checkout
@@ -99,7 +100,7 @@ There is no shared root `node_modules`, `pnpm-lock.yaml`, or
 
 ## Requirements
 
-- Node.js 20 or later
+- Node.js 22 or later
 - pnpm
 - Docker with Docker Compose (recommended for local infrastructure)
 - A Neon serverless PostgreSQL project (used for the database instead of a local Postgres)
@@ -141,6 +142,7 @@ JWT_SECRET=replace-with-at-least-16-characters
 JWT_EXPIRES_IN=15m
 REFRESH_TOKEN_TTL_SECONDS=2592000
 REFRESH_COOKIE_NAME=refresh_token
+GOOGLE_CLIENT_ID=your_google_oauth_client_id
 
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
@@ -301,6 +303,11 @@ pnpm run dev
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+API_INTERNAL_URL=http://localhost:8080/api/v1
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=replace_with_a_long_random_secret
+GOOGLE_CLIENT_ID=your_google_oauth_client_id
+GOOGLE_CLIENT_SECRET=your_google_oauth_client_secret
 ```
 
 The storefront runs at:
@@ -311,6 +318,20 @@ http://localhost:3000
 
 For refresh cookies to work consistently, open the frontend with `localhost`
 and keep `NEXT_PUBLIC_API_URL` on `localhost` as shown above.
+
+### Google OAuth setup
+
+Create a Google OAuth client with application type **Web application**. For
+local development, add `http://localhost:3000` as an authorized JavaScript
+origin and this exact authorized redirect URI:
+
+```text
+http://localhost:3000/api/auth/callback/google
+```
+
+Put its client ID in both backend and frontend configuration. The client secret
+belongs only in the frontend server environment. For production, add the same
+origin and callback path using the deployed HTTPS domain.
 
 ## Quick start
 
@@ -339,13 +360,14 @@ All routes are relative to `/api/v1`.
 
 ### Authentication
 
-| Method | Route            | Access                  | Purpose                           |
-| ------ | ---------------- | ----------------------- | --------------------------------- |
-| POST   | `/auth/register` | Public                  | Create a customer account         |
-| POST   | `/auth/login`    | Public                  | Sign in and create a session      |
-| POST   | `/auth/refresh`  | Refresh cookie          | Rotate the session and JWT        |
-| POST   | `/auth/logout`   | Optional refresh cookie | Revoke the session                |
-| GET    | `/auth/profile`  | Authenticated           | Get the authenticated user        |
+| Method | Route            | Access                  | Purpose                            |
+| ------ | ---------------- | ----------------------- | ---------------------------------- |
+| POST   | `/auth/register` | Public                  | Create a customer account          |
+| POST   | `/auth/login`    | Public                  | Sign in and create a session       |
+| POST   | `/auth/google`   | Public                  | Verify Google and create a session |
+| POST   | `/auth/refresh`  | Refresh cookie          | Rotate the session and JWT         |
+| POST   | `/auth/logout`   | Optional refresh cookie | Revoke the session                 |
+| GET    | `/auth/profile`  | Authenticated           | Get the authenticated user         |
 
 Protected requests use:
 
@@ -355,14 +377,14 @@ Authorization: Bearer <access-token>
 
 ### Products
 
-| Method | Route                           | Access        | Purpose                       |
-| ------ | ------------------------------- | ------------- | ----------------------------- |
-| GET    | `/products`                     | Public        | Search and filter products    |
-| GET    | `/products/:id`                 | Public        | Get product details           |
-| POST   | `/products`                     | Admin, Seller | Create a product              |
-| PATCH  | `/products/:id`                 | Admin, Seller | Update a product              |
-| DELETE | `/products/:id`                 | Admin, Seller | Delete product and images     |
-| DELETE | `/products/:id/images/:imageId` | Admin, Seller | Remove one product image      |
+| Method | Route                           | Access        | Purpose                    |
+| ------ | ------------------------------- | ------------- | -------------------------- |
+| GET    | `/products`                     | Public        | Search and filter products |
+| GET    | `/products/:id`                 | Public        | Get product details        |
+| POST   | `/products`                     | Admin, Seller | Create a product           |
+| PATCH  | `/products/:id`                 | Admin, Seller | Update a product           |
+| DELETE | `/products/:id`                 | Admin, Seller | Delete product and images  |
+| DELETE | `/products/:id/images/:imageId` | Admin, Seller | Remove one product image   |
 
 Supported product-list parameters:
 

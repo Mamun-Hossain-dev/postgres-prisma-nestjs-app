@@ -10,7 +10,8 @@ model User {
   email                String                @unique
   phone                String?
   age                  Int                   @default(0)
-  password             String
+  password             String?
+  googleId             String?               @unique
   role                 Role                  @default(USER)
   isBlocked            Boolean               @default(false)
   marketingConsent     Boolean               @default(false)

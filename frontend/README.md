@@ -198,6 +198,11 @@ Login form
   → frontend session
 ```
 
+Google login একই session model ব্যবহার করে: NextAuth Google ID token পায়,
+backend `/auth/google`-এ token verify করে, তারপর একই application JWT এবং
+rotating refresh session তৈরি করে। Verified email-এর existing account থাকলে
+Google identity নিরাপদে সেই account-এর সঙ্গে link হয়।
+
 NextAuth session strategy:
 
 ```ts
@@ -281,9 +286,9 @@ Non-admin user `/admin` access করলে `/profile`-এ redirect হয়। Ba
 
 ```ts
 apiFetch<Cart>(
-  '/cart/items',
+  "/cart/items",
   {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify({ productId, quantity }),
   },
   accessToken,
@@ -299,9 +304,9 @@ Backend data local React state-এ manually manage না করে TanStack Que
 Query key-এর উদাহরণ:
 
 ```ts
-['products', query][('product', productId)]['cart']['profile'][
-  ('admin', 'users')
-][('admin', 'user', userId)][('admin', 'products')];
+["products", query][("product", productId)]["cart"]["profile"][
+  ("admin", "users")
+][("admin", "user", userId)][("admin", "products")];
 ```
 
 Query key data-এর identity হিসেবে কাজ করে। একই key ব্যবহার করা components cached result reuse করতে পারে।
@@ -532,8 +537,8 @@ Local static asset `public/images` থেকে serve হয়। Product image-�
 ```ts
 remotePatterns: [
   {
-    protocol: 'https',
-    hostname: 'res.cloudinary.com',
+    protocol: "https",
+    hostname: "res.cloudinary.com",
   },
 ];
 ```
@@ -548,12 +553,14 @@ Product image না থাকলে component category-based gradient এবং
 cp .env.example .env.local
 ```
 
-| Variable              | উদ্দেশ্য                                    |
-| --------------------- | ------------------------------------------- |
-| `NEXT_PUBLIC_API_URL` | Browser থেকে accessible NestJS API URL      |
-| `API_INTERNAL_URL`    | Next.js server থেকে backend-এর internal URL |
-| `NEXTAUTH_URL`        | NextAuth application URL                    |
-| `NEXTAUTH_SECRET`     | NextAuth JWT/session signing secret         |
+| Variable               | উদ্দেশ্য                                    |
+| ---------------------- | ------------------------------------------- |
+| `NEXT_PUBLIC_API_URL`  | Browser থেকে accessible NestJS API URL      |
+| `API_INTERNAL_URL`     | Next.js server থেকে backend-এর internal URL |
+| `NEXTAUTH_URL`         | NextAuth application URL                    |
+| `NEXTAUTH_SECRET`      | NextAuth JWT/session signing secret         |
+| `GOOGLE_CLIENT_ID`     | Google OAuth Web client ID                  |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth Web client secret              |
 
 Local default:
 
@@ -562,6 +569,8 @@ NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
 API_INTERNAL_URL=http://localhost:8080/api/v1
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=replace_with_a_long_random_secret
+GOOGLE_CLIENT_ID=your_google_oauth_client_id
+GOOGLE_CLIENT_SECRET=your_google_oauth_client_secret
 ```
 
 Docker Compose-এ `API_INTERNAL_URL` সাধারণত Docker network-এর backend hostname ব্যবহার করে, কিন্তু `NEXT_PUBLIC_API_URL` browser-এর জন্য host-accessible URL থাকে।

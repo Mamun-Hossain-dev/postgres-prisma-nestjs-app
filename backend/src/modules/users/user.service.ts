@@ -59,7 +59,7 @@ export class UserService {
   }
 
   async createUser(
-    user: CreateUserInput,
+    user: CreateUserInput & { password: string },
     file?: FileToStore,
   ): Promise<PublicUser> {
     const saltRounds = this.configService.getOrThrow<number>(

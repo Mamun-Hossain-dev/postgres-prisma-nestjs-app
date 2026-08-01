@@ -14,6 +14,7 @@ export interface UserRepository {
     options: RepositoryPaginationOptions,
   ): Promise<RepositoryPaginatedResult<User>>;
   findByEmail(email: string): Promise<User | null>;
+  findByGoogleId(googleId: string): Promise<User | null>;
   findById(id: number): Promise<User | null>;
   create(user: CreateUserInput, image?: UserProfileImage): Promise<User>;
   update(
@@ -22,6 +23,7 @@ export interface UserRepository {
     image?: UserProfileImage,
   ): Promise<User | null>;
   setBlocked(id: number, isBlocked: boolean): Promise<User | null>;
+  linkGoogleAccount(id: number, googleId: string): Promise<User | null>;
   updateProfileImage(
     id: number,
     image: UserProfileImage | null,

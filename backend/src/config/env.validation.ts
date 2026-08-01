@@ -52,6 +52,7 @@ const envSchema = z
       .positive()
       .default(2_592_000),
     REFRESH_COOKIE_NAME: z.string().min(1).default('refresh_token'),
+    GOOGLE_CLIENT_ID: z.string().min(1, 'GOOGLE_CLIENT_ID is required'),
     Global_API_PREFIX: z.string().min(1).default('api/v1/'),
     MAIL_ENABLED: booleanString,
     SMTP_HOST: z.string().optional(),

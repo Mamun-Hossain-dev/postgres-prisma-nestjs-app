@@ -13,6 +13,7 @@ import { Public } from '../../common/decorators/public.decorator';
 import { getCookie, getRequestMetadata } from './utils/request-metadata.util';
 import type { AuthSessionResult } from './interfaces/auth.interface';
 import { AppException } from '../../common/exceptions/app.exception';
+import { GoogleAuthDto } from './dto/google-auth.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -53,6 +54,23 @@ export class AuthController {
   ) {
     const result = await this.authService.login(
       dto,
+      getRequestMetadata(request),
+    );
+    this.setRefreshCookie(response, result);
+    return result.auth;
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 15, ttl: 60_000 } })
+  @Post('google')
+  @ResponseMessage('Google authentication successful')
+  async google(
+    @Body() dto: GoogleAuthDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const result = await this.authService.loginWithGoogle(
+      dto.idToken,
       getRequestMetadata(request),
     );
     this.setRefreshCookie(response, result);
