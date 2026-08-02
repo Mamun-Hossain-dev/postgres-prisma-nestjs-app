@@ -55,6 +55,29 @@ export class CachedProductRepository implements ProductRepository {
     return collections;
   }
 
+  getOperationsSummary() {
+    return this.repository.getOperationsSummary();
+  }
+
+  async adjustStock(
+    id: number,
+    quantity: number,
+    adjustedById: number,
+    reason: string,
+  ) {
+    const result = await this.repository.adjustStock(
+      id,
+      quantity,
+      adjustedById,
+      reason,
+    );
+    if (result) {
+      await this.cacheProduct(result.product);
+      await this.invalidateCollections();
+    }
+    return result;
+  }
+
   async create(
     input: CreateProductInput,
     images: NewProductImage[] = [],

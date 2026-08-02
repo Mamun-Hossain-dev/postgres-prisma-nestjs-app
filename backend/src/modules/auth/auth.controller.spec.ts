@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { ConfigService } from '@nestjs/config';
+import { AuthSessionService } from './auth-session.service';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -17,6 +18,14 @@ describe('AuthController', () => {
             login: jest.fn(),
             refresh: jest.fn(),
             logout: jest.fn(),
+          },
+        },
+        {
+          provide: AuthSessionService,
+          useValue: {
+            list: jest.fn(),
+            revokeSession: jest.fn(),
+            tokenSessionId: jest.fn(),
           },
         },
         {

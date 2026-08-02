@@ -1,55 +1,37 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
-import { LoaderCircle, ShoppingBag } from 'lucide-react';
+import { ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
-import { apiFetch } from '@/lib/api';
-import type { Cart } from '@/lib/types';
-import { useAuth } from './auth-provider';
+import type { Product } from '@/lib/types';
+import { useCart } from './cart-provider';
 
 export function AddToCartButton({
-  productId,
+  product,
   quantity = 1,
   compact = false,
   icon,
 }: {
-  productId: number;
+  product: Product;
   quantity?: number;
   compact?: boolean;
   icon?: React.ReactNode;
 }) {
-  const { accessToken, user } = useAuth();
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const mutation = useMutation({
-    mutationFn: () =>
-      apiFetch<Cart>(
-        '/cart/items',
-        { method: 'POST', body: JSON.stringify({ productId, quantity }) },
-        accessToken,
-      ),
-    onSuccess: (cart) => {
-      queryClient.setQueryData(['cart'], cart);
-      toast.success('Added to your cart');
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
+  const { addItem } = useCart();
 
   const handleClick = () => {
-    if (!user) {
-      toast.info('Sign in to add products to your cart');
-      router.push('/login');
+    if (product.quantity < 1) {
+      toast.error('This product is out of stock');
       return;
     }
-    mutation.mutate();
+    addItem(product, quantity);
+    toast.success('Added to your cart');
   };
 
   return (
     <button
       type="button"
       onClick={handleClick}
-      disabled={mutation.isPending}
+      disabled={product.quantity < 1}
       aria-label="Add to cart"
       className={
         compact
@@ -57,14 +39,8 @@ export function AddToCartButton({
           : 'flex h-14 w-full items-center justify-center gap-3 rounded-full bg-ink px-7 font-semibold text-white transition hover:bg-accent disabled:opacity-60'
       }
     >
-      {mutation.isPending ? (
-        <LoaderCircle className="animate-spin" size={18} />
-      ) : (
-        <>
-          {icon ?? <ShoppingBag size={18} />}
-          {!compact && 'Add to cart'}
-        </>
-      )}
+      {icon ?? <ShoppingBag size={18} />}
+      {!compact && (product.quantity < 1 ? 'Out of stock' : 'Add to cart')}
     </button>
   );
 }

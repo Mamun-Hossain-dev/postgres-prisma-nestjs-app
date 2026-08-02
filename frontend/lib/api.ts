@@ -1,7 +1,7 @@
-import type { ApiEnvelope } from './types';
+import type { ApiEnvelope } from "./types";
 
 export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080/api/v1';
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
 
 export class ApiError extends Error {
   constructor(
@@ -20,10 +20,10 @@ export async function apiFetch<T>(
   const isFormData = init.body instanceof FormData;
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
-    credentials: 'include',
+    credentials: "include",
     headers: {
       ...(init.body && !isFormData
-        ? { 'Content-Type': 'application/json' }
+        ? { "Content-Type": "application/json" }
         : {}),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...init.headers,
@@ -34,7 +34,7 @@ export async function apiFetch<T>(
 
   if (!response.ok) {
     throw new ApiError(
-      payload?.message ?? 'Something went wrong',
+      payload?.message ?? "Something went wrong",
       response.status,
     );
   }
@@ -47,7 +47,7 @@ export async function apiFetchBlob(
   accessToken?: string | null,
 ): Promise<Blob> {
   const response = await fetch(`${API_URL}${path}`, {
-    credentials: 'include',
+    credentials: "include",
     headers: accessToken
       ? { Authorization: `Bearer ${accessToken}` }
       : undefined,
@@ -57,7 +57,7 @@ export async function apiFetchBlob(
       message?: string;
     } | null;
     throw new ApiError(
-      payload?.message ?? 'Unable to download file',
+      payload?.message ?? "Unable to download file",
       response.status,
     );
   }
@@ -65,16 +65,16 @@ export async function apiFetchBlob(
 }
 
 export function money(value: number): string {
-  return new Intl.NumberFormat('en-BD', {
-    style: 'currency',
-    currency: 'BDT',
+  return new Intl.NumberFormat("en-BD", {
+    style: "currency",
+    currency: "BDT",
     maximumFractionDigits: 0,
   }).format(value);
 }
 
-export function minorMoney(value: number, currency: string): string {
-  return new Intl.NumberFormat('en-BD', {
-    style: 'currency',
-    currency: currency.toUpperCase(),
+export function minorMoney(value: number, _currency?: string): string {
+  return new Intl.NumberFormat("en-BD", {
+    style: "currency",
+    currency: "BDT",
   }).format(value / 100);
 }

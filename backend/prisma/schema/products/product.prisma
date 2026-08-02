@@ -36,6 +36,9 @@ model Product {
   images           ProductImage[]
   cartItems        CartItem[]
   orderItems       OrderItem[]
+  stockMovements   StockMovement[]
+  reviews          Review[]
+  wishlistItems    WishlistItem[]
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
@@ -46,6 +49,23 @@ model Product {
   @@index([isTrending])
   @@index([isBestSeller])
   @@map("products")
+}
+
+model StockMovement {
+  id            Int      @id @default(autoincrement())
+  productId     Int
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  adjustedById  Int
+  adjustedBy    User     @relation(fields: [adjustedById], references: [id], onDelete: Restrict)
+  previousStock Int
+  newStock      Int
+  change        Int
+  reason        String
+  createdAt     DateTime @default(now())
+
+  @@index([productId, createdAt])
+  @@index([adjustedById])
+  @@map("stock_movements")
 }
 
 model ProductImage {

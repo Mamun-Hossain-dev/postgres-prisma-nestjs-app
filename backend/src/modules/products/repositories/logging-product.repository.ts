@@ -31,6 +31,20 @@ export class LoggingProductRepository implements ProductRepository {
     return this.repository.findCollections(limit);
   }
 
+  getOperationsSummary() {
+    return this.repository.getOperationsSummary();
+  }
+
+  adjustStock(
+    id: number,
+    quantity: number,
+    adjustedById: number,
+    reason: string,
+  ) {
+    this.logger.log(`Adjusting stock for product ${id}`);
+    return this.repository.adjustStock(id, quantity, adjustedById, reason);
+  }
+
   async create(input: CreateProductInput, images: NewProductImage[] = []) {
     this.logger.log('Creating product');
     return await this.repository.create(input, images);

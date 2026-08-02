@@ -44,7 +44,7 @@ export class AnalyticsConsumer {
     }
   }
 
-  @EventPattern(PaymentEvents.SUCCEEDED_ANALYTICS)
+  @EventPattern(PaymentEvents.SUCCEEDED)
   async handlePaymentSucceeded(
     @Payload() event: PaymentSucceededEvent,
     @Ctx() context: RmqContext,

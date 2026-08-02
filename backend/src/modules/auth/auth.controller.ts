@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Post, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
@@ -14,6 +23,7 @@ import { getCookie, getRequestMetadata } from './utils/request-metadata.util';
 import type { AuthSessionResult } from './interfaces/auth.interface';
 import { AppException } from '../../common/exceptions/app.exception';
 import { GoogleAuthDto } from './dto/google-auth.dto';
+import { AuthSessionService } from './auth-session.service';
 
 @Controller('auth')
 export class AuthController {
@@ -23,6 +33,7 @@ export class AuthController {
 
   constructor(
     private readonly authService: AuthService,
+    private readonly authSessionService: AuthSessionService,
     configService: ConfigService,
   ) {
     this.refreshCookieName = configService.getOrThrow<string>(
@@ -110,6 +121,31 @@ export class AuthController {
   @ResponseMessage('Authenticated user fetched successfully')
   getProfile(@CurrentUser() user: PublicUser) {
     return user;
+  }
+
+  @Get('sessions')
+  @ResponseMessage('Active sessions fetched successfully')
+  sessions(@CurrentUser() user: PublicUser, @Req() request: Request) {
+    return this.authSessionService.list(
+      user.id,
+      getCookie(request, this.refreshCookieName) ?? undefined,
+    );
+  }
+
+  @Delete('sessions/:id')
+  @ResponseMessage('Session revoked successfully')
+  async revokeSession(
+    @CurrentUser() user: PublicUser,
+    @Param('id') id: string,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    await this.authSessionService.revokeSession(user.id, id);
+    const currentId = this.authSessionService.tokenSessionId(
+      getCookie(request, this.refreshCookieName) ?? undefined,
+    );
+    if (currentId === id) this.clearRefreshCookie(response);
+    return null;
   }
 
   private requireRefreshToken(request: Request): string {

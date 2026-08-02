@@ -1,22 +1,23 @@
-'use client';
+"use client";
 
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { Download, LoaderCircle, Package } from 'lucide-react';
-import { toast } from 'sonner';
-import { AccountShell } from '@/components/account-shell';
-import { useAuth } from '@/components/auth-provider';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { EmptyState } from '@/components/ui/empty-state';
-import { apiFetch, apiFetchBlob, minorMoney } from '@/lib/api';
-import type { PaginatedOrders } from '@/lib/types';
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Download, Package } from "lucide-react";
+import { toast } from "sonner";
+import { AccountShell } from "@/components/account-shell";
+import { useAuth } from "@/components/auth-provider";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { apiFetch, apiFetchBlob, minorMoney } from "@/lib/api";
+import type { PaginatedOrders } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function OrdersPage() {
   const { accessToken } = useAuth();
   const orders = useQuery({
-    queryKey: ['orders'],
+    queryKey: ["orders"],
     queryFn: () =>
-      apiFetch<PaginatedOrders>('/orders?page=1&limit=50', {}, accessToken),
+      apiFetch<PaginatedOrders>("/orders?page=1&limit=50", {}, accessToken),
     enabled: Boolean(accessToken),
   });
   const invoice = useMutation({
@@ -32,7 +33,7 @@ export function OrdersPage() {
     }),
     onSuccess: ({ blob, orderNumber }) => {
       const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
+      const anchor = document.createElement("a");
       anchor.href = url;
       anchor.download = `devicedock-${orderNumber}.pdf`;
       anchor.click();
@@ -49,8 +50,23 @@ export function OrdersPage() {
         </p>
         <h1 className="display mt-2 text-5xl sm:text-6xl">Your orders.</h1>
         {orders.isLoading ? (
-          <div className="grid min-h-80 place-items-center">
-            <LoaderCircle className="animate-spin" />
+          <div className="mt-8 grid gap-5" role="status">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div
+                key={index}
+                className="rounded-[2rem] border bg-white/55 p-6 shadow-soft"
+              >
+                <div className="flex justify-between gap-5">
+                  <div className="flex-1">
+                    <Skeleton className="h-5 w-36" />
+                    <Skeleton className="mt-3 h-3 w-48" />
+                  </div>
+                  <Skeleton className="h-7 w-24 rounded-full" />
+                </div>
+                <Skeleton className="mt-7 h-16 w-full rounded-2xl" />
+              </div>
+            ))}
+            <span className="sr-only">Loading orders…</span>
           </div>
         ) : orders.isError ? (
           <div className="mt-8">
@@ -80,18 +96,24 @@ export function OrdersPage() {
                   <div className="text-right">
                     <Badge
                       tone={
-                        order.status === 'PAID'
-                          ? 'success'
-                          : order.status === 'PAYMENT_FAILED' ||
-                              order.status === 'CANCELLED'
-                            ? 'danger'
-                            : 'warning'
+                        order.status === "PAID" ||
+                        order.status === "COD_CONFIRMED"
+                          ? "success"
+                          : order.status === "PAYMENT_FAILED" ||
+                              order.status === "CANCELLED"
+                            ? "danger"
+                            : "warning"
                       }
                     >
-                      {order.status.replaceAll('_', ' ')}
+                      {order.status.replaceAll("_", " ")}
                     </Badge>
                     <p className="mt-2 font-bold">
                       {minorMoney(order.totalAmount, order.currency)}
+                    </p>
+                    <p className="mt-1 text-xs text-black/40">
+                      {order.paymentMethod === "CARD"
+                        ? "Paid by card"
+                        : `${minorMoney(order.subtotalAmount - order.discountAmount, order.currency)} due on delivery`}
                     </p>
                   </div>
                 </div>
@@ -113,7 +135,7 @@ export function OrdersPage() {
                     </div>
                   ))}
                 </div>
-                {order.status === 'PAID' && (
+                {order.status === "PAID" && (
                   <div className="border-t p-5 text-right">
                     <Button
                       variant="outline"

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   Suspense,
@@ -6,30 +6,31 @@ import {
   useEffect,
   useMemo,
   useState,
-} from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { BadgePercent, Search, SlidersHorizontal } from 'lucide-react';
-import { demoProducts } from '@/lib/demo-products';
-import { ProductCard } from '@/components/product-card';
-import { Pagination } from '@/components/ui/pagination';
-import { Select } from '@/components/ui/select';
-import { productListQueryOptions } from '@/lib/queries/products';
+} from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { BadgePercent, Search, SlidersHorizontal } from "lucide-react";
+import { demoProducts } from "@/lib/demo-products";
+import { ProductCard } from "@/components/product-card";
+import { Pagination } from "@/components/ui/pagination";
+import { Select } from "@/components/ui/select";
+import { ProductGridSkeleton, Skeleton } from "@/components/ui/skeleton";
+import { productListQueryOptions } from "@/lib/queries/products";
 
 const categories = [
-  '',
-  'MOBILE',
-  'LAPTOP',
-  'TABLET',
-  'AUDIO',
-  'WATCH',
-  'ACCESSORY',
+  "",
+  "MOBILE",
+  "LAPTOP",
+  "TABLET",
+  "AUDIO",
+  "WATCH",
+  "ACCESSORY",
 ];
 const sortOptions = [
-  { value: 'newest', label: 'Newest' },
-  { value: 'price-asc', label: 'Price: low to high' },
-  { value: 'price-desc', label: 'Price: high to low' },
-  { value: 'name-asc', label: 'Name' },
+  { value: "newest", label: "Newest" },
+  { value: "price-asc", label: "Price: low to high" },
+  { value: "price-desc", label: "Price: high to low" },
+  { value: "name-asc", label: "Name" },
 ];
 
 export function ShopPage() {
@@ -37,7 +38,11 @@ export function ShopPage() {
     <Suspense
       fallback={
         <div className="min-h-[70vh] px-5 py-16 lg:px-8">
-          <div className="h-20 w-2/3 animate-pulse rounded-3xl bg-black/5" />
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="mt-4 h-16 max-w-xl rounded-3xl" />
+          <div className="mt-16">
+            <ProductGridSkeleton />
+          </div>
         </div>
       }
     >
@@ -49,35 +54,35 @@ export function ShopPage() {
 function ShopContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [search, setSearch] = useState(searchParams.get('search') ?? '');
+  const [search, setSearch] = useState(searchParams.get("search") ?? "");
   const deferredSearch = useDeferredValue(search);
-  const [category, setCategory] = useState(searchParams.get('category') ?? '');
-  const featuredOnly = searchParams.get('featured') === 'true';
-  const [sort, setSort] = useState('newest');
-  const [minPrice, setMinPrice] = useState('');
-  const [maxPrice, setMaxPrice] = useState('');
-  const [appliedMinPrice, setAppliedMinPrice] = useState('');
-  const [appliedMaxPrice, setAppliedMaxPrice] = useState('');
+  const [category, setCategory] = useState(searchParams.get("category") ?? "");
+  const featuredOnly = searchParams.get("featured") === "true";
+  const [sort, setSort] = useState("newest");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [appliedMinPrice, setAppliedMinPrice] = useState("");
+  const [appliedMaxPrice, setAppliedMaxPrice] = useState("");
   const [onSale, setOnSale] = useState(false);
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    setCategory(searchParams.get('category') ?? '');
+    setCategory(searchParams.get("category") ?? "");
     setPage(1);
   }, [searchParams]);
 
   const query = useMemo(() => {
     const params = new URLSearchParams({
       page: String(page),
-      limit: '12',
+      limit: "12",
       sort,
     });
-    if (category) params.set('category', category);
-    if (deferredSearch.trim()) params.set('search', deferredSearch.trim());
-    if (featuredOnly) params.set('featured', 'true');
-    if (appliedMinPrice) params.set('minPrice', appliedMinPrice);
-    if (appliedMaxPrice) params.set('maxPrice', appliedMaxPrice);
-    if (onSale) params.set('onSale', 'true');
+    if (category) params.set("category", category);
+    if (deferredSearch.trim()) params.set("search", deferredSearch.trim());
+    if (featuredOnly) params.set("featured", "true");
+    if (appliedMinPrice) params.set("minPrice", appliedMinPrice);
+    if (appliedMaxPrice) params.set("maxPrice", appliedMaxPrice);
+    if (onSale) params.set("onSale", "true");
     return params.toString();
   }, [
     category,
@@ -148,8 +153,8 @@ function ShopContent() {
           aria-pressed={onSale}
           className={`inline-flex h-12 items-center gap-2 rounded-full px-5 text-xs font-bold transition-all duration-200 ${
             onSale
-              ? 'bg-accent text-white shadow-sm'
-              : 'border bg-white/70 hover:border-accent/40 hover:bg-white'
+              ? "bg-accent text-white shadow-sm"
+              : "border bg-white/70 hover:border-accent/40 hover:bg-white"
           }`}
         >
           <BadgePercent size={15} /> On sale
@@ -172,25 +177,25 @@ function ShopContent() {
         <div className="flex gap-3 overflow-x-auto pb-1">
           {categories.map((item) => (
             <button
-              key={item || 'ALL'}
+              key={item || "ALL"}
               onClick={() => {
                 setCategory(item);
                 setPage(1);
                 const params = new URLSearchParams(searchParams.toString());
-                if (item) params.set('category', item);
-                else params.delete('category');
+                if (item) params.set("category", item);
+                else params.delete("category");
                 const queryString = params.toString();
-                router.replace(queryString ? `/shop?${queryString}` : '/shop', {
+                router.replace(queryString ? `/shop?${queryString}` : "/shop", {
                   scroll: false,
                 });
               }}
               className={`whitespace-nowrap rounded-full px-4 py-2.5 text-xs font-bold transition-all duration-200 ${
                 category === item
-                  ? 'bg-ink text-white shadow-sm'
-                  : 'border hover:border-accent/40 hover:bg-white'
+                  ? "bg-ink text-white shadow-sm"
+                  : "border hover:border-accent/40 hover:bg-white"
               }`}
             >
-              {item || 'ALL'}
+              {item || "ALL"}
             </button>
           ))}
         </div>
@@ -209,13 +214,8 @@ function ShopContent() {
       </div>
 
       {products.isLoading ? (
-        <div className="grid animate-in gap-6 py-12 fade-in sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, index) => (
-            <div
-              key={index}
-              className="aspect-[4/5] animate-pulse rounded-[2rem] bg-black/5"
-            />
-          ))}
+        <div className="py-12">
+          <ProductGridSkeleton />
         </div>
       ) : list.length ? (
         <div className="grid animate-in gap-x-6 gap-y-14 py-12 fade-in duration-300 sm:grid-cols-2 lg:grid-cols-4">

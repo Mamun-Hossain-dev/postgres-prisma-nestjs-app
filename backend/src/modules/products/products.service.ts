@@ -22,16 +22,23 @@ import {
   toPaginatedResult,
   toRepositoryPagination,
 } from '../../common/utils/pagination.util';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class ProductsService {
   private readonly logger = new Logger(ProductsService.name);
+  private readonly maxProductImages: number;
 
   constructor(
     @Inject(PRODUCT_REPOSITORY)
     private readonly productsRepository: ProductRepository,
     private readonly uploadsService: UploadsService,
-  ) {}
+    configService: ConfigService,
+  ) {
+    this.maxProductImages = configService.getOrThrow<number>(
+      'cloudinary.maxProductImages',
+    );
+  }
 
   async getAllProducts(
     options: PaginationOptions & Omit<ProductListOptions, 'skip' | 'take'>,
@@ -75,6 +82,31 @@ export class ProductsService {
     return this.productsRepository.findCollections(limit);
   }
 
+  getOperationsSummary() {
+    return this.productsRepository.getOperationsSummary();
+  }
+
+  async adjustStock(
+    id: number,
+    quantity: number,
+    adjustedById: number,
+    reason: string,
+  ) {
+    const result = await this.productsRepository.adjustStock(
+      id,
+      quantity,
+      adjustedById,
+      reason.trim(),
+    );
+    if (!result) {
+      throw new AppException('Product not found', {
+        code: 'PRODUCT_NOT_FOUND',
+        status: 404,
+      });
+    }
+    return result;
+  }
+
   async getProductById(id: number): Promise<Product> {
     const product = await this.productsRepository.findById(id);
 
@@ -106,6 +138,7 @@ export class ProductsService {
     input: CreateProductRequest,
     files: FileToStore[] = [],
   ): Promise<Product> {
+    this.assertImageLimit(files.length);
     const uploadedImages = await this.uploadsService.uploadImages(files);
 
     try {
@@ -142,7 +175,8 @@ export class ProductsService {
     input: UpdateProductRequest,
     files: FileToStore[] = [],
   ): Promise<Product> {
-    await this.getProductById(id);
+    const existingProduct = await this.getProductById(id);
+    this.assertImageLimit(existingProduct.images.length + files.length);
     const uploadedImages = await this.uploadsService.uploadImages(files);
     let updatedProduct: Product | null;
 
@@ -158,7 +192,7 @@ export class ProductsService {
         ...(offerEndsAt ? { offerEndsAt: new Date(offerEndsAt) } : {}),
         ...(publishedAt ? { publishedAt: new Date(publishedAt) } : {}),
       };
-      this.validateOffer(normalizedInput, await this.getProductById(id));
+      this.validateOffer(normalizedInput, existingProduct);
       updatedProduct = await this.productsRepository.update(
         id,
         normalizedInput,
@@ -219,6 +253,18 @@ export class ProductsService {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
+  }
+
+  private assertImageLimit(imageCount: number): void {
+    if (imageCount <= this.maxProductImages) return;
+
+    throw new AppException(
+      `A product can have a maximum of ${this.maxProductImages} images`,
+      {
+        code: 'TOO_MANY_PRODUCT_IMAGES',
+        status: 400,
+      },
+    );
   }
 
   private validateOffer(

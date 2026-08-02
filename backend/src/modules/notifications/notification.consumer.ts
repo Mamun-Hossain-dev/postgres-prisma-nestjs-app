@@ -14,6 +14,7 @@ import {
   PaymentEvents,
 } from '../payments/constants/payment.constants';
 import type { PaymentSucceededEvent } from '../payments/interfaces/payment.interface';
+import { AccountService } from '../account/account.service';
 
 @Controller()
 export class NotificationConsumer {
@@ -22,6 +23,7 @@ export class NotificationConsumer {
   constructor(
     private readonly retryService: RabbitMqRetryService,
     private readonly eventProcessing: EventProcessingService,
+    private readonly accountService: AccountService,
   ) {}
 
   @EventPattern(UserEvents.CREATED_NOTIFICATION)
@@ -34,6 +36,11 @@ export class NotificationConsumer {
 
     try {
       this.logger.log(`Notification event received for user ${user.id}`);
+      await this.accountService.createNotification(user.id, {
+        type: 'ACCOUNT',
+        title: 'Welcome to DeviceDock',
+        message: 'Your DeviceDock account is ready.',
+      });
       channel.ack(message);
     } catch (error) {
       await this.retryService.handleFailure(
@@ -44,7 +51,7 @@ export class NotificationConsumer {
     }
   }
 
-  @EventPattern(PaymentEvents.SUCCEEDED_NOTIFICATION)
+  @EventPattern(PaymentEvents.SUCCEEDED)
   async handlePaymentSucceeded(
     @Payload() event: PaymentSucceededEvent,
     @Ctx() context: RmqContext,
@@ -58,6 +65,14 @@ export class NotificationConsumer {
         channel.ack(message);
         return;
       }
+      await this.accountService.createNotification(event.customer.id, {
+        type: 'ORDER',
+        title: `Order ${event.orderNumber} confirmed`,
+        message:
+          event.paymentMethod === 'CASH_ON_DELIVERY'
+            ? 'Your delivery charge was paid. Product payment is due on delivery.'
+            : 'Your card payment was verified and your order is confirmed.',
+      });
       this.logger.log(`Notification sent to user ${event.customer.id}`);
       await this.eventProcessing.complete(consumer, event.eventId);
       channel.ack(message);

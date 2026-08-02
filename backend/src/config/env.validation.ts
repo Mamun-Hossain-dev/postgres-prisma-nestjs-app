@@ -22,6 +22,12 @@ const envSchema = z
       .regex(/^amqps?:\/\//, 'RABBITMQ_URL must use amqp:// or amqps://')
       .default('amqp://localhost:5672'),
     RABBITMQ_PREFETCH_COUNT: z.coerce.number().int().positive().default(10),
+    RABBITMQ_RPC_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1000)
+      .max(30000)
+      .default(10000),
     CLOUDINARY_CLOUD_NAME: z
       .string()
       .min(1, 'CLOUDINARY_CLOUD_NAME is required'),
@@ -64,11 +70,6 @@ const envSchema = z
     STRIPE_ENABLED: booleanString,
     STRIPE_SECRET_KEY: z.string().optional(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
-    STRIPE_CURRENCY: z
-      .string()
-      .regex(/^[a-zA-Z]{3}$/)
-      .default('bdt'),
-    STRIPE_MINOR_UNIT: z.coerce.number().int().positive().default(100),
     PAYMENT_LOCK_TTL_SECONDS: z.coerce
       .number()
       .int()
@@ -77,30 +78,30 @@ const envSchema = z
       .default(30),
   })
   .superRefine((env, context) => {
-    if (!env.MAIL_ENABLED) return;
+    if (env.MAIL_ENABLED) {
+      if (!env.SMTP_HOST) {
+        context.addIssue({
+          code: 'custom',
+          path: ['SMTP_HOST'],
+          message: 'SMTP_HOST is required when MAIL_ENABLED is true',
+        });
+      }
 
-    if (!env.SMTP_HOST) {
-      context.addIssue({
-        code: 'custom',
-        path: ['SMTP_HOST'],
-        message: 'SMTP_HOST is required when MAIL_ENABLED is true',
-      });
-    }
+      if (!env.MAIL_FROM) {
+        context.addIssue({
+          code: 'custom',
+          path: ['MAIL_FROM'],
+          message: 'MAIL_FROM is required when MAIL_ENABLED is true',
+        });
+      }
 
-    if (!env.MAIL_FROM) {
-      context.addIssue({
-        code: 'custom',
-        path: ['MAIL_FROM'],
-        message: 'MAIL_FROM is required when MAIL_ENABLED is true',
-      });
-    }
-
-    if (Boolean(env.SMTP_USER) !== Boolean(env.SMTP_PASSWORD)) {
-      context.addIssue({
-        code: 'custom',
-        path: ['SMTP_USER'],
-        message: 'SMTP_USER and SMTP_PASSWORD must be provided together',
-      });
+      if (Boolean(env.SMTP_USER) !== Boolean(env.SMTP_PASSWORD)) {
+        context.addIssue({
+          code: 'custom',
+          path: ['SMTP_USER'],
+          message: 'SMTP_USER and SMTP_PASSWORD must be provided together',
+        });
+      }
     }
 
     if (env.STRIPE_ENABLED && !env.STRIPE_SECRET_KEY) {

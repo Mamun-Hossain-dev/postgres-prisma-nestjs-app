@@ -8,6 +8,8 @@ import {
   UpdateProductInput,
   ProductListOptions,
   ProductCollections,
+  CatalogOperationsSummary,
+  StockAdjustment,
 } from '../interfaces/product.interface';
 import type { ProductRepository } from './product.repository';
 import type { RepositoryPaginatedResult } from '../../../common/interfaces/pagination.interface';
@@ -201,6 +203,76 @@ export class PrismaProductRepository implements ProductRepository {
       trending,
       brands: brands.map(({ brand }) => brand),
     };
+  }
+
+  async getOperationsSummary(): Promise<CatalogOperationsSummary> {
+    const [categoryGroups, brandGroups, products] = await Promise.all([
+      this.prisma.product.groupBy({
+        by: ['category'],
+        _count: { _all: true },
+        _sum: { quantity: true },
+        orderBy: { category: 'asc' },
+      }),
+      this.prisma.product.groupBy({
+        by: ['brand'],
+        _count: { _all: true },
+        _sum: { quantity: true },
+        orderBy: { brand: 'asc' },
+      }),
+      this.prisma.product.findMany({ select: { quantity: true } }),
+    ]);
+    return {
+      categories: categoryGroups.map((group) => ({
+        category: group.category,
+        productCount: group._count._all,
+        stockCount: group._sum.quantity ?? 0,
+      })),
+      brands: brandGroups.map((group) => ({
+        brand: group.brand,
+        productCount: group._count._all,
+        stockCount: group._sum.quantity ?? 0,
+      })),
+      inventory: {
+        totalProducts: products.length,
+        totalUnits: products.reduce(
+          (sum, product) => sum + product.quantity,
+          0,
+        ),
+        lowStockProducts: products.filter(
+          (product) => product.quantity > 0 && product.quantity < 5,
+        ).length,
+        outOfStockProducts: products.filter((product) => product.quantity === 0)
+          .length,
+      },
+    };
+  }
+
+  async adjustStock(
+    id: number,
+    quantity: number,
+    adjustedById: number,
+    reason: string,
+  ): Promise<StockAdjustment | null> {
+    return this.prisma.$transaction(async (prisma) => {
+      const existing = await prisma.product.findUnique({ where: { id } });
+      if (!existing) return null;
+      const product = await prisma.product.update({
+        where: { id },
+        data: { quantity },
+        include: { images: { orderBy: { id: 'asc' } } },
+      });
+      const movement = await prisma.stockMovement.create({
+        data: {
+          productId: id,
+          adjustedById,
+          previousStock: existing.quantity,
+          newStock: quantity,
+          change: quantity - existing.quantity,
+          reason,
+        },
+      });
+      return { product, movement };
+    });
   }
 
   async create(

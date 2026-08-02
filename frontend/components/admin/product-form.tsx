@@ -16,6 +16,7 @@ import { Select, type SelectOption } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { apiFetch } from '@/lib/api';
 import type { Category, Product } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 const categories: Category[] = [
   'MOBILE',
@@ -36,6 +37,8 @@ const statusOptions: SelectOption[] = [
   { value: 'DRAFT', label: 'Draft' },
   { value: 'ARCHIVED', label: 'Archived' },
 ];
+
+const MAX_PRODUCT_IMAGES = 4;
 
 interface Values {
   title: string;
@@ -63,9 +66,14 @@ export function ProductForm({ product }: { product?: Product }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [files, setFiles] = useState<File[]>([]);
+  const [existingImages, setExistingImages] = useState(product?.images ?? []);
   const previews = useMemo(
     () => files.map((file) => URL.createObjectURL(file)),
     [files],
+  );
+  const imageSlotsLeft = Math.max(
+    0,
+    MAX_PRODUCT_IMAGES - existingImages.length - files.length,
   );
 
   useEffect(
@@ -155,7 +163,7 @@ export function ProductForm({ product }: { product?: Product }) {
         { method: product ? 'PATCH' : 'POST', body: data },
         accessToken,
       );
-      queryClient.setQueryData(['product', String(saved.id)], saved);
+      queryClient.setQueryData(['products', 'detail', String(saved.id)], saved);
       await queryClient.invalidateQueries({ queryKey: ['admin', 'products'] });
       await queryClient.invalidateQueries({ queryKey: ['products'] });
       toast.success(product ? 'Product updated' : 'Product created');
@@ -176,6 +184,7 @@ export function ProductForm({ product }: { product?: Product }) {
         accessToken,
       ),
     onSuccess: (updated) => {
+      setExistingImages(updated.images);
       queryClient.setQueryData(
         ['admin', 'product', String(product?.id)],
         updated,
@@ -186,8 +195,19 @@ export function ProductForm({ product }: { product?: Product }) {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const selectImages = (selected: File[]) => {
+    if (!selected.length) return;
+    if (selected.length > imageSlotsLeft) {
+      toast.error(
+        `You can add ${imageSlotsLeft} more image${imageSlotsLeft === 1 ? '' : 's'}.`,
+      );
+      return;
+    }
+    setFiles((current) => [...current, ...selected]);
+  };
+
   return (
-    <section className="mx-auto max-w-5xl">
+    <section className="w-full">
       <Link
         href="/admin/products"
         className="inline-flex items-center gap-2 text-sm font-bold text-black/50"
@@ -209,12 +229,17 @@ export function ProductForm({ product }: { product?: Product }) {
         }
       />
 
-      <form id="product-form" onSubmit={save} className="mt-6 grid gap-6">
+      <form
+        id="product-form"
+        onSubmit={save}
+        className="mt-6 grid items-start gap-6 xl:grid-cols-2"
+      >
         <FormSection
           title="Product information"
           intro="The details customers use to identify this product."
+          className="xl:col-span-2"
         >
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
             <Field label="Product title" error={errors.title?.message}>
               <Input
                 placeholder="e.g. Pixel 9 Pro"
@@ -278,6 +303,7 @@ export function ProductForm({ product }: { product?: Product }) {
         <FormSection
           title="Pricing & inventory"
           intro="Control pricing, stock visibility and merchandising."
+          className="xl:col-span-2"
         >
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <Field label="Price (BDT)" error={errors.price?.message}>
@@ -370,29 +396,33 @@ export function ProductForm({ product }: { product?: Product }) {
 
         <FormSection
           title="Product images"
-          intro="Upload JPEG, PNG, WebP or GIF images."
+          intro="Upload up to 4 JPEG, PNG, WebP or GIF images."
         >
-          <label className="flex cursor-pointer flex-col items-center justify-center rounded-[1.5rem] border border-dashed bg-white/35 px-6 py-10 text-center transition hover:border-accent hover:bg-white/65 focus-within:ring-2 focus-within:ring-accent">
+          <label className="flex cursor-pointer flex-col items-center justify-center rounded-[1.5rem] border border-dashed bg-white/35 px-6 py-10 text-center transition hover:border-accent hover:bg-white/65 focus-within:ring-2 focus-within:ring-accent has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
             <ImagePlus size={28} className="text-accent" />
             <span className="mt-3 text-sm font-bold">
               Choose product images
             </span>
             <span className="mt-1 text-xs text-black/40">
-              Select one or multiple files
+              {imageSlotsLeft
+                ? `${imageSlotsLeft} image slot${imageSlotsLeft === 1 ? '' : 's'} remaining`
+                : 'Maximum 4 images added'}
             </span>
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp,image/gif"
               multiple
+              disabled={imageSlotsLeft === 0}
               className="sr-only"
-              onChange={(event) =>
-                setFiles(Array.from(event.target.files ?? []))
-              }
+              onChange={(event) => {
+                selectImages(Array.from(event.target.files ?? []));
+                event.target.value = '';
+              }}
             />
           </label>
-          {(product?.images.length || previews.length) && (
+          {(existingImages.length || previews.length) && (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              {product?.images.map((image) => (
+              {existingImages.map((image) => (
                 <div
                   key={image.id}
                   className="group relative aspect-square overflow-hidden rounded-2xl bg-black/5"
@@ -459,7 +489,7 @@ export function ProductForm({ product }: { product?: Product }) {
           </Field>
         </FormSection>
 
-        <div className="flex justify-end gap-3">
+        <div className="flex justify-end gap-3 xl:col-span-2">
           <Link href="/admin/products">
             <Button type="button" variant="ghost">
               Cancel
@@ -485,13 +515,20 @@ function FormSection({
   title,
   intro,
   children,
+  className,
 }: {
   title: string;
   intro: string;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <section className="rounded-[2rem] border bg-white/55 p-6 shadow-soft sm:p-8">
+    <section
+      className={cn(
+        'rounded-[2rem] border bg-white/55 p-6 shadow-soft sm:p-8',
+        className,
+      )}
+    >
       <div className="mb-6">
         <h2 className="display text-2xl font-medium md:text-3xl">{title}</h2>
         <p className="mt-1 text-sm text-black/45">{intro}</p>

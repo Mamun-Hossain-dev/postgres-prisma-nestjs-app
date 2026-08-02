@@ -1,18 +1,22 @@
-import { getToken } from 'next-auth/jwt';
-import { NextResponse, type NextRequest } from 'next/server';
+import { getToken } from "next-auth/jwt";
+import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
   const token = await getToken({ req: request });
   const pathname = request.nextUrl.pathname;
 
   if (!token) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('callbackUrl', pathname);
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set(
+      "callbackUrl",
+      `${pathname}${request.nextUrl.search}`,
+    );
+    loginUrl.searchParams.set("authNotice", "required");
     return NextResponse.redirect(loginUrl);
   }
 
-  if (pathname.startsWith('/admin') && token.user.role !== 'ADMIN') {
-    return NextResponse.redirect(new URL('/profile', request.url));
+  if (pathname.startsWith("/admin") && token.user.role !== "ADMIN") {
+    return NextResponse.redirect(new URL("/profile", request.url));
   }
 
   return NextResponse.next();
@@ -20,11 +24,11 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/cart/:path*',
-    '/checkout/:path*',
-    '/profile/:path*',
-    '/settings/:path*',
-    '/account/:path*',
-    '/admin/:path*',
+    "/checkout/:path*",
+    "/payment/:path*",
+    "/profile/:path*",
+    "/settings/:path*",
+    "/account/:path*",
+    "/admin/:path*",
   ],
 };

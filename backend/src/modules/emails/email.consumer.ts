@@ -53,7 +53,7 @@ export class EmailConsumer {
     }
   }
 
-  @EventPattern(PaymentEvents.SUCCEEDED_EMAIL)
+  @EventPattern(PaymentEvents.SUCCEEDED)
   async handlePaymentSucceeded(
     @Payload() event: PaymentSucceededEvent,
     @Ctx() context: RmqContext,

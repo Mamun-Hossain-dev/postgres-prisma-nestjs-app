@@ -21,17 +21,15 @@ export class PaymentEventsPublisher {
 
   async publishSucceeded(event: PaymentSucceededEvent): Promise<void> {
     const destinations = [
-      ['email', this.emailsClient, PaymentEvents.SUCCEEDED_EMAIL],
-      [
-        'notification',
-        this.notificationsClient,
-        PaymentEvents.SUCCEEDED_NOTIFICATION,
-      ],
-      ['analytics', this.analyticsClient, PaymentEvents.SUCCEEDED_ANALYTICS],
+      ['email', this.emailsClient],
+      ['notification', this.notificationsClient],
+      ['analytics', this.analyticsClient],
     ] as const;
     const results = await Promise.allSettled(
-      destinations.map(([, client, pattern]) =>
-        firstValueFrom(client.emit(pattern, event)),
+      destinations.map(([, client]) =>
+        Promise.resolve().then(() =>
+          firstValueFrom(client.emit(PaymentEvents.SUCCEEDED, event)),
+        ),
       ),
     );
     const failures = results.flatMap((result, index) =>

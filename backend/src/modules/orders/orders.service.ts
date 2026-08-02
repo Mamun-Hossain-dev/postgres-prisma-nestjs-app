@@ -17,21 +17,39 @@ export class OrdersService {
     return this.repository.findAllByUser(userId, options);
   }
 
+  findAllForAdmin(options: PaginationOptions) {
+    return this.repository.findAll(options);
+  }
+
   async findOne(userId: number, orderId: number) {
     const order = await this.repository.findById(userId, orderId);
     if (!order) throw this.orderNotFound();
     return order;
   }
 
+  async findOneForAdmin(orderId: number) {
+    const order = await this.repository.findByIdForAdmin(orderId);
+    if (!order) throw this.orderNotFound();
+    return order;
+  }
+
   async generateInvoice(userId: number, orderId: number): Promise<Buffer> {
     const data = await this.repository.getInvoiceData(userId, orderId);
-    if (!data) {
-      throw new AppException('A paid invoice is not available for this order', {
-        code: 'INVOICE_NOT_AVAILABLE',
-        status: 409,
-      });
-    }
+    if (!data) throw this.invoiceNotAvailable();
     return this.invoiceService.generate(data);
+  }
+
+  async generateInvoiceForAdmin(orderId: number): Promise<Buffer> {
+    const data = await this.repository.getInvoiceDataForAdmin(orderId);
+    if (!data) throw this.invoiceNotAvailable();
+    return this.invoiceService.generate(data);
+  }
+
+  private invoiceNotAvailable() {
+    return new AppException('A paid invoice is not available for this order', {
+      code: 'INVOICE_NOT_AVAILABLE',
+      status: 409,
+    });
   }
 
   private orderNotFound() {

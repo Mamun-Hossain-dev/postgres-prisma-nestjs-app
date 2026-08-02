@@ -6,6 +6,8 @@ import {
   UpdateProductInput,
   ProductListOptions,
   ProductCollections,
+  CatalogOperationsSummary,
+  StockAdjustment,
 } from '../interfaces/product.interface';
 import type { RepositoryPaginatedResult } from '../../../common/interfaces/pagination.interface';
 
@@ -15,6 +17,13 @@ export interface ProductRepository {
   ): Promise<RepositoryPaginatedResult<Product>>;
   findById(id: number): Promise<Product | null>;
   findCollections(limit: number): Promise<ProductCollections>;
+  getOperationsSummary(): Promise<CatalogOperationsSummary>;
+  adjustStock(
+    id: number,
+    quantity: number,
+    adjustedById: number,
+    reason: string,
+  ): Promise<StockAdjustment | null>;
   create(
     input: CreateProductInput,
     images?: NewProductImage[],

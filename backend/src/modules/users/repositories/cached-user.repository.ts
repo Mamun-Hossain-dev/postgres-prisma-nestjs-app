@@ -120,6 +120,15 @@ export class CachedUserRepository implements UserRepository {
     return user;
   }
 
+  async updatePassword(id: number, password: string): Promise<User | null> {
+    const existingUser = await this.repository.findById(id);
+    const user = await this.repository.updatePassword(id, password);
+    if (!user) return null;
+    if (existingUser) await this.invalidateUserCache(existingUser);
+    await this.cacheUser(user);
+    return user;
+  }
+
   async delete(id: number): Promise<void> {
     const existingUser = await this.repository.findById(id);
 

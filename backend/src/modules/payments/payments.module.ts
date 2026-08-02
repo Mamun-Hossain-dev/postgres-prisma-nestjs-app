@@ -9,16 +9,19 @@ import { PaymentController } from './payment.controller';
 import { PaymentService } from './payment.service';
 import { PaymentWebhookService } from './payment-webhook.service';
 import { PrismaPaymentRepository } from './repositories/prisma-payment.repository';
+import { PaymentRpcClient } from './rpc/payment-rpc.client';
+import { PaymentRpcController } from './rpc/payment-rpc.controller';
 
 @Module({
   imports: [RedisModule, RabbitMqModule],
-  controllers: [PaymentController],
+  controllers: [PaymentController, PaymentRpcController],
   providers: [
     PaymentService,
     PaymentWebhookService,
     PaymentEventsPublisher,
     PrismaPaymentRepository,
     StripeService,
+    PaymentRpcClient,
     {
       provide: PAYMENT_REPOSITORY,
       useExisting: PrismaPaymentRepository,

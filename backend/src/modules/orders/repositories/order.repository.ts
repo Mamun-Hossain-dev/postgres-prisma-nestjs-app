@@ -13,8 +13,13 @@ export interface OrderRepository {
     options: PaginationOptions,
   ): Promise<PaginatedResult<OrderView>>;
   findById(userId: number, orderId: number): Promise<OrderView | null>;
+  findAll(options: PaginationOptions): Promise<PaginatedResult<OrderView>>;
+  findByIdForAdmin(orderId: number): Promise<OrderView | null>;
   getInvoiceData(
     userId: number,
+    orderId: number,
+  ): Promise<PaymentSucceededEvent | null>;
+  getInvoiceDataForAdmin(
     orderId: number,
   ): Promise<PaymentSucceededEvent | null>;
 }

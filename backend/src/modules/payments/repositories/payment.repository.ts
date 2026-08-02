@@ -1,4 +1,6 @@
 import type {
+  CheckoutItemInput,
+  CheckoutOptions,
   PaymentView,
   VerifiedPaymentEvent,
   WebhookProcessingResult,
@@ -11,8 +13,10 @@ export interface PaymentRepository {
   ): Promise<PaymentView | null>;
   findActiveByUser(userId: number): Promise<PaymentView | null>;
   findOwnedById(userId: number, paymentId: number): Promise<PaymentView | null>;
-  createPendingFromCart(
+  createPendingFromItems(
     userId: number,
+    items: CheckoutItemInput[],
+    options: CheckoutOptions,
     idempotencyKey: string,
     currency: string,
     minorUnit: number,
@@ -26,5 +30,6 @@ export interface PaymentRepository {
     code: string,
     message: string,
   ): Promise<void>;
+  markCancelled(paymentId: number, reason: string): Promise<void>;
   processWebhook(event: VerifiedPaymentEvent): Promise<WebhookProcessingResult>;
 }

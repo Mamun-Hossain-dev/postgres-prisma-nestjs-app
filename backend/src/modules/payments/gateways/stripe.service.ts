@@ -33,7 +33,7 @@ export class StripeService implements PaymentGateway {
         {
           amount: input.amount,
           currency: input.currency,
-          automatic_payment_methods: { enabled: true },
+          payment_method_types: ['card'],
           metadata: input.metadata,
           receipt_email: input.receiptEmail,
         },
@@ -49,6 +49,15 @@ export class StripeService implements PaymentGateway {
     this.assertEnabled();
     try {
       return this.toResult(await this.stripe.paymentIntents.retrieve(id));
+    } catch (error) {
+      throw this.toGatewayError(error);
+    }
+  }
+
+  async cancelPaymentIntent(id: string): Promise<void> {
+    this.assertEnabled();
+    try {
+      await this.stripe.paymentIntents.cancel(id);
     } catch (error) {
       throw this.toGatewayError(error);
     }

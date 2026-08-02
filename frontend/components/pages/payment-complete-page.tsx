@@ -1,15 +1,19 @@
-'use client';
+"use client";
 
-import { Suspense, useEffect } from 'react';
-import Link from 'next/link';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'next/navigation';
-import { CheckCircle2, Clock3, XCircle } from 'lucide-react';
-import { useAuth } from '@/components/auth-provider';
-import { apiFetch, minorMoney } from '@/lib/api';
-import type { Payment } from '@/lib/types';
+import { Suspense, useEffect } from "react";
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Clock3, XCircle } from "lucide-react";
+import { useAuth } from "@/components/auth-provider";
+import { useCart } from "@/components/cart-provider";
+import { apiFetch } from "@/lib/api";
+import type { Payment } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const finalStatuses = new Set(['SUCCEEDED', 'FAILED', 'CANCELLED']);
+const finalStatuses = new Set(["SUCCEEDED", "FAILED", "CANCELLED"]);
+const CHECKOUT_SELECTION_KEY = "devicedock-checkout-product-ids";
+const CHECKOUT_IDEMPOTENCY_KEY = "devicedock-checkout-idempotency";
 
 export function PaymentCompletePage() {
   return (
@@ -21,11 +25,12 @@ export function PaymentCompletePage() {
 
 function PaymentCompleteContent() {
   const searchParams = useSearchParams();
-  const paymentId = searchParams.get('paymentId');
+  const router = useRouter();
+  const paymentId = searchParams.get("paymentId");
   const { accessToken } = useAuth();
-  const queryClient = useQueryClient();
+  const { removeItems } = useCart();
   const payment = useQuery({
-    queryKey: ['payment', paymentId],
+    queryKey: ["payment", paymentId],
     queryFn: () => apiFetch<Payment>(`/payments/${paymentId}`, {}, accessToken),
     enabled: Boolean(accessToken && paymentId),
     refetchInterval: (query) =>
@@ -33,13 +38,22 @@ function PaymentCompleteContent() {
         ? false
         : 2_000,
   });
-  const succeeded = payment.data?.status === 'SUCCEEDED';
 
   useEffect(() => {
-    if (!succeeded) return;
-    void queryClient.invalidateQueries({ queryKey: ['cart'] });
-    void queryClient.invalidateQueries({ queryKey: ['orders'] });
-  }, [queryClient, succeeded]);
+    if (!paymentId || !payment.data) return;
+    if (payment.data.status === "SUCCEEDED") {
+      removeItems(readSelectedProductIds());
+      window.sessionStorage.removeItem(CHECKOUT_SELECTION_KEY);
+      window.sessionStorage.removeItem(CHECKOUT_IDEMPOTENCY_KEY);
+      router.replace(`/payment/success?paymentId=${paymentId}`);
+    } else if (
+      payment.data.status === "FAILED" ||
+      payment.data.status === "CANCELLED"
+    ) {
+      window.sessionStorage.removeItem(CHECKOUT_IDEMPOTENCY_KEY);
+      router.replace(`/payment/failure?paymentId=${paymentId}`);
+    }
+  }, [payment.data, paymentId, removeItems, router]);
 
   if (payment.isError) {
     return (
@@ -58,64 +72,19 @@ function PaymentCompleteContent() {
       </div>
     );
   }
-  if (payment.isLoading || !payment.data) return <PaymentStatusSkeleton />;
-  const failed =
-    payment.data.status === 'FAILED' || payment.data.status === 'CANCELLED';
+
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-2xl items-center px-5 py-16">
       <section className="w-full rounded-[2.25rem] border bg-white/65 p-8 text-center shadow-soft sm:p-12">
-        {succeeded ? (
-          <CheckCircle2 className="mx-auto text-emerald-600" size={52} />
-        ) : failed ? (
-          <XCircle className="mx-auto text-red-600" size={52} />
-        ) : (
-          <Clock3 className="mx-auto animate-pulse text-accent" size={52} />
-        )}
+        <Clock3 className="mx-auto animate-pulse text-accent" size={52} />
         <p className="mt-7 text-xs font-bold uppercase tracking-[0.22em] text-accent">
-          {payment.data.order.orderNumber}
+          Secure verification
         </p>
-        <h1 className="display mt-3 text-5xl">
-          {succeeded
-            ? 'Payment confirmed.'
-            : failed
-              ? 'Payment was not completed.'
-              : 'Confirming your payment.'}
-        </h1>
+        <h1 className="display mt-3 text-5xl">Confirming your payment.</h1>
         <p className="mx-auto mt-5 max-w-lg text-sm leading-7 text-black/50">
-          {succeeded
-            ? 'Stripe verified the payment. Your order and PDF invoice are now available.'
-            : failed
-              ? (payment.data.failureMessage ??
-                'You can return to your cart and start a new checkout.')
-              : 'We are waiting for the verified Stripe webhook. This page updates automatically.'}
+          We are waiting for Stripe&apos;s verified webhook. You will be
+          redirected automatically when the final status is available.
         </p>
-        <p className="mt-6 text-xl font-bold">
-          {minorMoney(payment.data.amount, payment.data.currency)}
-        </p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
-          {succeeded && (
-            <Link
-              href="/account/orders"
-              className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white"
-            >
-              View orders
-            </Link>
-          )}
-          {failed && (
-            <Link
-              href="/cart"
-              className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white"
-            >
-              Return to cart
-            </Link>
-          )}
-          <Link
-            href="/shop"
-            className="rounded-full border px-6 py-3 text-sm font-bold"
-          >
-            Continue shopping
-          </Link>
-        </div>
       </section>
     </div>
   );
@@ -123,8 +92,27 @@ function PaymentCompleteContent() {
 
 function PaymentStatusSkeleton() {
   return (
-    <div className="mx-auto min-h-[70vh] max-w-2xl px-5 py-16">
-      <div className="h-[30rem] animate-pulse rounded-[2rem] bg-black/5" />
+    <div className="mx-auto flex min-h-[70vh] max-w-2xl items-center px-5 py-16">
+      <div className="w-full rounded-[2.25rem] border bg-white/65 p-8 text-center shadow-soft sm:p-12">
+        <Skeleton className="mx-auto h-14 w-14 rounded-full" />
+        <Skeleton className="mx-auto mt-7 h-3 w-32" />
+        <Skeleton className="mx-auto mt-5 h-12 w-4/5 rounded-2xl" />
+        <Skeleton className="mx-auto mt-5 h-4 w-full max-w-lg" />
+        <Skeleton className="mx-auto mt-3 h-4 w-2/3 max-w-sm" />
+      </div>
     </div>
   );
+}
+
+function readSelectedProductIds(): number[] {
+  try {
+    const value = JSON.parse(
+      window.sessionStorage.getItem(CHECKOUT_SELECTION_KEY) ?? "[]",
+    ) as unknown;
+    return Array.isArray(value)
+      ? value.filter((id): id is number => Number.isInteger(id))
+      : [];
+  } catch {
+    return [];
+  }
 }

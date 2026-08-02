@@ -26,6 +26,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ImageFileValidationPipe } from '../../infrastructure/uploads/pipes/image-file-validation.pipe';
 import { toFileToStore } from '../../infrastructure/uploads/utils/multer-file.util';
 import { UserQueryDto } from './dto/user-query.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Controller('users')
 export class UserController {
@@ -88,6 +89,20 @@ export class UserController {
   async deleteMe(@CurrentUser() user: PublicUser) {
     await this.userService.deleteUser(user.id);
 
+    return null;
+  }
+
+  @Patch('me/password')
+  @ResponseMessage('Password updated successfully')
+  async changePassword(
+    @CurrentUser() user: PublicUser,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    await this.userService.changePassword(
+      user.id,
+      dto.currentPassword,
+      dto.newPassword,
+    );
     return null;
   }
 

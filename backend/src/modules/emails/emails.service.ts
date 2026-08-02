@@ -74,6 +74,14 @@ export class EmailsService {
       style: 'currency',
       currency: event.currency.toUpperCase(),
     }).format(event.totalAmount / 100);
+    const dueOnDelivery = new Intl.NumberFormat('en-BD', {
+      style: 'currency',
+      currency: event.currency.toUpperCase(),
+    }).format(event.dueOnDelivery / 100);
+    const confirmation =
+      event.paymentMethod === 'CASH_ON_DELIVERY'
+        ? `Your delivery charge for order ${event.orderNumber} is paid. ${dueOnDelivery} is due in cash on delivery.`
+        : `Your payment for order ${event.orderNumber} is confirmed.`;
     await this.transporter.sendMail({
       from: this.configService.getOrThrow<string>('email.from'),
       to: event.customer.email,
@@ -81,13 +89,13 @@ export class EmailsService {
       text: [
         `Hello ${event.customer.name},`,
         '',
-        `Your payment for order ${event.orderNumber} is confirmed.`,
+        confirmation,
         `Payment ID: ${event.paymentId}`,
         `Total: ${amount}`,
         '',
         'Your PDF invoice is attached.',
       ].join('\n'),
-      html: `<main style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:32px"><p style="color:#b4472f;font-weight:700">DeviceDock</p><h1>Payment confirmed</h1><p>Hello ${this.escapeHtml(event.customer.name)},</p><p>Your payment for order <strong>${this.escapeHtml(event.orderNumber)}</strong> has succeeded.</p><p>Payment ID: ${event.paymentId}<br />Total: ${this.escapeHtml(amount)}</p><p>Your PDF invoice is attached.</p></main>`,
+      html: `<main style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:32px"><p style="color:#b4472f;font-weight:700">DeviceDock</p><h1>Payment confirmed</h1><p>Hello ${this.escapeHtml(event.customer.name)},</p><p>${this.escapeHtml(confirmation)}</p><p>Payment ID: ${event.paymentId}<br />Paid now: ${this.escapeHtml(amount)}</p><p>Your PDF invoice is attached.</p></main>`,
       attachments: [
         {
           filename: `devicedock-${event.orderNumber}.pdf`,

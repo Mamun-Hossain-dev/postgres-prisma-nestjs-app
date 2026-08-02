@@ -16,7 +16,8 @@ export class InvoiceService {
       document.fontSize(12).fillColor('#b4472f').text('  PAYMENT INVOICE');
       document.moveDown();
       document.fillColor('#111111').fontSize(11);
-      document.text(`Order: ${data.orderNumber}`);
+      document.text(`Order ID: ${data.orderId}`);
+      document.text(`Order number: ${data.orderNumber}`);
       document.text(`Payment ID: ${data.paymentId}`);
       document.text(`Payment status: ${data.paymentStatus}`);
       document.text(
@@ -50,10 +51,36 @@ export class InvoiceService {
       document.moveTo(48, document.y).lineTo(547, document.y).stroke('#dddddd');
       document.moveDown();
       document
-        .fontSize(15)
-        .text(`Total: ${this.money(data.totalAmount, data.currency)}`, {
+        .fontSize(11)
+        .text(`Products: ${this.money(data.subtotalAmount, data.currency)}`, {
           align: 'right',
         });
+      document.text(
+        `Delivery: ${this.money(data.deliveryCharge, data.currency)}`,
+        { align: 'right' },
+      );
+      if (data.discountAmount > 0) {
+        document.text(
+          `Discount: -${this.money(data.discountAmount, data.currency)}`,
+          { align: 'right' },
+        );
+      }
+      document
+        .fontSize(15)
+        .text(`Order total: ${this.money(data.orderTotal, data.currency)}`, {
+          align: 'right',
+        });
+      if (data.dueOnDelivery > 0) {
+        document
+          .fontSize(11)
+          .text(`Paid now: ${this.money(data.totalAmount, data.currency)}`, {
+            align: 'right',
+          });
+        document.text(
+          `Cash due on delivery: ${this.money(data.dueOnDelivery, data.currency)}`,
+          { align: 'right' },
+        );
+      }
       document.end();
     });
   }

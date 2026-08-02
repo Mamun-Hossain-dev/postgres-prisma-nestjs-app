@@ -202,6 +202,29 @@ export class UserService {
     return toPublicUser(updatedUser);
   }
 
+  async changePassword(
+    userId: number,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const user = await this.requireUser(userId);
+    if (
+      user.password &&
+      !(await bcrypt.compare(currentPassword, user.password))
+    ) {
+      throw new AppException('Current password is incorrect', {
+        code: 'INVALID_CURRENT_PASSWORD',
+        status: 400,
+      });
+    }
+    const saltRounds = this.configService.getOrThrow<number>(
+      'auth.bcryptSaltRounds',
+    );
+    const password = await bcrypt.hash(newPassword, saltRounds);
+    const updated = await this.userRepository.updatePassword(userId, password);
+    if (!updated) throw this.userNotFoundException();
+  }
+
   private async requireUser(id: number) {
     const user = await this.userRepository.findById(id);
     if (!user) throw this.userNotFoundException();

@@ -18,12 +18,14 @@ import { CreateCheckoutDto } from './dto/create-checkout.dto';
 import { PaymentService } from './payment.service';
 import { PaymentWebhookService } from './payment-webhook.service';
 import { AppException } from '../../common/exceptions/app.exception';
+import { PaymentRpcClient } from './rpc/payment-rpc.client';
 
 @Controller('payments')
 export class PaymentController {
   constructor(
     private readonly paymentService: PaymentService,
     private readonly webhookService: PaymentWebhookService,
+    private readonly paymentRpcClient: PaymentRpcClient,
   ) {}
 
   @Post('checkout')
@@ -32,7 +34,16 @@ export class PaymentController {
     @CurrentUser() user: PublicUser,
     @Body() dto: CreateCheckoutDto,
   ) {
-    return this.paymentService.createCheckout(user, dto.idempotencyKey);
+    return this.paymentRpcClient.process({
+      customer: { id: user.id, name: user.name, email: user.email },
+      idempotencyKey: dto.idempotencyKey,
+      items: dto.items,
+      options: {
+        paymentMethod: dto.paymentMethod,
+        deliveryZone: dto.deliveryZone,
+        ...(dto.couponCode ? { couponCode: dto.couponCode } : {}),
+      },
+    });
   }
 
   @Get(':id')

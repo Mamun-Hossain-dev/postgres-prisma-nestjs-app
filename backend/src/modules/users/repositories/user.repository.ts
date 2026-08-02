@@ -31,5 +31,6 @@ export interface UserRepository {
     id: number,
     image: UserProfileImage | null,
   ): Promise<User | null>;
+  updatePassword(id: number, password: string): Promise<User | null>;
   delete(id: number): Promise<void>;
 }

@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   ChevronDown,
   LayoutDashboard,
@@ -12,17 +12,18 @@ import {
   ShoppingBag,
   UserRound,
   X,
-} from 'lucide-react';
-import { Suspense, useEffect, useRef, useState } from 'react';
-import { useAuth } from './auth-provider';
-import { ConfirmDialog } from './ui/confirm-dialog';
+} from "lucide-react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useAuth } from "./auth-provider";
+import { ConfirmDialog } from "./ui/confirm-dialog";
+import { useCart } from "./cart-provider";
 
 const links = [
-  { href: '/shop', label: 'Shop' },
-  { href: '/shop?category=MOBILE', label: 'Phones' },
-  { href: '/shop?category=LAPTOP', label: 'Laptops' },
-  { href: '/shop?category=AUDIO', label: 'Audio' },
-  { href: '/#offers', label: 'Offers' },
+  { href: "/shop", label: "Shop" },
+  { href: "/shop?category=MOBILE", label: "Phones" },
+  { href: "/shop?category=LAPTOP", label: "Laptops" },
+  { href: "/shop?category=AUDIO", label: "Audio" },
+  { href: "/#offers", label: "Offers" },
 ];
 
 export function Navbar() {
@@ -45,7 +46,7 @@ function RouteAwareNavbar({ pathname }: { pathname: string }) {
   return (
     <NavbarContent
       pathname={pathname}
-      activeCategory={searchParams.get('category')}
+      activeCategory={searchParams.get("category")}
     />
   );
 }
@@ -62,7 +63,8 @@ function NavbarContent({
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
-  const { user, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
+  const { itemCount } = useCart();
 
   useEffect(() => {
     if (!accountOpen) return;
@@ -73,14 +75,14 @@ function NavbarContent({
       }
     };
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setAccountOpen(false);
+      if (event.key === "Escape") setAccountOpen(false);
     };
 
-    document.addEventListener('pointerdown', closeOnOutsideClick);
-    document.addEventListener('keydown', closeOnEscape);
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
     return () => {
-      document.removeEventListener('pointerdown', closeOnOutsideClick);
-      document.removeEventListener('keydown', closeOnEscape);
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
     };
   }, [accountOpen]);
 
@@ -111,13 +113,13 @@ function NavbarContent({
                   href={link.href}
                   aria-current={
                     isActiveLink(link.href, pathname, activeCategory)
-                      ? 'page'
+                      ? "page"
                       : undefined
                   }
                   className={`relative py-1 transition after:absolute after:inset-x-0 after:-bottom-1 after:h-0.5 after:origin-left after:bg-accent after:transition-transform hover:text-accent ${
                     isActiveLink(link.href, pathname, activeCategory)
-                      ? 'text-accent after:scale-x-100'
-                      : 'after:scale-x-0'
+                      ? "text-accent after:scale-x-100"
+                      : "after:scale-x-0"
                   }`}
                 >
                   {link.label}
@@ -164,7 +166,7 @@ function NavbarContent({
                           icon={<Settings size={16} />}
                           label="Personal settings"
                         />
-                        {user.role === 'ADMIN' && (
+                        {user.role === "ADMIN" && (
                           <AccountLink
                             href="/admin"
                             icon={<LayoutDashboard size={16} />}
@@ -184,21 +186,30 @@ function NavbarContent({
                     </div>
                   )}
                 </div>
+              ) : loading ? (
+                <span
+                  className="h-10 w-[72px] animate-pulse rounded-full bg-black/[0.06]"
+                  aria-label="Checking sign-in status"
+                />
               ) : (
                 <Link
                   href="/login"
-                  className="grid h-10 w-10 place-items-center rounded-full transition hover:bg-black/5"
-                  aria-label="Sign in"
+                  className="inline-flex h-10 items-center justify-center rounded-full border border-ink px-4 text-xs font-bold transition hover:bg-ink hover:text-white"
                 >
-                  <UserRound size={19} />
+                  Sign in
                 </Link>
               )}
               <Link
                 href="/cart"
-                className="grid h-10 w-10 place-items-center rounded-full bg-ink text-white transition hover:bg-accent"
-                aria-label="Cart"
+                className="relative grid h-10 w-10 place-items-center rounded-full bg-ink text-white transition hover:bg-accent"
+                aria-label={`Cart, ${itemCount} item${itemCount === 1 ? "" : "s"}`}
               >
                 <ShoppingBag size={18} />
+                {itemCount > 0 && (
+                  <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1 text-[10px] font-extrabold text-white ring-2 ring-white">
+                    {itemCount > 99 ? "99+" : itemCount}
+                  </span>
+                )}
               </Link>
               <button
                 className="grid h-10 w-10 place-items-center rounded-full transition hover:bg-black/5 md:hidden"
@@ -219,13 +230,13 @@ function NavbarContent({
                   onClick={() => setOpen(false)}
                   aria-current={
                     isActiveLink(link.href, pathname, activeCategory)
-                      ? 'page'
+                      ? "page"
                       : undefined
                   }
                   className={`flex items-center justify-between border-b py-3.5 text-sm font-bold last:border-0 ${
                     isActiveLink(link.href, pathname, activeCategory)
-                      ? 'text-accent'
-                      : ''
+                      ? "text-accent"
+                      : ""
                   }`}
                 >
                   {link.label} <span className="text-black/25">↗</span>
@@ -255,7 +266,7 @@ function NavbarContent({
           void logout().finally(() => {
             setLoggingOut(false);
             setLogoutOpen(false);
-            window.location.href = '/';
+            window.location.href = "/";
           });
         }}
       />
@@ -268,16 +279,16 @@ function isActiveLink(
   pathname: string,
   activeCategory: string | null | undefined,
 ) {
-  const [linkPath, query = ''] = href.split('?');
+  const [linkPath, query = ""] = href.split("?");
   if (
     linkPath !== pathname ||
-    linkPath !== '/shop' ||
+    linkPath !== "/shop" ||
     activeCategory === undefined
   ) {
     return false;
   }
 
-  const linkCategory = new URLSearchParams(query).get('category');
+  const linkCategory = new URLSearchParams(query).get("category");
   return linkCategory
     ? linkCategory === activeCategory
     : activeCategory === null;

@@ -5,6 +5,8 @@ import { AppException } from '../../../common/exceptions/app.exception';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { ACTIVE_PAYMENT_STATUSES } from '../constants/payment.constants';
 import type {
+  CheckoutItemInput,
+  CheckoutOptions,
   PaymentSucceededEvent,
   PaymentView,
   VerifiedPaymentEvent,
@@ -53,39 +55,50 @@ export class PrismaPaymentRepository implements PaymentRepository {
     });
   }
 
-  createPendingFromCart(
+  createPendingFromItems(
     userId: number,
+    checkoutItems: CheckoutItemInput[],
+    options: CheckoutOptions,
     idempotencyKey: string,
     currency: string,
     minorUnit: number,
   ): Promise<PaymentView> {
     return this.prisma.$transaction(async (prisma) => {
-      const cart = await prisma.cart.findUnique({
-        where: { userId },
-        include: {
-          user: true,
-          items: {
-            orderBy: { id: 'asc' },
-            include: { product: true },
-          },
-        },
-      });
-      if (!cart?.items.length) {
-        throw new AppException('Cart is empty', {
-          code: 'CART_EMPTY',
+      const productIds = checkoutItems.map((item) => item.productId);
+      if (new Set(productIds).size !== productIds.length) {
+        throw new AppException('Checkout contains duplicate products', {
+          code: 'DUPLICATE_CHECKOUT_ITEM',
           status: 400,
         });
       }
 
+      const [user, products] = await Promise.all([
+        prisma.user.findUnique({ where: { id: userId } }),
+        prisma.product.findMany({ where: { id: { in: productIds } } }),
+      ]);
+      if (!user) {
+        throw new AppException('Checkout customer was not found', {
+          code: 'CHECKOUT_CUSTOMER_NOT_FOUND',
+          status: 404,
+        });
+      }
+      const productsById = new Map(
+        products.map((product) => [product.id, product]),
+      );
+
       const now = new Date();
-      for (const item of cart.items) {
+      for (const item of checkoutItems) {
+        const product = productsById.get(item.productId);
         if (
-          item.product.status !== 'ACTIVE' ||
-          item.product.publishedAt > now ||
-          item.quantity > item.product.quantity
+          !product ||
+          product.status !== 'ACTIVE' ||
+          product.publishedAt > now ||
+          item.quantity > product.quantity
         ) {
           throw new AppException(
-            `${item.product.title} is unavailable in the requested quantity`,
+            product
+              ? `${product.title} is unavailable in the requested quantity`
+              : 'A checkout product is no longer available',
             {
               code: 'CHECKOUT_ITEM_UNAVAILABLE',
               status: 409,
@@ -95,27 +108,78 @@ export class PrismaPaymentRepository implements PaymentRepository {
         }
       }
 
-      const items = cart.items.map((item) => {
-        const unitAmount = Math.round(item.product.price * minorUnit);
+      const items = checkoutItems.map((item) => {
+        const product = productsById.get(item.productId)!;
+        const unitAmount = Math.round(product.price * minorUnit);
         return {
           productId: item.productId,
-          productTitle: item.product.title,
-          productSku: item.product.sku,
+          productTitle: product.title,
+          productSku: product.sku,
           unitAmount,
           quantity: item.quantity,
           totalAmount: unitAmount * item.quantity,
         };
       });
-      const totalAmount = items.reduce(
+      const subtotalAmount = items.reduce(
         (sum, item) => sum + item.totalAmount,
         0,
       );
+      const couponCode = options.couponCode?.trim().toUpperCase();
+      const coupon = couponCode
+        ? await prisma.coupon.findUnique({ where: { code: couponCode } })
+        : null;
+      if (couponCode) {
+        const invalid =
+          !coupon ||
+          !coupon.isActive ||
+          (coupon.startsAt !== null && coupon.startsAt > now) ||
+          (coupon.endsAt !== null && coupon.endsAt < now) ||
+          coupon.minimumAmount > subtotalAmount;
+        if (invalid) {
+          throw new AppException('Coupon is invalid for this order', {
+            code: 'INVALID_COUPON',
+            status: 400,
+          });
+        }
+        if (coupon.remainingUses !== null) {
+          const reserved = await prisma.coupon.updateMany({
+            where: { id: coupon.id, remainingUses: { gt: 0 } },
+            data: { remainingUses: { decrement: 1 } },
+          });
+          if (!reserved.count) {
+            throw new AppException('Coupon usage limit has been reached', {
+              code: 'COUPON_USAGE_LIMIT_REACHED',
+              status: 409,
+            });
+          }
+        }
+      }
+      const discountAmount = coupon
+        ? coupon.type === 'PERCENTAGE'
+          ? Math.floor((subtotalAmount * coupon.value) / 100)
+          : Math.min(coupon.value, subtotalAmount)
+        : 0;
+      const deliveryCharge =
+        (options.deliveryZone === 'DHAKA' ? 60 : 120) * minorUnit;
+      const discountedSubtotal = subtotalAmount - discountAmount;
+      const totalAmount = discountedSubtotal + deliveryCharge;
+      const payableAmount =
+        options.paymentMethod === 'CASH_ON_DELIVERY'
+          ? deliveryCharge
+          : totalAmount;
       const order = await prisma.order.create({
         data: {
           orderNumber: `DD-${randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase()}`,
           userId,
-          customerName: cart.user.name,
-          customerEmail: cart.user.email,
+          customerName: user.name,
+          customerEmail: user.email,
+          couponId: coupon?.id,
+          couponCode,
+          paymentMethod: options.paymentMethod,
+          deliveryZone: options.deliveryZone,
+          subtotalAmount,
+          discountAmount,
+          deliveryCharge,
           totalAmount,
           currency,
           items: { create: items },
@@ -124,12 +188,17 @@ export class PrismaPaymentRepository implements PaymentRepository {
       const payment = await prisma.payment.create({
         data: {
           orderId: order.id,
-          amount: totalAmount,
+          amount: payableAmount,
           currency,
           idempotencyKey,
         },
         include: paymentInclude,
       });
+      if (coupon) {
+        await prisma.couponRedemption.create({
+          data: { couponId: coupon.id, userId, orderId: order.id },
+        });
+      }
       return payment;
     });
   }
@@ -163,6 +232,25 @@ export class PrismaPaymentRepository implements PaymentRepository {
         where: { id: payment.orderId },
         data: { status: 'PAYMENT_FAILED' },
       });
+      await this.releaseCouponReservation(prisma, payment.orderId);
+    });
+  }
+
+  async markCancelled(paymentId: number, reason: string): Promise<void> {
+    await this.prisma.$transaction(async (prisma) => {
+      const payment = await prisma.payment.update({
+        where: { id: paymentId },
+        data: {
+          status: 'CANCELLED',
+          failureCode: 'CHECKOUT_REPLACED',
+          failureMessage: reason,
+        },
+      });
+      await prisma.order.update({
+        where: { id: payment.orderId },
+        data: { status: 'CANCELLED' },
+      });
+      await this.releaseCouponReservation(prisma, payment.orderId);
     });
   }
 
@@ -226,14 +314,12 @@ export class PrismaPaymentRepository implements PaymentRepository {
           });
           await prisma.order.update({
             where: { id: payment.orderId },
-            data: { status: 'PAID', paidAt },
+            data:
+              payment.order.paymentMethod === 'CASH_ON_DELIVERY'
+                ? { status: 'COD_CONFIRMED' }
+                : { status: 'PAID', paidAt },
           });
-          const cart = await prisma.cart.findUnique({
-            where: { userId: payment.order.userId },
-          });
-          if (cart) {
-            await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
-          }
+          await this.redeemCouponReservation(prisma, payment.orderId);
           return {
             duplicate: false,
             succeededEvent: this.toSucceededEvent(payment, event.id, paidAt),
@@ -260,6 +346,9 @@ export class PrismaPaymentRepository implements PaymentRepository {
                   : 'PAYMENT_FAILED',
           },
         });
+        if (paymentStatus === 'FAILED' || paymentStatus === 'CANCELLED') {
+          await this.releaseCouponReservation(prisma, payment.orderId);
+        }
         return { duplicate: false };
       });
     } catch (error) {
@@ -333,9 +422,58 @@ export class PrismaPaymentRepository implements PaymentRepository {
         totalAmount: item.totalAmount,
       })),
       totalAmount: payment.amount,
+      orderTotal: payment.order.totalAmount,
+      subtotalAmount: payment.order.subtotalAmount,
+      discountAmount: payment.order.discountAmount,
+      deliveryCharge: payment.order.deliveryCharge,
+      dueOnDelivery:
+        payment.order.paymentMethod === 'CASH_ON_DELIVERY'
+          ? payment.order.subtotalAmount - payment.order.discountAmount
+          : 0,
+      paymentMethod: payment.order.paymentMethod,
+      deliveryZone: payment.order.deliveryZone,
       currency: payment.currency,
       paymentStatus: 'SUCCEEDED',
       paymentDate: paidAt.toISOString(),
     };
+  }
+
+  private async redeemCouponReservation(
+    prisma: Prisma.TransactionClient,
+    orderId: number,
+  ) {
+    const redemption = await prisma.couponRedemption.findUnique({
+      where: { orderId },
+    });
+    if (!redemption || redemption.status !== 'RESERVED') return;
+    await prisma.couponRedemption.update({
+      where: { id: redemption.id },
+      data: { status: 'REDEEMED' },
+    });
+    await prisma.coupon.update({
+      where: { id: redemption.couponId },
+      data: { usedCount: { increment: 1 } },
+    });
+  }
+
+  private async releaseCouponReservation(
+    prisma: Prisma.TransactionClient,
+    orderId: number,
+  ) {
+    const redemption = await prisma.couponRedemption.findUnique({
+      where: { orderId },
+      include: { coupon: { select: { remainingUses: true } } },
+    });
+    if (!redemption || redemption.status !== 'RESERVED') return;
+    await prisma.couponRedemption.update({
+      where: { id: redemption.id },
+      data: { status: 'RELEASED' },
+    });
+    if (redemption.coupon.remainingUses !== null) {
+      await prisma.coupon.update({
+        where: { id: redemption.couponId },
+        data: { remainingUses: { increment: 1 } },
+      });
+    }
   }
 }

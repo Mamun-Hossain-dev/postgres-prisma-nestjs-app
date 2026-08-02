@@ -25,13 +25,30 @@ const payment: PaymentView = {
     userId: 7,
     customerName: 'Test User',
     customerEmail: 'test@example.com',
+    couponId: null,
+    couponCode: null,
+    paymentMethod: 'CARD',
+    deliveryZone: 'DHAKA',
+    subtotalAmount: 119_000,
+    discountAmount: 0,
+    deliveryCharge: 6_000,
     totalAmount: 125_000,
     currency: 'bdt',
     status: 'PAYMENT_PENDING',
     paidAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
-    items: [],
+    items: [
+      {
+        id: 3,
+        productId: 1,
+        productTitle: 'Test product',
+        productSku: 'TEST-1',
+        unitAmount: 59_500,
+        quantity: 2,
+        totalAmount: 119_000,
+      },
+    ],
   },
 };
 
@@ -40,13 +57,15 @@ describe('PaymentService', () => {
     findByIdempotencyKey: jest.fn(),
     findActiveByUser: jest.fn(),
     findOwnedById: jest.fn(),
-    createPendingFromCart: jest.fn(),
+    createPendingFromItems: jest.fn(),
     attachProviderIntent: jest.fn(),
     markCreationFailed: jest.fn(),
+    markCancelled: jest.fn(),
   } as unknown as jest.Mocked<PaymentRepository>;
   const gateway = {
     createPaymentIntent: jest.fn(),
     retrievePaymentIntent: jest.fn(),
+    cancelPaymentIntent: jest.fn(),
   } as unknown as jest.Mocked<PaymentGateway>;
   const redis = {
     ready: true,
@@ -65,6 +84,8 @@ describe('PaymentService', () => {
     name: 'Test User',
     email: 'test@example.com',
   } as never;
+  const items = [{ productId: 1, quantity: 2 }];
+  const options = { paymentMethod: 'CARD', deliveryZone: 'DHAKA' } as const;
 
   beforeEach(() => jest.clearAllMocks());
 
@@ -78,7 +99,7 @@ describe('PaymentService', () => {
     const service = new PaymentService(repository, gateway, redis, config);
 
     await expect(
-      service.createCheckout(user, payment.idempotencyKey),
+      service.createCheckout(user, payment.idempotencyKey, items, options),
     ).resolves.toMatchObject({ paymentId: 1, clientSecret: 'secret' });
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(redis.acquireLock).not.toHaveBeenCalled();
@@ -92,14 +113,14 @@ describe('PaymentService', () => {
     const service = new PaymentService(repository, gateway, redis, config);
 
     await expect(
-      service.createCheckout(user, payment.idempotencyKey),
+      service.createCheckout(user, payment.idempotencyKey, items, options),
     ).rejects.toMatchObject({ code: 'CHECKOUT_ALREADY_IN_PROGRESS' });
   });
 
   it('marks the payment failed when Stripe intent creation fails', async () => {
     repository.findByIdempotencyKey.mockResolvedValue(null);
     repository.findActiveByUser.mockResolvedValue(null);
-    repository.createPendingFromCart.mockResolvedValue({
+    repository.createPendingFromItems.mockResolvedValue({
       ...payment,
       providerIntentId: null,
     });
@@ -111,8 +132,17 @@ describe('PaymentService', () => {
     const service = new PaymentService(repository, gateway, redis, config);
 
     await expect(
-      service.createCheckout(user, payment.idempotencyKey),
+      service.createCheckout(user, payment.idempotencyKey, items, options),
     ).rejects.toMatchObject({ code: 'STRIPE_ERROR' });
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(repository.createPendingFromItems).toHaveBeenCalledWith(
+      user.id,
+      items,
+      options,
+      payment.idempotencyKey,
+      'bdt',
+      100,
+    );
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(repository.markCreationFailed).toHaveBeenCalledWith(
       payment.id,
@@ -121,5 +151,68 @@ describe('PaymentService', () => {
     );
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(redis.releaseLock).toHaveBeenCalled();
+  });
+
+  it('cancels a mismatched active checkout before creating the selected items', async () => {
+    repository.findByIdempotencyKey.mockResolvedValue(null);
+    repository.findActiveByUser.mockResolvedValue({
+      ...payment,
+      order: {
+        ...payment.order,
+        items: [{ ...payment.order.items[0], productId: 99 }],
+      },
+    });
+    repository.createPendingFromItems.mockResolvedValue({
+      ...payment,
+      id: 4,
+      providerIntentId: null,
+    });
+    repository.attachProviderIntent.mockResolvedValue({ ...payment, id: 4 });
+    redis.acquireLock.mockResolvedValue(true);
+    redis.releaseLock.mockResolvedValue(true);
+    gateway.cancelPaymentIntent.mockResolvedValue();
+    gateway.createPaymentIntent.mockResolvedValue({
+      id: 'pi_new',
+      clientSecret: 'new_secret',
+      status: 'requires_payment_method',
+    });
+    const service = new PaymentService(repository, gateway, redis, config);
+
+    await expect(
+      service.createCheckout(user, 'new-key', items, options),
+    ).resolves.toMatchObject({ paymentId: 4, clientSecret: 'new_secret' });
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(gateway.cancelPaymentIntent).toHaveBeenCalledWith('pi_123');
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(repository.markCancelled).toHaveBeenCalledWith(
+      payment.id,
+      expect.any(String),
+    );
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(repository.createPendingFromItems).toHaveBeenCalledWith(
+      user.id,
+      items,
+      options,
+      'new-key',
+      'bdt',
+      100,
+    );
+  });
+
+  it('rejects an old checkout that does not contain the delivery charge', async () => {
+    repository.findOwnedById.mockResolvedValue({
+      ...payment,
+      amount: 119_000,
+      order: {
+        ...payment.order,
+        deliveryCharge: 0,
+        totalAmount: 119_000,
+      },
+    });
+    const service = new PaymentService(repository, gateway, redis, config);
+
+    await expect(
+      service.getCheckoutSession(7, payment.id),
+    ).rejects.toMatchObject({ code: 'CHECKOUT_SESSION_OUTDATED' });
   });
 });

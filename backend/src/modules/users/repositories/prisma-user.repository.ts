@@ -121,6 +121,12 @@ export class PrismaUserRepository implements UserRepository {
     });
   }
 
+  async updatePassword(id: number, password: string): Promise<User | null> {
+    const existingUser = await this.prisma.user.findUnique({ where: { id } });
+    if (!existingUser) return null;
+    return this.prisma.user.update({ where: { id }, data: { password } });
+  }
+
   async delete(id: number): Promise<void> {
     await this.prisma.user.delete({
       where: { id },

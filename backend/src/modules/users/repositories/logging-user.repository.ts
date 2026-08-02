@@ -66,6 +66,11 @@ export class LoggingUserRepository implements UserRepository {
     return this.repo.updateProfileImage(id, image);
   }
 
+  async updatePassword(id: number, password: string) {
+    this.logger.log(`Updating password for user ${id}`);
+    return this.repo.updatePassword(id, password);
+  }
+
   async delete(id: number) {
     this.logger.log(`Deleting user ${id}`);
 

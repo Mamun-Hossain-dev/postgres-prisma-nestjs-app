@@ -1,20 +1,21 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import Image from 'next/image';
-import { ArrowUpRight, ShoppingBag, Sparkles } from 'lucide-react';
-import type { Product } from '@/lib/types';
-import { money } from '@/lib/api';
-import { AddToCartButton } from './add-to-cart-button';
-import { ProductImageFallback } from './product-image-fallback';
+import Link from "next/link";
+import Image from "next/image";
+import { ArrowUpRight, ShoppingBag, Sparkles } from "lucide-react";
+import type { Product } from "@/lib/types";
+import { money } from "@/lib/api";
+import { AddToCartButton } from "./add-to-cart-button";
+import { ProductImageFallback } from "./product-image-fallback";
+import { AddToWishlistButton } from "./add-to-wishlist-button";
 
-const categoryTone: Record<Product['category'], string> = {
-  MOBILE: 'from-[#f5e4de] to-[#dfb9aa]',
-  LAPTOP: 'from-[#e2e8f0] to-[#b9c5d4]',
-  TABLET: 'from-[#f6e6de] to-[#dfc0b2]',
-  AUDIO: 'from-[#e7e7e5] to-[#c4c5c1]',
-  WATCH: 'from-[#e4eee7] to-[#b7ceb9]',
-  ACCESSORY: 'from-[#ece5f1] to-[#cdbbd8]',
+const categoryTone: Record<Product["category"], string> = {
+  MOBILE: "from-[#f5e4de] to-[#dfb9aa]",
+  LAPTOP: "from-[#e2e8f0] to-[#b9c5d4]",
+  TABLET: "from-[#f6e6de] to-[#dfc0b2]",
+  AUDIO: "from-[#e7e7e5] to-[#c4c5c1]",
+  WATCH: "from-[#e4eee7] to-[#b7ceb9]",
+  ACCESSORY: "from-[#ece5f1] to-[#cdbbd8]",
 };
 
 export function ProductCard({ product }: { product: Product }) {
@@ -28,7 +29,7 @@ export function ProductCard({ product }: { product: Product }) {
       : null;
 
   return (
-    <article className="group min-w-0">
+    <article className="group relative min-w-0">
       <Link
         href={`/products/${product.id}`}
         className={`relative block aspect-[4/4.2] overflow-hidden rounded-[1.5rem] bg-gradient-to-br ${categoryTone[product.category]}`}
@@ -59,6 +60,7 @@ export function ProductCard({ product }: { product: Product }) {
           <ArrowUpRight size={17} />
         </span>
       </Link>
+      <AddToWishlistButton productId={product.id} />
       <div className="pt-4">
         <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-black/40">
           {product.brand} · {product.category}
@@ -80,7 +82,7 @@ export function ProductCard({ product }: { product: Product }) {
             </div>
           </div>
           <AddToCartButton
-            productId={product.id}
+            product={product}
             compact
             icon={<ShoppingBag size={16} />}
           />

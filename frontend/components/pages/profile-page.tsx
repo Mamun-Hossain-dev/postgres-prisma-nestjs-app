@@ -1,20 +1,45 @@
-'use client';
+"use client";
 
-import { useQuery } from '@tanstack/react-query';
-import { BadgeCheck, Mail, ShieldCheck, UserRound } from 'lucide-react';
-import { AccountShell } from '@/components/account-shell';
-import { useAuth } from '@/components/auth-provider';
-import { apiFetch } from '@/lib/api';
-import type { User } from '@/lib/types';
+import { useQuery } from "@tanstack/react-query";
+import { BadgeCheck, Mail, ShieldCheck, UserRound } from "lucide-react";
+import { AccountShell } from "@/components/account-shell";
+import { useAuth } from "@/components/auth-provider";
+import { apiFetch } from "@/lib/api";
+import type { User } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function ProfilePage() {
   const { user, accessToken } = useAuth();
   const profile = useQuery({
-    queryKey: ['profile'],
-    queryFn: () => apiFetch<User>('/auth/profile', {}, accessToken),
+    queryKey: ["profile"],
+    queryFn: () => apiFetch<User>("/auth/profile", {}, accessToken),
     enabled: Boolean(accessToken),
   });
   const current = profile.data ?? user;
+
+  if (profile.isLoading && !current) {
+    return (
+      <AccountShell active="overview">
+        <section className="overflow-hidden rounded-[2.25rem] border bg-white/45 shadow-soft">
+          <div className="bg-ink px-7 py-12 sm:px-10">
+            <Skeleton className="h-3 w-28 bg-white/10" />
+            <div className="mt-8 flex items-end gap-6">
+              <Skeleton className="h-28 w-28 rounded-[2rem] bg-white/10" />
+              <div className="flex-1">
+                <Skeleton className="h-12 w-2/5 bg-white/10" />
+                <Skeleton className="mt-3 h-4 w-1/3 bg-white/10" />
+              </div>
+            </div>
+          </div>
+          <div className="grid gap-4 p-7 sm:grid-cols-3 sm:p-10">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <Skeleton key={index} className="h-32 rounded-2xl" />
+            ))}
+          </div>
+        </section>
+      </AccountShell>
+    );
+  }
 
   return (
     <AccountShell active="overview">
@@ -29,7 +54,7 @@ export function ProfilePage() {
             </div>
             <div>
               <h1 className="display text-5xl">
-                {current?.name ?? 'Loading…'}
+                {current?.name ?? "Loading…"}
               </h1>
               <p className="mt-2 flex items-center gap-2 text-sm text-white/55">
                 <Mail size={15} /> {current?.email}
@@ -41,17 +66,17 @@ export function ProfilePage() {
           <Info
             icon={<BadgeCheck />}
             label="Account role"
-            value={current?.role ?? '—'}
+            value={current?.role ?? "—"}
           />
           <Info
             icon={<ShieldCheck />}
             label="Account status"
-            value={current?.isBlocked ? 'Blocked' : 'Active'}
+            value={current?.isBlocked ? "Blocked" : "Active"}
           />
           <Info
             icon={<UserRound />}
             label="Member ID"
-            value={current ? `DD-${String(current.id).padStart(5, '0')}` : '—'}
+            value={current ? `DD-${String(current.id).padStart(5, "0")}` : "—"}
           />
         </div>
       </section>

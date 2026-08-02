@@ -31,6 +31,8 @@ export abstract class PaymentGateway {
 
   abstract retrievePaymentIntent(id: string): Promise<PaymentIntentResult>;
 
+  abstract cancelPaymentIntent(id: string): Promise<void>;
+
   abstract refund(
     paymentIntentId: string,
     amount?: number,

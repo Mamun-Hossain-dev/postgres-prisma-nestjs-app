@@ -1,21 +1,21 @@
-'use client';
+"use client";
 
-import Image from 'next/image';
-import Link from 'next/link';
-import { useState, type FormEvent } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import Image from "next/image";
+import Link from "next/link";
+import { useState, type FormEvent } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   ArrowRight,
   BadgeCheck,
   Cable,
   Check,
   ChevronRight,
+  CreditCard,
   Headphones,
   Headset,
   Laptop,
   Quote,
-  RotateCcw,
   ShieldCheck,
   Smartphone,
   Sparkles,
@@ -23,73 +23,78 @@ import {
   Truck,
   Watch,
   Zap,
-} from 'lucide-react';
-import { apiFetch, money } from '@/lib/api';
+} from "lucide-react";
+import { apiFetch, money } from "@/lib/api";
 import type {
   NewsletterSubscriber,
   Product,
   ProductCollections,
-} from '@/lib/types';
-import { demoProducts } from '@/lib/demo-products';
-import { ProductCard } from '@/components/product-card';
-import { AddToCartButton } from '@/components/add-to-cart-button';
-import { homeProductCollectionsQueryOptions } from '@/lib/queries/products';
+} from "@/lib/types";
+import { demoProducts } from "@/lib/demo-products";
+import { ProductCard } from "@/components/product-card";
+import { AddToCartButton } from "@/components/add-to-cart-button";
+import { homeProductCollectionsQueryOptions } from "@/lib/queries/products";
+import {
+  ListSkeleton,
+  ProductGridSkeleton,
+  Skeleton,
+} from "@/components/ui/skeleton";
 
 const categories = [
   {
-    label: 'Smartphones',
-    value: 'MOBILE',
+    label: "Smartphones",
+    value: "MOBILE",
     icon: Smartphone,
-    tone: 'from-[#f6e5df] to-[#e0b7a7]',
+    tone: "from-[#f6e5df] to-[#e0b7a7]",
   },
   {
-    label: 'Laptops',
-    value: 'LAPTOP',
+    label: "Laptops",
+    value: "LAPTOP",
     icon: Laptop,
-    tone: 'from-[#dce7f1] to-[#b4c8d9]',
+    tone: "from-[#dce7f1] to-[#b4c8d9]",
   },
   {
-    label: 'Tablets',
-    value: 'TABLET',
+    label: "Tablets",
+    value: "TABLET",
     icon: Tablet,
-    tone: 'from-[#f5e1d7] to-[#dfbca9]',
+    tone: "from-[#f5e1d7] to-[#dfbca9]",
   },
   {
-    label: 'Audio',
-    value: 'AUDIO',
+    label: "Audio",
+    value: "AUDIO",
     icon: Headphones,
-    tone: 'from-[#e7e7e5] to-[#c2c4bf]',
+    tone: "from-[#e7e7e5] to-[#c2c4bf]",
   },
   {
-    label: 'Wearables',
-    value: 'WATCH',
+    label: "Wearables",
+    value: "WATCH",
     icon: Watch,
-    tone: 'from-[#dceadc] to-[#afc9b0]',
+    tone: "from-[#dceadc] to-[#afc9b0]",
   },
   {
-    label: 'Accessories',
-    value: 'ACCESSORY',
+    label: "Accessories",
+    value: "ACCESSORY",
     icon: Cable,
-    tone: 'from-[#ebe1f0] to-[#cbb8d5]',
+    tone: "from-[#ebe1f0] to-[#cbb8d5]",
   },
 ];
 
 const faqs = [
   [
-    'Are the products connected to the real catalog?',
-    'Yes. DeviceDock loads products, pricing, stock and specifications from the NestJS backend. Local demo products appear only when that API is unavailable.',
+    "How can I choose the right device?",
+    "Every product page includes clear pricing, availability, specifications and practical details to help you compare before buying.",
   ],
   [
-    'Does my cart stay with my account?',
-    'Yes. Signed-in carts are stored through the backend, so quantities and selected products are restored with your account.',
+    "Does my cart stay with my account?",
+    "Yes. When you sign in, your selected products and quantities stay with your account so you can continue shopping later.",
   ],
   [
-    'Can I place and pay for an order now?',
-    'Not yet. Checkout, orders and payment are intentionally disabled until their secure backend workflows are complete.',
+    "Which payment options are available?",
+    "You can pay the full order by card or choose cash on delivery. Cash-on-delivery orders require the delivery charge to be paid by card first.",
   ],
   [
-    'Where does DeviceDock deliver?',
-    'The storefront is designed for delivery across Bangladesh. Exact delivery zones and fees will be shown when checkout is released.',
+    "Where does DeviceDock deliver?",
+    "DeviceDock delivers across Bangladesh. Delivery costs ৳60 inside Dhaka and ৳120 outside Dhaka.",
   ],
 ];
 
@@ -106,7 +111,18 @@ export function HomePage() {
     trending: demoProducts.filter((product) => product.isTrending),
     brands: Array.from(new Set(demoProducts.map((product) => product.brand))),
   };
-  const collections = productsQuery.data ?? fallbackCollections;
+  const emptyCollections: ProductCollections = {
+    featured: [],
+    newArrivals: [],
+    offers: [],
+    bestSellers: [],
+    trending: [],
+    brands: [],
+  };
+  const collections =
+    productsQuery.data ??
+    (productsQuery.isError ? fallbackCollections : emptyCollections);
+  const isCatalogLoading = productsQuery.isLoading;
   const featuredProducts = (
     collections.featured.length ? collections.featured : collections.newArrivals
   ).slice(0, 4);
@@ -129,10 +145,10 @@ export function HomePage() {
       <section className="border-b bg-white">
         <div className="mx-auto grid grid-cols-2 divide-x px-5 sm:grid-cols-4 lg:px-8">
           {[
-            [Truck, 'Fast delivery', 'Selected products'],
-            [ShieldCheck, 'Secure account', 'Protected sessions'],
-            [BadgeCheck, 'Clear product data', 'Real stock & pricing'],
-            [Headset, 'Helpful support', 'Before and after'],
+            [Truck, "Fast delivery", "Selected products"],
+            [ShieldCheck, "Secure shopping", "Shop with confidence"],
+            [BadgeCheck, "Clear product details", "Pricing & availability"],
+            [Headset, "Helpful support", "Before and after"],
           ].map(([Icon, title, text]) => {
             const BenefitIcon = Icon as typeof Truck;
             return (
@@ -195,36 +211,54 @@ export function HomePage() {
           <SectionHeading
             eyebrow="Featured products"
             title="The devices to know now."
-            intro="Standout products selected from the live catalog."
+            intro="Standout devices and accessories worth a closer look."
             href="/shop?featured=true"
             action="Shop featured"
           />
-          <div className="mt-8 grid gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
-            {featuredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
+          <div className="mt-8">
+            {isCatalogLoading ? (
+              <ProductGridSkeleton count={4} />
+            ) : (
+              <div className="grid gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
+                {featuredProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </section>
 
-      {offer && <LimitedOffer product={offer} />}
+      {isCatalogLoading ? (
+        <section className="bg-[#ebe7dd] px-5 py-16 lg:px-8">
+          <Skeleton className="mx-auto h-80 rounded-[2rem]" />
+        </section>
+      ) : (
+        offer && <LimitedOffer product={offer} />
+      )}
 
       <section className="mx-auto px-5 py-16 lg:px-8 lg:py-20">
         <SectionHeading
           eyebrow="Best sellers"
           title="Popular picks, ready to explore."
-          intro="Featured catalog picks while verified sales ranking is being prepared."
+          intro="A curated mix of customer favourites and standout everyday tech."
           href="/shop"
           action="Browse everything"
         />
-        <div className="mt-8 grid overflow-hidden rounded-[1.75rem] border bg-white md:grid-cols-2">
-          {bestSellers.map((product, index) => (
-            <CompactProduct
-              key={product.id}
-              product={product}
-              rank={index + 1}
-            />
-          ))}
+        <div className="mt-8 overflow-hidden rounded-[1.75rem] border bg-white">
+          {isCatalogLoading ? (
+            <ListSkeleton rows={4} />
+          ) : (
+            <div className="grid md:grid-cols-2">
+              {bestSellers.map((product, index) => (
+                <CompactProduct
+                  key={product.id}
+                  product={product}
+                  rank={index + 1}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -247,32 +281,39 @@ export function HomePage() {
             </Link>
           </div>
           <div className="mt-8 grid gap-4 lg:grid-cols-3">
-            {trending.map((product, index) => (
-              <Link
-                key={product.id}
-                href={`/products/${product.id}`}
-                className="group relative min-h-80 overflow-hidden rounded-[1.75rem] border border-white/10 bg-gradient-to-br from-white/[0.09] to-white/[0.02] p-6"
-              >
-                <span className="text-xs font-bold text-white/30">
-                  0{index + 1}
-                </span>
-                <div className="absolute right-6 top-6 grid h-9 w-9 place-items-center rounded-full border border-white/10 transition group-hover:bg-white group-hover:text-ink">
-                  <ArrowRight size={15} />
-                </div>
-                <div className="absolute inset-x-6 bottom-6">
-                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#e58a63]">
-                    {product.brand}
-                  </p>
-                  <h3 className="mt-2 text-2xl font-bold tracking-[-0.035em]">
-                    {product.title}
-                  </h3>
-                  <p className="mt-3 text-sm text-white/45">
-                    {product.shortDescription ?? product.description}
-                  </p>
-                  <p className="mt-5 font-bold">{money(product.price)}</p>
-                </div>
-              </Link>
-            ))}
+            {isCatalogLoading
+              ? Array.from({ length: 3 }).map((_, index) => (
+                  <Skeleton
+                    key={index}
+                    className="min-h-80 rounded-[1.75rem] bg-white/10"
+                  />
+                ))
+              : trending.map((product, index) => (
+                  <Link
+                    key={product.id}
+                    href={`/products/${product.id}`}
+                    className="group relative min-h-80 overflow-hidden rounded-[1.75rem] border border-white/10 bg-gradient-to-br from-white/[0.09] to-white/[0.02] p-6"
+                  >
+                    <span className="text-xs font-bold text-white/30">
+                      0{index + 1}
+                    </span>
+                    <div className="absolute right-6 top-6 grid h-9 w-9 place-items-center rounded-full border border-white/10 transition group-hover:bg-white group-hover:text-ink">
+                      <ArrowRight size={15} />
+                    </div>
+                    <div className="absolute inset-x-6 bottom-6">
+                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#e58a63]">
+                        {product.brand}
+                      </p>
+                      <h3 className="mt-2 text-2xl font-bold tracking-[-0.035em]">
+                        {product.title}
+                      </h3>
+                      <p className="mt-3 text-sm text-white/45">
+                        {product.shortDescription ?? product.description}
+                      </p>
+                      <p className="mt-5 font-bold">{money(product.price)}</p>
+                    </div>
+                  </Link>
+                ))}
           </div>
         </div>
       </section>
@@ -284,11 +325,11 @@ export function HomePage() {
               New arrivals
             </p>
             <h2 className="mt-3 text-4xl font-bold tracking-[-0.045em]">
-              Fresh from the catalog.
+              Just landed at DeviceDock.
             </h2>
             <p className="mt-4 max-w-md text-sm leading-6 text-black/50">
-              The newest products available from the backend, ordered by release
-              into the store.
+              Meet the latest phones, laptops, audio gear and accessories chosen
+              to make your next upgrade easier.
             </p>
             <Link
               href="/shop"
@@ -297,35 +338,39 @@ export function HomePage() {
               Shop new arrivals <ArrowRight size={15} />
             </Link>
           </div>
-          <div className="divide-y rounded-[1.75rem] border">
-            {newest.map((product, index) => (
-              <Link
-                key={product.id}
-                href={`/products/${product.id}`}
-                className="group grid grid-cols-[36px_1fr_auto] items-center gap-4 px-5 py-4 transition hover:bg-black/[0.025]"
-              >
-                <span className="text-xs font-bold text-black/25">
-                  0{index + 1}
-                </span>
-                <div>
-                  <p className="font-bold tracking-[-0.02em]">
-                    {product.title}
-                  </p>
-                  <p className="mt-1 text-xs text-black/40">
-                    {product.brand} · {product.category}
-                  </p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="hidden text-sm font-bold sm:block">
-                    {money(product.price)}
+          <div className="divide-y overflow-hidden rounded-[1.75rem] border">
+            {isCatalogLoading ? (
+              <ListSkeleton rows={5} />
+            ) : (
+              newest.map((product, index) => (
+                <Link
+                  key={product.id}
+                  href={`/products/${product.id}`}
+                  className="group grid grid-cols-[36px_1fr_auto] items-center gap-4 px-5 py-4 transition hover:bg-black/[0.025]"
+                >
+                  <span className="text-xs font-bold text-black/25">
+                    0{index + 1}
                   </span>
-                  <ChevronRight
-                    size={17}
-                    className="transition group-hover:translate-x-1"
-                  />
-                </div>
-              </Link>
-            ))}
+                  <div>
+                    <p className="font-bold tracking-[-0.02em]">
+                      {product.title}
+                    </p>
+                    <p className="mt-1 text-xs text-black/40">
+                      {product.brand} · {product.category}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="hidden text-sm font-bold sm:block">
+                      {money(product.price)}
+                    </span>
+                    <ChevronRight
+                      size={17}
+                      className="transition group-hover:translate-x-1"
+                    />
+                  </div>
+                </Link>
+              ))
+            )}
           </div>
         </div>
       </section>
@@ -336,15 +381,19 @@ export function HomePage() {
             Popular brands in the catalog
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            {brands.map((brand) => (
-              <Link
-                key={brand}
-                href={`/shop?search=${encodeURIComponent(brand)}`}
-                className="rounded-full border bg-white px-6 py-3 text-sm font-extrabold tracking-[-0.02em] shadow-sm transition hover:-translate-y-0.5 hover:border-accent"
-              >
-                {brand}
-              </Link>
-            ))}
+            {isCatalogLoading
+              ? Array.from({ length: 6 }).map((_, index) => (
+                  <Skeleton key={index} className="h-11 w-28 rounded-full" />
+                ))
+              : brands.map((brand) => (
+                  <Link
+                    key={brand}
+                    href={`/shop?search=${encodeURIComponent(brand)}`}
+                    className="rounded-full border bg-white px-6 py-3 text-sm font-extrabold tracking-[-0.02em] shadow-sm transition hover:-translate-y-0.5 hover:border-accent"
+                  >
+                    {brand}
+                  </Link>
+                ))}
           </div>
         </div>
       </section>
@@ -401,9 +450,9 @@ function Hero() {
             </div>
             <div className="mt-10 flex flex-wrap gap-x-7 gap-y-3 text-xs font-semibold text-white/45">
               {[
-                'Authentic product data',
-                'Secure accounts',
-                'Cart saved to backend',
+                "Authentic product data",
+                "Secure accounts",
+                "Cart saved on your device",
               ].map((item) => (
                 <span key={item} className="flex items-center gap-2">
                   <Check size={13} className="text-[#ef9b75]" /> {item}
@@ -459,7 +508,7 @@ function LimitedOffer({ product }: { product: Product }) {
               View offer
             </Link>
             <div className="[&_button]:border-white/20 [&_button]:bg-white/10">
-              <AddToCartButton productId={product.id} compact={false} />
+              <AddToCartButton product={product} compact={false} />
             </div>
           </div>
         </div>
@@ -551,23 +600,23 @@ function WhyChooseUs() {
   const items = [
     [
       ShieldCheck,
-      'Secure by design',
-      'JWT sessions, protected account routes and role-aware access.',
+      "Shop with confidence",
+      "Clear prices, useful specifications and product details help you choose with confidence.",
     ],
     [
-      BadgeCheck,
-      'Real catalog data',
-      'Prices, availability and specifications come from the backend.',
+      Truck,
+      "Delivery across Bangladesh",
+      "Delivery is ৳60 inside Dhaka and ৳120 anywhere outside Dhaka.",
     ],
     [
-      RotateCcw,
-      'Easy cart control',
-      'Update quantities, remove items or clear the cart in a few taps.',
+      CreditCard,
+      "Flexible ways to pay",
+      "Pay securely by card or reserve cash on delivery by paying the delivery charge first.",
     ],
     [
       Headset,
-      'Support-ready',
-      'Clear routes for product, account and future order support.',
+      "Here when you need us",
+      "Get helpful support before your purchase and after your order arrives.",
     ],
   ];
   return (
@@ -621,12 +670,11 @@ function ReviewsReady() {
         <div className="flex items-center border-t border-black/10 bg-white/45 p-8 sm:p-10 lg:border-l lg:border-t-0">
           <div>
             <p className="font-bold">
-              Verified reviews will launch with completed orders.
+              Verified customer reviews are coming soon.
             </p>
             <p className="mt-3 max-w-xl text-sm leading-6 text-black/50">
-              The design is ready, but DeviceDock will not display invented
-              testimonials. Customer feedback will appear after the order and
-              review APIs can verify real purchases.
+              We only want feedback from customers who have genuinely shopped
+              with DeviceDock. Verified-purchase reviews will appear here soon.
             </p>
           </div>
         </div>
@@ -636,16 +684,16 @@ function ReviewsReady() {
 }
 
 function NewsletterReady() {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const subscribe = useMutation({
     mutationFn: (subscriberEmail: string) =>
-      apiFetch<NewsletterSubscriber>('/newsletter/subscribers', {
-        method: 'POST',
+      apiFetch<NewsletterSubscriber>("/newsletter/subscribers", {
+        method: "POST",
         body: JSON.stringify({ email: subscriberEmail }),
       }),
     onSuccess: () => {
-      setEmail('');
-      toast.success('You are subscribed to DeviceDock updates');
+      setEmail("");
+      toast.success("You are subscribed to DeviceDock updates");
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -689,7 +737,7 @@ function NewsletterReady() {
             disabled={subscribe.isPending}
             className="rounded-full bg-white px-5 py-3 text-xs font-bold text-ink disabled:opacity-50"
           >
-            {subscribe.isPending ? 'Joining…' : 'Notify me'}
+            {subscribe.isPending ? "Joining…" : "Notify me"}
           </button>
         </form>
       </div>

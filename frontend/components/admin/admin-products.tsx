@@ -34,7 +34,7 @@ import { apiFetch, money } from '@/lib/api';
 import type { Category, PaginatedProducts, Product } from '@/lib/types';
 
 const categoryOptions: SelectOption[] = [
-  { value: '', label: 'All categories' },
+  { value: 'all', label: 'All products' },
   { value: 'MOBILE', label: 'MOBILE' },
   { value: 'LAPTOP', label: 'LAPTOP' },
   { value: 'TABLET', label: 'TABLET' },
@@ -55,7 +55,7 @@ export function AdminProducts() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
-  const [category, setCategory] = useState<Category | ''>('');
+  const [category, setCategory] = useState<Category | 'all'>('all');
   const [sort, setSort] = useState('newest');
   const [page, setPage] = useState(1);
   const [deleting, setDeleting] = useState<Product | null>(null);
@@ -66,7 +66,7 @@ export function AdminProducts() {
     sort,
   });
   if (deferredSearch.trim()) params.set('search', deferredSearch.trim());
-  if (category) params.set('category', category);
+  if (category !== 'all') params.set('category', category);
 
   const query = useQuery({
     queryKey: ['admin', 'products', params.toString()],
@@ -131,7 +131,7 @@ export function AdminProducts() {
           <Select
             value={category}
             onValueChange={(value) => {
-              setCategory(value as Category | '');
+              setCategory(value as Category | 'all');
               setPage(1);
             }}
             options={categoryOptions}
@@ -258,9 +258,7 @@ export function AdminProducts() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem asChild>
-                            <Link
-                              href={`/admin/products/${product.id}/edit`}
-                            >
+                            <Link href={`/admin/products/${product.id}/edit`}>
                               <Pencil size={15} /> Edit product
                             </Link>
                           </DropdownMenuItem>

@@ -20,6 +20,15 @@ export interface RefreshSessionResult {
   expiresAt: Date;
 }
 
+export interface PublicAuthSession {
+  id: string;
+  device: string;
+  ip: string;
+  userAgent: string;
+  expiresAt: string;
+  current: boolean;
+}
+
 @Injectable()
 export class AuthSessionService {
   private readonly ttlSeconds: number;
@@ -135,6 +144,60 @@ export class AuthSessionService {
     if (session.hashedRefreshToken !== this.hash(parsed.secret)) return;
 
     await this.revokeBySessionId(parsed.sessionId, session.userId);
+  }
+
+  async list(
+    userId: number,
+    currentRefreshToken?: string,
+  ): Promise<PublicAuthSession[]> {
+    this.assertRedisReady();
+    const client = this.redis.getClient();
+    const sessionIds = await client.smembers(this.userSessionsKey(userId));
+    const currentSessionId = currentRefreshToken
+      ? this.tryParseToken(currentRefreshToken)?.sessionId
+      : undefined;
+    const sessions = await Promise.all(
+      sessionIds.map(async (id) => {
+        const raw = await this.redis.get(this.sessionKey(id));
+        if (!raw) {
+          await client.srem(this.userSessionsKey(userId), id);
+          return null;
+        }
+        const session = this.parseSession(raw);
+        if (session.userId !== userId) return null;
+        return {
+          id,
+          device: session.device,
+          ip: session.ip,
+          userAgent: session.userAgent,
+          expiresAt: session.expiresAt,
+          current: id === currentSessionId,
+        };
+      }),
+    );
+    return sessions.filter(
+      (session): session is PublicAuthSession => !!session,
+    );
+  }
+
+  async revokeSession(userId: number, sessionId: string): Promise<void> {
+    this.assertRedisReady();
+    const raw = await this.redis.get(this.sessionKey(sessionId));
+    if (!raw) return;
+    const session = this.parseSession(raw);
+    if (session.userId !== userId) {
+      throw new AppException('Session not found', {
+        code: 'SESSION_NOT_FOUND',
+        status: 404,
+      });
+    }
+    await this.revokeBySessionId(sessionId, userId);
+  }
+
+  tokenSessionId(refreshToken?: string): string | undefined {
+    return refreshToken
+      ? this.tryParseToken(refreshToken)?.sessionId
+      : undefined;
   }
 
   private async revokeBySessionId(sessionId: string, userId: number) {

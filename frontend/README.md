@@ -103,7 +103,7 @@ Next.js App Router-এর file-system routing ব্যবহার করা �
 | `/contact`                  | Product, account ও order support directory  | Public        |
 | `/login`                    | Credentials login                           | Public        |
 | `/register`                 | Account creation                            | Public        |
-| `/cart`                     | Cart দেখা ও quantity পরিবর্তন               | Authenticated |
+| `/cart`                     | Local cart দেখা, select ও quantity পরিবর্তন | Public        |
 | `/profile`                  | Current user profile                        | Authenticated |
 | `/settings`                 | Profile update                              | Authenticated |
 | `/account/*`                | Address, order, wishlist ও security section | Authenticated |
@@ -247,7 +247,6 @@ POST /auth/register
 `middleware.ts` নিচের routes protect করে:
 
 ```text
-/cart
 /profile
 /settings
 /admin
@@ -285,14 +284,7 @@ Non-admin user `/admin` access করলে `/profile`-এ redirect হয়। Ba
 ব্যবহারের উদাহরণ:
 
 ```ts
-apiFetch<Cart>(
-  "/cart/items",
-  {
-    method: "POST",
-    body: JSON.stringify({ productId, quantity }),
-  },
-  accessToken,
-);
+apiFetch<Product>(`/products/${productId}`);
 ```
 
 `money()` helper সব BDT price একই format-এ দেখায়।
@@ -304,9 +296,9 @@ Backend data local React state-এ manually manage না করে TanStack Que
 Query key-এর উদাহরণ:
 
 ```ts
-["products", query][("product", productId)]["cart"]["profile"][
-  ("admin", "users")
-][("admin", "user", userId)][("admin", "products")];
+["products", query][("product", productId)]["profile"][("admin", "users")][
+  ("admin", "user", userId)
+][("admin", "products")];
 ```
 
 Query key data-এর identity হিসেবে কাজ করে। একই key ব্যবহার করা components cached result reuse করতে পারে।
@@ -476,14 +468,15 @@ Add-to-cart flow:
 
 ```text
 Button click
-  ├── user নেই → toast + /login
-  └── user আছে
-        → POST /cart/items
-        → returned cart cache-এ set
-        → success toast
+  → CartProvider update
+  → localStorage persist
+  → navbar item count update
+  → success toast
 ```
 
-Cart page quantity update এবং remove—দুই operation-এর জন্য একই mutation ব্যবহার করে। Backend প্রতিবার updated cart return করায় `['cart']` cache সরাসরি replace করা হয়।
+Cart page-এ এক বা একাধিক product select করে checkout করা যায়। Checkout
+request শুধু selected product ID ও quantity পাঠায়; backend database থেকে price,
+availability ও stock পুনরায় validate করে। Payment আলাদা `/checkout` page-এ হয়।
 
 ## 12. Admin architecture
 
@@ -553,14 +546,15 @@ Product image না থাকলে component category-based gradient এবং
 cp .env.example .env.local
 ```
 
-| Variable               | উদ্দেশ্য                                    |
-| ---------------------- | ------------------------------------------- |
-| `NEXT_PUBLIC_API_URL`  | Browser থেকে accessible NestJS API URL      |
-| `API_INTERNAL_URL`     | Next.js server থেকে backend-এর internal URL |
-| `NEXTAUTH_URL`         | NextAuth application URL                    |
-| `NEXTAUTH_SECRET`      | NextAuth JWT/session signing secret         |
-| `GOOGLE_CLIENT_ID`     | Google OAuth Web client ID                  |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth Web client secret              |
+| Variable                             | উদ্দেশ্য                                               |
+| ------------------------------------ | ------------------------------------------------------ |
+| `NEXT_PUBLIC_API_URL`                | Browser থেকে accessible NestJS API URL                 |
+| `API_INTERNAL_URL`                   | Next.js server থেকে backend-এর internal URL            |
+| `NEXTAUTH_URL`                       | NextAuth application URL                               |
+| `NEXTAUTH_SECRET`                    | NextAuth JWT/session signing secret                    |
+| `GOOGLE_CLIENT_ID`                   | Google OAuth Web client ID                             |
+| `GOOGLE_CLIENT_SECRET`               | Google OAuth Web client secret                         |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe.js browser key; required at frontend build time |
 
 Local default:
 
@@ -571,9 +565,11 @@ NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=replace_with_a_long_random_secret
 GOOGLE_CLIENT_ID=your_google_oauth_client_id
 GOOGLE_CLIENT_SECRET=your_google_oauth_client_secret
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_publishable_key
 ```
 
 Docker Compose-এ `API_INTERNAL_URL` সাধারণত Docker network-এর backend hostname ব্যবহার করে, কিন্তু `NEXT_PUBLIC_API_URL` browser-এর জন্য host-accessible URL থাকে।
+`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` বদলালে frontend image আবার build করতে হবে।
 
 ## 16. Local development
 

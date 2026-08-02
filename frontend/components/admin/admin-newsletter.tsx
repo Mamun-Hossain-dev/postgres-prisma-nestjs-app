@@ -1,21 +1,22 @@
-'use client';
+"use client";
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
-import { MailCheck, Send, UsersRound } from 'lucide-react';
-import { toast } from 'sonner';
-import { useAuth } from '@/components/auth-provider';
-import { AdminPageHeader } from '@/components/admin/admin-page-header';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Field, Input } from '@/components/ui/field';
-import { Textarea } from '@/components/ui/textarea';
-import { apiFetch } from '@/lib/api';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { Mail, MailCheck, Send, UsersRound } from "lucide-react";
+import { toast } from "sonner";
+import { useAuth } from "@/components/auth-provider";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Field, Input } from "@/components/ui/field";
+import { Textarea } from "@/components/ui/textarea";
+import { apiFetch } from "@/lib/api";
 import type {
   NewsletterBroadcast,
   PaginatedNewsletterBroadcasts,
   PaginatedNewsletterSubscribers,
-} from '@/lib/types';
+} from "@/lib/types";
+import { ListSkeleton, Skeleton } from "@/components/ui/skeleton";
 
 interface BroadcastValues {
   subject: string;
@@ -27,20 +28,20 @@ export function AdminNewsletter() {
   const { accessToken } = useAuth();
   const queryClient = useQueryClient();
   const subscribers = useQuery({
-    queryKey: ['admin', 'newsletter', 'subscribers'],
+    queryKey: ["admin", "newsletter", "subscribers"],
     queryFn: () =>
       apiFetch<PaginatedNewsletterSubscribers>(
-        '/newsletter/subscribers?page=1&limit=100',
+        "/newsletter/subscribers?page=1&limit=100",
         {},
         accessToken,
       ),
     enabled: Boolean(accessToken),
   });
   const broadcasts = useQuery({
-    queryKey: ['admin', 'newsletter', 'broadcasts'],
+    queryKey: ["admin", "newsletter", "broadcasts"],
     queryFn: () =>
       apiFetch<PaginatedNewsletterBroadcasts>(
-        '/newsletter/broadcasts?page=1&limit=20',
+        "/newsletter/broadcasts?page=1&limit=20",
         {},
         accessToken,
       ),
@@ -55,9 +56,9 @@ export function AdminNewsletter() {
   const send = useMutation({
     mutationFn: (values: BroadcastValues) =>
       apiFetch<NewsletterBroadcast>(
-        '/newsletter/broadcasts',
+        "/newsletter/broadcasts",
         {
-          method: 'POST',
+          method: "POST",
           body: JSON.stringify({
             ...values,
             previewText: values.previewText.trim() || undefined,
@@ -71,14 +72,14 @@ export function AdminNewsletter() {
         `Broadcast finished: ${broadcast.sentCount}/${broadcast.recipientCount} delivered`,
       );
       await queryClient.invalidateQueries({
-        queryKey: ['admin', 'newsletter', 'broadcasts'],
+        queryKey: ["admin", "newsletter", "broadcasts"],
       });
     },
     onError: (error: Error) => toast.error(error.message),
   });
 
   const activeSubscribers =
-    subscribers.data?.data.filter((item) => item.status === 'ACTIVE').length ??
+    subscribers.data?.data.filter((item) => item.status === "ACTIVE").length ??
     0;
 
   return (
@@ -102,14 +103,19 @@ export function AdminNewsletter() {
               </p>
             </div>
             <span className="inline-flex items-center gap-2 rounded-full bg-ink px-3 py-2 text-xs font-bold text-white">
-              <UsersRound size={14} /> {activeSubscribers} active
+              <UsersRound size={14} />{" "}
+              {subscribers.isLoading ? (
+                <Skeleton className="h-3 w-12 bg-white/20" />
+              ) : (
+                `${activeSubscribers} active`
+              )}
             </span>
           </div>
           <Field label="Subject" error={errors.subject?.message}>
             <Input
-              {...register('subject', {
-                required: 'Subject is required.',
-                minLength: { value: 3, message: 'Use at least 3 characters.' },
+              {...register("subject", {
+                required: "Subject is required.",
+                minLength: { value: 3, message: "Use at least 3 characters." },
               })}
             />
           </Field>
@@ -117,16 +123,16 @@ export function AdminNewsletter() {
             label="Preview text"
             hint="Optional inbox preview shown before the message."
           >
-            <Input {...register('previewText')} />
+            <Input {...register("previewText")} />
           </Field>
           <Field label="Message" error={errors.content?.message}>
             <Textarea
               rows={10}
-              {...register('content', {
-                required: 'Message is required.',
+              {...register("content", {
+                required: "Message is required.",
                 minLength: {
                   value: 10,
-                  message: 'Use at least 10 characters.',
+                  message: "Use at least 10 characters.",
                 },
               })}
             />
@@ -147,7 +153,9 @@ export function AdminNewsletter() {
             </div>
           </div>
           <div className="divide-y">
-            {broadcasts.data?.data.length ? (
+            {broadcasts.isLoading ? (
+              <ListSkeleton rows={5} />
+            ) : broadcasts.data?.data.length ? (
               broadcasts.data.data.map((broadcast) => (
                 <article key={broadcast.id} className="p-5 sm:px-6">
                   <div className="flex flex-wrap items-start justify-between gap-3">
@@ -159,11 +167,11 @@ export function AdminNewsletter() {
                     </div>
                     <Badge
                       tone={
-                        broadcast.status === 'SENT'
-                          ? 'success'
-                          : broadcast.status === 'FAILED'
-                            ? 'danger'
-                            : 'warning'
+                        broadcast.status === "SENT"
+                          ? "success"
+                          : broadcast.status === "FAILED"
+                            ? "danger"
+                            : "warning"
                       }
                     >
                       {broadcast.status}
@@ -182,6 +190,56 @@ export function AdminNewsletter() {
               </p>
             )}
           </div>
+        </div>
+        <div className="overflow-hidden rounded-[2rem] border bg-white/55 shadow-soft xl:col-span-2">
+          <div className="flex items-center justify-between gap-4 border-b p-6">
+            <div className="flex items-center gap-3">
+              <Mail className="text-accent" />
+              <div>
+                <p className="font-bold">Newsletter subscribers</p>
+                <p className="text-xs text-black/40">
+                  {subscribers.data?.meta.totalItems ?? 0} submitted emails
+                </p>
+              </div>
+            </div>
+          </div>
+          {subscribers.isLoading ? (
+            <ListSkeleton rows={5} />
+          ) : subscribers.isError ? (
+            <p className="p-8 text-sm text-red-700">
+              {subscribers.error.message}
+            </p>
+          ) : subscribers.data?.data.length ? (
+            <div className="divide-y">
+              {subscribers.data.data.map((subscriber) => (
+                <div
+                  key={subscriber.id}
+                  className="grid gap-2 p-5 sm:grid-cols-[1fr_1fr_auto] sm:items-center sm:px-6"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">{subscriber.email}</p>
+                    <p className="mt-1 text-xs text-black/40">
+                      {subscriber.name || "Name not provided"}
+                    </p>
+                  </div>
+                  <p className="text-xs text-black/45">
+                    Joined {new Date(subscriber.subscribedAt).toLocaleString()}
+                  </p>
+                  <Badge
+                    tone={
+                      subscriber.status === "ACTIVE" ? "success" : "warning"
+                    }
+                  >
+                    {subscriber.status}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="p-8 text-sm text-black/45">
+              No newsletter emails have been submitted yet.
+            </p>
+          )}
         </div>
       </div>
     </section>

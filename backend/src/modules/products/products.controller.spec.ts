@@ -14,7 +14,7 @@ describe('ProductsController', () => {
           provide: ConfigService,
           useValue: {
             getOrThrow: jest.fn((key: string) =>
-              key === 'cloudinary.maxProductImages' ? 10 : 5 * 1024 * 1024,
+              key === 'cloudinary.maxProductImages' ? 4 : 5 * 1024 * 1024,
             ),
           },
         },

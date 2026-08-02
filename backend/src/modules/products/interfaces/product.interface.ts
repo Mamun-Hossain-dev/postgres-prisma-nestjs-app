@@ -139,3 +139,30 @@ export interface ProductCollections {
   trending: Product[];
   brands: string[];
 }
+
+export interface CatalogOperationsSummary {
+  categories: Array<{
+    category: ProductCategory;
+    productCount: number;
+    stockCount: number;
+  }>;
+  brands: Array<{ brand: string; productCount: number; stockCount: number }>;
+  inventory: {
+    totalProducts: number;
+    totalUnits: number;
+    lowStockProducts: number;
+    outOfStockProducts: number;
+  };
+}
+
+export interface StockAdjustment {
+  product: Product;
+  movement: {
+    id: number;
+    previousStock: number;
+    newStock: number;
+    change: number;
+    reason: string;
+    createdAt: Date;
+  };
+}

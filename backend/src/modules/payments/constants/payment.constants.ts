@@ -1,9 +1,11 @@
 export const PAYMENT_REPOSITORY = Symbol('PAYMENT_REPOSITORY');
 
+export const PaymentCommands = {
+  PROCESS: 'process.payment',
+} as const;
+
 export const PaymentEvents = {
-  SUCCEEDED_EMAIL: 'payment.succeeded.email',
-  SUCCEEDED_NOTIFICATION: 'payment.succeeded.notification',
-  SUCCEEDED_ANALYTICS: 'payment.succeeded.analytics',
+  SUCCEEDED: 'payment.succeeded',
 } as const;
 
 export const PaymentConsumerNames = {

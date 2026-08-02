@@ -8,6 +8,7 @@ import {
 import { RabbitMqRetryService } from './rabbitmq-retry.service';
 
 const clients = [
+  [RabbitMqClients.PAYMENTS, RabbitMqQueues.PAYMENTS],
   [RabbitMqClients.EMAILS, RabbitMqQueues.EMAILS],
   [RabbitMqClients.NOTIFICATIONS, RabbitMqQueues.NOTIFICATIONS],
   [RabbitMqClients.ANALYTICS, RabbitMqQueues.ANALYTICS],

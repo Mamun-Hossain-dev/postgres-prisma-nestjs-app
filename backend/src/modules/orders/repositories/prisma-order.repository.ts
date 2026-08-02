@@ -47,12 +47,55 @@ export class PrismaOrderRepository implements OrderRepository {
     });
   }
 
+  async findAll(options: PaginationOptions) {
+    const pagination = toRepositoryPagination(options);
+    const [data, totalItems] = await this.prisma.$transaction([
+      this.prisma.order.findMany({
+        ...pagination,
+        orderBy: { createdAt: 'desc' },
+        include: orderInclude,
+      }),
+      this.prisma.order.count(),
+    ]);
+    return {
+      data,
+      meta: {
+        page: options.page,
+        limit: options.limit,
+        totalItems,
+        totalPages: Math.ceil(totalItems / options.limit),
+        hasNextPage: options.page * options.limit < totalItems,
+        hasPreviousPage: options.page > 1,
+      },
+    };
+  }
+
+  findByIdForAdmin(orderId: number): Promise<OrderView | null> {
+    return this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: orderInclude,
+    });
+  }
+
   async getInvoiceData(
     userId: number,
     orderId: number,
   ): Promise<PaymentSucceededEvent | null> {
+    return this.findInvoiceData({ id: orderId, userId });
+  }
+
+  async getInvoiceDataForAdmin(
+    orderId: number,
+  ): Promise<PaymentSucceededEvent | null> {
+    return this.findInvoiceData({ id: orderId });
+  }
+
+  private async findInvoiceData(where: {
+    id: number;
+    userId?: number;
+  }): Promise<PaymentSucceededEvent | null> {
     const order = await this.prisma.order.findFirst({
-      where: { id: orderId, userId, status: 'PAID' },
+      where: { ...where, status: 'PAID' },
       include: {
         items: { orderBy: { id: 'asc' } },
         payments: {
@@ -83,6 +126,13 @@ export class PrismaOrderRepository implements OrderRepository {
         totalAmount: item.totalAmount,
       })),
       totalAmount: order.totalAmount,
+      orderTotal: order.totalAmount,
+      subtotalAmount: order.subtotalAmount,
+      discountAmount: order.discountAmount,
+      deliveryCharge: order.deliveryCharge,
+      dueOnDelivery: 0,
+      paymentMethod: order.paymentMethod,
+      deliveryZone: order.deliveryZone,
       currency: order.currency,
       paymentStatus: 'SUCCEEDED',
       paymentDate: payment.paidAt.toISOString(),

@@ -5,23 +5,90 @@ enum Role {
 }
 
 model User {
-  id                   Int                   @id @default(autoincrement())
-  name                 String
-  email                String                @unique
-  phone                String?
-  age                  Int                   @default(0)
-  password             String?
-  googleId             String?               @unique
-  role                 Role                  @default(USER)
-  isBlocked            Boolean               @default(false)
-  marketingConsent     Boolean               @default(false)
-  profileImageUrl      String?
-  profileImagePublicId String?               @unique
-  cart                 Cart?
-  orders               Order[]
-  newsletterSubscriber NewsletterSubscriber?
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
+  id                     Int                     @id @default(autoincrement())
+  name                   String
+  email                  String                  @unique
+  phone                  String?
+  age                    Int                     @default(0)
+  password               String?
+  googleId               String?                 @unique
+  role                   Role                    @default(USER)
+  isBlocked              Boolean                 @default(false)
+  marketingConsent       Boolean                 @default(false)
+  profileImageUrl        String?
+  profileImagePublicId   String?                 @unique
+  cart                   Cart?
+  orders                 Order[]
+  reviews                Review[]
+  stockMovements         StockMovement[]
+  couponRedemptions      CouponRedemption[]
+  newsletterSubscriber   NewsletterSubscriber?
+  addresses              Address[]
+  wishlistItems          WishlistItem[]
+  notifications          Notification[]
+  notificationPreference NotificationPreference?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
 
   @@map("users")
+}
+
+model Address {
+  id            Int          @id @default(autoincrement())
+  userId        Int
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label         String
+  recipientName String
+  phone         String
+  addressLine   String
+  area          String
+  city          String
+  postalCode    String?
+  deliveryZone  DeliveryZone
+  isDefault     Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([userId, isDefault])
+  @@map("addresses")
+}
+
+model WishlistItem {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@index([userId, createdAt])
+  @@map("wishlist_items")
+}
+
+model NotificationPreference {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderUpdates   Boolean  @default(true)
+  productUpdates Boolean  @default(true)
+  emailUpdates   Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("notification_preferences")
+}
+
+model Notification {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  message   String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@map("notifications")
 }

@@ -3,7 +3,6 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppException } from '../../common/exceptions/app.exception';
 import { RedisService } from '../../infrastructure/redis/redis.service';
-import type { PublicUser } from '../users/interfaces/user.interface';
 import {
   PaymentGateway,
   PaymentGatewayError,
@@ -12,6 +11,9 @@ import {
 import { PAYMENT_REPOSITORY } from './constants/payment.constants';
 import type {
   CheckoutSession,
+  CheckoutCustomer,
+  CheckoutItemInput,
+  CheckoutOptions,
   PaymentView,
   PublicPaymentView,
 } from './interfaces/payment.interface';
@@ -39,14 +41,25 @@ export class PaymentService {
   }
 
   async createCheckout(
-    user: PublicUser,
+    user: CheckoutCustomer,
     idempotencyKey: string,
+    items: CheckoutItemInput[],
+    options: CheckoutOptions,
   ): Promise<CheckoutSession> {
+    if (!items.length) {
+      throw new AppException('Select at least one product for checkout', {
+        code: 'CHECKOUT_ITEMS_REQUIRED',
+        status: 400,
+      });
+    }
     const existing = await this.repository.findByIdempotencyKey(
       user.id,
       idempotencyKey,
     );
-    if (existing) return this.resumeOrReturn(existing, user.email);
+    if (existing) {
+      this.assertCheckoutMatches(existing, items, options);
+      return this.resumeOrReturn(existing, user.email);
+    }
 
     if (!this.redis.ready) {
       throw new AppException('Checkout is temporarily unavailable', {
@@ -81,24 +94,32 @@ export class PaymentService {
         user.id,
         idempotencyKey,
       );
-      if (retry) return this.resumeOrReturn(retry, user.email);
+      if (retry) {
+        this.assertCheckoutMatches(retry, items, options);
+        return this.resumeOrReturn(retry, user.email);
+      }
 
       const active = await this.repository.findActiveByUser(user.id);
       if (active) {
-        if (!active.providerIntentId) {
-          throw new AppException(
-            'An unfinished checkout exists; retry it with the same request',
-            { code: 'ACTIVE_CHECKOUT_EXISTS', status: 409 },
+        if (this.checkoutMatches(active, items, options)) {
+          if (!active.providerIntentId) {
+            throw new AppException(
+              'An unfinished checkout exists; retry it with the same request',
+              { code: 'ACTIVE_CHECKOUT_EXISTS', status: 409 },
+            );
+          }
+          return this.toSession(
+            active,
+            await this.retrieveIntent(active.providerIntentId),
           );
         }
-        return this.toSession(
-          active,
-          await this.retrieveIntent(active.providerIntentId),
-        );
+        await this.cancelReplacedCheckout(active);
       }
 
-      const payment = await this.repository.createPendingFromCart(
+      const payment = await this.repository.createPendingFromItems(
         user.id,
+        items,
+        options,
         idempotencyKey,
         this.currency,
         this.minorUnit,
@@ -134,6 +155,7 @@ export class PaymentService {
   ): Promise<CheckoutSession> {
     const payment = await this.repository.findOwnedById(userId, paymentId);
     if (!payment) throw this.paymentNotFound();
+    this.assertCurrentCheckout(payment);
     if (!payment.providerIntentId) {
       throw new AppException('Payment session is not ready', {
         code: 'PAYMENT_SESSION_NOT_READY',
@@ -181,6 +203,8 @@ export class PaymentService {
           orderId: String(payment.orderId),
           orderNumber: payment.order.orderNumber,
           userId: String(payment.order.userId),
+          paymentMethod: payment.order.paymentMethod,
+          deliveryZone: payment.order.deliveryZone,
         },
       });
     } catch (error) {
@@ -218,17 +242,118 @@ export class PaymentService {
 
   private toSession(
     payment: PaymentView,
-    intent: { clientSecret: string },
+    intent: { id: string; clientSecret: string },
   ): CheckoutSession {
     return {
       paymentId: payment.id,
+      paymentIntentId: intent.id,
       orderId: payment.orderId,
       orderNumber: payment.order.orderNumber,
       clientSecret: intent.clientSecret,
       amount: payment.amount,
       currency: payment.currency,
       paymentStatus: payment.status,
+      paymentMethod: payment.order.paymentMethod,
+      deliveryZone: payment.order.deliveryZone,
+      subtotalAmount: payment.order.subtotalAmount,
+      discountAmount: payment.order.discountAmount,
+      deliveryCharge: payment.order.deliveryCharge,
+      orderTotal: payment.order.totalAmount,
+      dueOnDelivery:
+        payment.order.paymentMethod === 'CASH_ON_DELIVERY'
+          ? payment.order.subtotalAmount - payment.order.discountAmount
+          : 0,
+      items: payment.order.items,
     };
+  }
+
+  private checkoutMatches(
+    payment: PaymentView,
+    items: CheckoutItemInput[],
+    options: CheckoutOptions,
+  ): boolean {
+    const expectedDeliveryCharge =
+      (options.deliveryZone === 'DHAKA' ? 60 : 120) * this.minorUnit;
+    const expectedCoupon = options.couponCode?.trim().toUpperCase() || null;
+    const requestedItems = [...items].sort((a, b) => a.productId - b.productId);
+    const savedItems = payment.order.items
+      .map(({ productId, quantity }) => ({ productId, quantity }))
+      .sort((a, b) => (a.productId ?? 0) - (b.productId ?? 0));
+
+    return (
+      payment.currency.toLowerCase() === this.currency &&
+      payment.order.currency.toLowerCase() === this.currency &&
+      payment.order.paymentMethod === options.paymentMethod &&
+      payment.order.deliveryZone === options.deliveryZone &&
+      payment.order.deliveryCharge === expectedDeliveryCharge &&
+      payment.order.couponCode === expectedCoupon &&
+      requestedItems.length === savedItems.length &&
+      requestedItems.every(
+        (item, index) =>
+          item.productId === savedItems[index]?.productId &&
+          item.quantity === savedItems[index]?.quantity,
+      )
+    );
+  }
+
+  private assertCheckoutMatches(
+    payment: PaymentView,
+    items: CheckoutItemInput[],
+    options: CheckoutOptions,
+  ): void {
+    if (!this.checkoutMatches(payment, items, options)) {
+      throw new AppException('Checkout details changed; start checkout again', {
+        code: 'CHECKOUT_REQUEST_CHANGED',
+        status: 409,
+      });
+    }
+  }
+
+  private assertCurrentCheckout(payment: PaymentView): void {
+    const expectedDeliveryCharge =
+      (payment.order.deliveryZone === 'DHAKA' ? 60 : 120) * this.minorUnit;
+    const expectedAmount =
+      payment.order.paymentMethod === 'CASH_ON_DELIVERY'
+        ? expectedDeliveryCharge
+        : payment.order.totalAmount;
+    if (
+      payment.currency.toLowerCase() !== this.currency ||
+      payment.order.currency.toLowerCase() !== this.currency ||
+      payment.order.deliveryCharge !== expectedDeliveryCharge ||
+      payment.amount !== expectedAmount
+    ) {
+      throw new AppException(
+        'This checkout is outdated; start checkout again',
+        {
+          code: 'CHECKOUT_SESSION_OUTDATED',
+          status: 409,
+        },
+      );
+    }
+  }
+
+  private async cancelReplacedCheckout(payment: PaymentView): Promise<void> {
+    if (payment.providerIntentId) {
+      try {
+        await this.gateway.cancelPaymentIntent(payment.providerIntentId);
+      } catch (error) {
+        const gatewayError =
+          error instanceof PaymentGatewayError
+            ? error
+            : new PaymentGatewayError(
+                'Payment gateway request failed',
+                'PAYMENT_GATEWAY_ERROR',
+              );
+        throw new AppException(gatewayError.message, {
+          code: gatewayError.code,
+          status: 502,
+        });
+      }
+    }
+    await this.repository.markCancelled(
+      payment.id,
+      'Replaced because the selected items or checkout options changed',
+    );
   }
 
   private async retrieveIntent(id: string): Promise<PaymentIntentResult> {
