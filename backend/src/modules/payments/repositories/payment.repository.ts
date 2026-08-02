@@ -12,6 +12,7 @@ export interface PaymentRepository {
     idempotencyKey: string,
   ): Promise<PaymentView | null>;
   findActiveByUser(userId: number): Promise<PaymentView | null>;
+  findByOrderId(orderId: number): Promise<PaymentView | null>;
   findOwnedById(userId: number, paymentId: number): Promise<PaymentView | null>;
   createPendingFromItems(
     userId: number,

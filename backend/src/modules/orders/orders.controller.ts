@@ -1,5 +1,6 @@
 import {
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -35,6 +36,15 @@ export class OrdersController {
   @ResponseMessage('Order fetched successfully')
   findOneForAdmin(@Param('id', ParseIntPipe) id: number) {
     return this.ordersService.findOneForAdmin(id);
+  }
+
+  @Delete('admin/:id')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
+  @ResponseMessage('Order deleted successfully')
+  async deleteForAdmin(@Param('id', ParseIntPipe) id: number) {
+    await this.ordersService.deleteForAdmin(id);
+    return null;
   }
 
   @Get('admin/:id/invoice')

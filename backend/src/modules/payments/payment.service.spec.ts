@@ -5,6 +5,7 @@ import { PaymentGatewayError } from './gateways/payment-gateway.interface';
 import type { PaymentView } from './interfaces/payment.interface';
 import { PaymentService } from './payment.service';
 import type { PaymentRepository } from './repositories/payment.repository';
+import type { PaymentWebhookService } from './payment-webhook.service';
 
 const payment: PaymentView = {
   id: 1,
@@ -52,10 +53,20 @@ const payment: PaymentView = {
   },
 };
 
+const payableIntent = {
+  id: 'pi_123',
+  clientSecret: 'secret',
+  status: 'requires_payment_method',
+  amount: payment.amount,
+  currency: payment.currency,
+  metadata: { paymentId: String(payment.id) },
+};
+
 describe('PaymentService', () => {
   const repository = {
     findByIdempotencyKey: jest.fn(),
     findActiveByUser: jest.fn(),
+    findByOrderId: jest.fn(),
     findOwnedById: jest.fn(),
     createPendingFromItems: jest.fn(),
     attachProviderIntent: jest.fn(),
@@ -72,6 +83,9 @@ describe('PaymentService', () => {
     acquireLock: jest.fn(),
     releaseLock: jest.fn(),
   } as unknown as jest.Mocked<RedisService>;
+  const webhookService = {
+    handleVerified: jest.fn(),
+  } as unknown as jest.Mocked<PaymentWebhookService>;
   const config = {
     getOrThrow: jest.fn((key: string) => {
       if (key === 'stripe.currency') return 'bdt';
@@ -91,12 +105,14 @@ describe('PaymentService', () => {
 
   it('returns the existing Stripe intent for an idempotent retry', async () => {
     repository.findByIdempotencyKey.mockResolvedValue(payment);
-    gateway.retrievePaymentIntent.mockResolvedValue({
-      id: 'pi_123',
-      clientSecret: 'secret',
-      status: 'requires_payment_method',
-    });
-    const service = new PaymentService(repository, gateway, redis, config);
+    gateway.retrievePaymentIntent.mockResolvedValue(payableIntent);
+    const service = new PaymentService(
+      repository,
+      gateway,
+      redis,
+      webhookService,
+      config,
+    );
 
     await expect(
       service.createCheckout(user, payment.idempotencyKey, items, options),
@@ -110,7 +126,13 @@ describe('PaymentService', () => {
   it('fails safely when the distributed lock cannot be acquired', async () => {
     repository.findByIdempotencyKey.mockResolvedValue(null);
     redis.acquireLock.mockResolvedValue(false);
-    const service = new PaymentService(repository, gateway, redis, config);
+    const service = new PaymentService(
+      repository,
+      gateway,
+      redis,
+      webhookService,
+      config,
+    );
 
     await expect(
       service.createCheckout(user, payment.idempotencyKey, items, options),
@@ -129,7 +151,13 @@ describe('PaymentService', () => {
     gateway.createPaymentIntent.mockRejectedValue(
       new PaymentGatewayError('Stripe unavailable', 'STRIPE_ERROR'),
     );
-    const service = new PaymentService(repository, gateway, redis, config);
+    const service = new PaymentService(
+      repository,
+      gateway,
+      redis,
+      webhookService,
+      config,
+    );
 
     await expect(
       service.createCheckout(user, payment.idempotencyKey, items, options),
@@ -171,12 +199,19 @@ describe('PaymentService', () => {
     redis.acquireLock.mockResolvedValue(true);
     redis.releaseLock.mockResolvedValue(true);
     gateway.cancelPaymentIntent.mockResolvedValue();
+    gateway.retrievePaymentIntent.mockResolvedValue(payableIntent);
     gateway.createPaymentIntent.mockResolvedValue({
+      ...payableIntent,
       id: 'pi_new',
       clientSecret: 'new_secret',
-      status: 'requires_payment_method',
     });
-    const service = new PaymentService(repository, gateway, redis, config);
+    const service = new PaymentService(
+      repository,
+      gateway,
+      redis,
+      webhookService,
+      config,
+    );
 
     await expect(
       service.createCheckout(user, 'new-key', items, options),
@@ -199,6 +234,48 @@ describe('PaymentService', () => {
     );
   });
 
+  it('reconciles a succeeded active intent instead of trying to cancel it', async () => {
+    repository.findByIdempotencyKey.mockResolvedValue(null);
+    repository.findActiveByUser.mockResolvedValue({
+      ...payment,
+      order: {
+        ...payment.order,
+        items: [{ ...payment.order.items[0], productId: 99 }],
+      },
+    });
+    redis.acquireLock.mockResolvedValue(true);
+    redis.releaseLock.mockResolvedValue(true);
+    gateway.retrievePaymentIntent.mockResolvedValue({
+      ...payableIntent,
+      status: 'succeeded',
+    });
+    const service = new PaymentService(
+      repository,
+      gateway,
+      redis,
+      webhookService,
+      config,
+    );
+
+    await expect(
+      service.createCheckout(user, 'new-key', items, options),
+    ).rejects.toMatchObject({
+      code: 'PAYMENT_ALREADY_SUCCEEDED',
+      details: { paymentId: payment.id },
+    });
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(webhookService.handleVerified).toHaveBeenCalledWith(
+      expect.objectContaining({
+        paymentIntentId: 'pi_123',
+        paymentStatus: 'SUCCEEDED',
+      }),
+    );
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(gateway.cancelPaymentIntent).not.toHaveBeenCalled();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(repository.createPendingFromItems).not.toHaveBeenCalled();
+  });
+
   it('rejects an old checkout that does not contain the delivery charge', async () => {
     repository.findOwnedById.mockResolvedValue({
       ...payment,
@@ -209,10 +286,57 @@ describe('PaymentService', () => {
         totalAmount: 119_000,
       },
     });
-    const service = new PaymentService(repository, gateway, redis, config);
+    const service = new PaymentService(
+      repository,
+      gateway,
+      redis,
+      webhookService,
+      config,
+    );
 
     await expect(
       service.getCheckoutSession(7, payment.id),
     ).rejects.toMatchObject({ code: 'CHECKOUT_SESSION_OUTDATED' });
+  });
+
+  it('cancels an active Stripe payment before order deletion', async () => {
+    repository.findByOrderId.mockResolvedValue(payment);
+    gateway.cancelPaymentIntent.mockResolvedValue();
+    const service = new PaymentService(
+      repository,
+      gateway,
+      redis,
+      webhookService,
+      config,
+    );
+
+    await expect(service.cancelForOrderDeletion(2)).resolves.toBeUndefined();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(gateway.cancelPaymentIntent).toHaveBeenCalledWith('pi_123');
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(repository.markCancelled).toHaveBeenCalledWith(
+      payment.id,
+      expect.any(String),
+    );
+  });
+
+  it('does not delete an order whose payment is already completed', async () => {
+    repository.findByOrderId.mockResolvedValue({
+      ...payment,
+      status: 'SUCCEEDED',
+    });
+    const service = new PaymentService(
+      repository,
+      gateway,
+      redis,
+      webhookService,
+      config,
+    );
+
+    await expect(service.cancelForOrderDeletion(2)).rejects.toMatchObject({
+      code: 'ORDER_PAYMENT_FINALIZED',
+    });
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(gateway.cancelPaymentIntent).not.toHaveBeenCalled();
   });
 });

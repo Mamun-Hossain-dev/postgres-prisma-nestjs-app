@@ -5,6 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowUpRight, ClipboardList } from "lucide-react";
 import { useState } from "react";
 import { AdminOrderInvoiceButton } from "@/components/admin/admin-order-invoice-button";
+import {
+  AdminOrderDeleteButton,
+  canDeleteOrder,
+} from "@/components/admin/admin-order-delete-button";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { useAuth } from "@/components/auth-provider";
 import { Badge } from "@/components/ui/badge";
@@ -89,6 +93,13 @@ export function AdminOrders() {
                         <div className="flex justify-end gap-2">
                           {order.status === "PAID" && (
                             <AdminOrderInvoiceButton
+                              compact
+                              orderId={order.id}
+                              orderNumber={order.orderNumber}
+                            />
+                          )}
+                          {canDeleteOrder(order.status) && (
+                            <AdminOrderDeleteButton
                               compact
                               orderId={order.id}
                               orderNumber={order.orderNumber}

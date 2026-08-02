@@ -35,6 +35,10 @@ export class PaymentWebhookService {
       throw error;
     }
 
+    await this.handleVerified(event);
+  }
+
+  async handleVerified(event: GatewayWebhookEvent): Promise<void> {
     const result = await this.repository.processWebhook(event);
     if (result.duplicate) {
       this.logger.debug(`Duplicate Stripe event received: ${event.id}`);

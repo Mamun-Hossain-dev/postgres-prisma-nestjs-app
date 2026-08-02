@@ -10,6 +10,9 @@ export interface PaymentIntentResult {
   id: string;
   clientSecret: string;
   status: string;
+  amount: number;
+  currency: string;
+  metadata: Record<string, string>;
 }
 
 export interface GatewayWebhookEvent {

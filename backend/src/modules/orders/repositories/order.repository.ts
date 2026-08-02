@@ -15,6 +15,7 @@ export interface OrderRepository {
   findById(userId: number, orderId: number): Promise<OrderView | null>;
   findAll(options: PaginationOptions): Promise<PaginatedResult<OrderView>>;
   findByIdForAdmin(orderId: number): Promise<OrderView | null>;
+  deleteRemovable(orderId: number): Promise<boolean>;
   getInvoiceData(
     userId: number,
     orderId: number,

@@ -185,36 +185,37 @@ PostgreSQL is provided by the configured Neon/database connection. Local tools:
 
 All routes are relative to `/api/v1`.
 
-| Method | Route                       | Access           | Purpose                    |
-| ------ | --------------------------- | ---------------- | -------------------------- |
-| POST   | `/auth/register`            | Public           | Register                   |
-| POST   | `/auth/login`               | Public           | Sign in                    |
-| POST   | `/auth/refresh`             | Refresh cookie   | Rotate session             |
-| GET    | `/auth/sessions`            | Authenticated    | List active sessions       |
-| DELETE | `/auth/sessions/:id`        | Owner            | Revoke an active session   |
-| PATCH  | `/users/me/password`        | Authenticated    | Change account password    |
-| GET    | `/account/addresses`        | Authenticated    | List saved addresses       |
-| POST   | `/account/addresses`        | Authenticated    | Save a delivery address    |
-| GET    | `/account/wishlist`         | Authenticated    | List saved products        |
-| POST   | `/account/wishlist`         | Authenticated    | Save a product             |
-| GET    | `/account/notifications`    | Authenticated    | Read account notifications |
-| GET    | `/products`                 | Public           | Search and filter products |
-| POST   | `/products`                 | Admin, Seller    | Create a product           |
-| PATCH  | `/products/:id`             | Admin, Seller    | Update a product           |
-| POST   | `/payments/checkout`        | Authenticated    | Create or resume checkout  |
-| GET    | `/payments/:id`             | Owner            | Read webhook-backed status |
-| GET    | `/payments/:id/session`     | Owner            | Restore checkout session   |
-| POST   | `/payments/webhooks/stripe` | Stripe signature | Process webhook            |
-| GET    | `/orders`                   | Authenticated    | List owned orders          |
-| GET    | `/orders/:id`               | Owner            | Read owned order           |
-| GET    | `/orders/:id/invoice`       | Owner            | Download paid invoice      |
-| GET    | `/orders/admin/list`        | Admin            | List all orders            |
-| GET    | `/orders/admin/:id`         | Admin            | Read any order             |
-| GET    | `/orders/admin/:id/invoice` | Admin            | Download paid invoice      |
-| GET    | `/operations/summary`       | Admin, Seller    | Catalog operation metrics  |
-| PATCH  | `/operations/inventory/:id` | Admin, Seller    | Record a stock adjustment  |
-| GET    | `/operations/reviews`       | Admin            | Moderate customer reviews  |
-| POST   | `/operations/coupons`       | Admin            | Create a checkout coupon   |
+| Method | Route                       | Access           | Purpose                        |
+| ------ | --------------------------- | ---------------- | ------------------------------ |
+| POST   | `/auth/register`            | Public           | Register                       |
+| POST   | `/auth/login`               | Public           | Sign in                        |
+| POST   | `/auth/refresh`             | Refresh cookie   | Rotate session                 |
+| GET    | `/auth/sessions`            | Authenticated    | List active sessions           |
+| DELETE | `/auth/sessions/:id`        | Owner            | Revoke an active session       |
+| PATCH  | `/users/me/password`        | Authenticated    | Change account password        |
+| GET    | `/account/addresses`        | Authenticated    | List saved addresses           |
+| POST   | `/account/addresses`        | Authenticated    | Save a delivery address        |
+| GET    | `/account/wishlist`         | Authenticated    | List saved products            |
+| POST   | `/account/wishlist`         | Authenticated    | Save a product                 |
+| GET    | `/account/notifications`    | Authenticated    | Read account notifications     |
+| GET    | `/products`                 | Public           | Search and filter products     |
+| POST   | `/products`                 | Admin, Seller    | Create a product               |
+| PATCH  | `/products/:id`             | Admin, Seller    | Update a product               |
+| POST   | `/payments/checkout`        | Authenticated    | Create or resume checkout      |
+| GET    | `/payments/:id`             | Owner            | Read webhook-backed status     |
+| GET    | `/payments/:id/session`     | Owner            | Restore checkout session       |
+| POST   | `/payments/webhooks/stripe` | Stripe signature | Process webhook                |
+| GET    | `/orders`                   | Authenticated    | List owned orders              |
+| GET    | `/orders/:id`               | Owner            | Read owned order               |
+| GET    | `/orders/:id/invoice`       | Owner            | Download paid invoice          |
+| GET    | `/orders/admin/list`        | Admin            | List all orders                |
+| GET    | `/orders/admin/:id`         | Admin            | Read any order                 |
+| GET    | `/orders/admin/:id/invoice` | Admin            | Download paid invoice          |
+| DELETE | `/orders/admin/:id`         | Admin            | Delete pending/cancelled order |
+| GET    | `/operations/summary`       | Admin, Seller    | Catalog operation metrics      |
+| PATCH  | `/operations/inventory/:id` | Admin, Seller    | Record a stock adjustment      |
+| GET    | `/operations/reviews`       | Admin            | Moderate customer reviews      |
+| POST   | `/operations/coupons`       | Admin            | Create a checkout coupon       |
 
 Checkout requires a client-generated UUID that remains stable across retries
 and the selected cart items. Prices and totals are always loaded by the

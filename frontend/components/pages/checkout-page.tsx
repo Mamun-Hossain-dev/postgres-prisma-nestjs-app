@@ -76,13 +76,24 @@ function CheckoutContent() {
   });
   const outdatedSession =
     restoredSession.error instanceof ApiError &&
-    restoredSession.error.status === 409;
+    restoredSession.error.status === 409 &&
+    restoredSession.error.code !== "PAYMENT_ALREADY_SUCCEEDED";
+  const completedPaymentId =
+    restoredSession.error instanceof ApiError &&
+    restoredSession.error.code === "PAYMENT_ALREADY_SUCCEEDED"
+      ? readPaymentId(restoredSession.error.details)
+      : null;
 
   useEffect(() => {
     if (!outdatedSession) return;
     window.sessionStorage.removeItem(CHECKOUT_IDEMPOTENCY_KEY);
     router.replace("/checkout");
   }, [outdatedSession, router]);
+
+  useEffect(() => {
+    if (!completedPaymentId) return;
+    router.replace(`/checkout/complete?paymentId=${completedPaymentId}`);
+  }, [completedPaymentId, router]);
 
   const checkout = useMutation({
     mutationFn: () => {
@@ -114,6 +125,16 @@ function CheckoutContent() {
       router.replace(`/checkout?paymentId=${session.paymentId}`);
     },
     onError: (error: Error) => {
+      if (
+        error instanceof ApiError &&
+        error.code === "PAYMENT_ALREADY_SUCCEEDED"
+      ) {
+        const succeededPaymentId = readPaymentId(error.details);
+        if (succeededPaymentId) {
+          router.replace(`/checkout/complete?paymentId=${succeededPaymentId}`);
+          return;
+        }
+      }
       if (error instanceof ApiError && error.status < 500) {
         window.sessionStorage.removeItem(CHECKOUT_IDEMPOTENCY_KEY);
       }
@@ -480,4 +501,12 @@ function readSelectedProductIds(): number[] {
   } catch {
     return [];
   }
+}
+
+function readPaymentId(details: unknown): number | null {
+  if (!details || typeof details !== "object") return null;
+  const paymentId = (details as { paymentId?: unknown }).paymentId;
+  return typeof paymentId === "number" && Number.isInteger(paymentId)
+    ? paymentId
+    : null;
 }

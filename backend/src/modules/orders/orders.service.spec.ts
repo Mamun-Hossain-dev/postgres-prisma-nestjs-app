@@ -1,6 +1,7 @@
 import type { InvoiceService } from './invoices/invoice.service';
 import { OrdersService } from './orders.service';
 import type { OrderRepository } from './repositories/order.repository';
+import type { PaymentService } from '../payments/payment.service';
 
 describe('OrdersService', () => {
   const repository = {
@@ -8,19 +9,27 @@ describe('OrdersService', () => {
     findAllByUser: jest.fn(),
     findById: jest.fn(),
     findByIdForAdmin: jest.fn(),
+    deleteRemovable: jest.fn(),
     getInvoiceData: jest.fn(),
     getInvoiceDataForAdmin: jest.fn(),
   } as jest.Mocked<OrderRepository>;
   const invoiceService = {
     generate: jest.fn(),
   } as unknown as jest.Mocked<InvoiceService>;
+  const paymentService = {
+    cancelForOrderDeletion: jest.fn(),
+  } as unknown as jest.Mocked<PaymentService>;
 
   beforeEach(() => jest.clearAllMocks());
 
   it('lists all orders through the admin repository method', async () => {
     const result = { data: [], meta: { page: 1, limit: 10 } };
     repository.findAll.mockResolvedValue(result as never);
-    const service = new OrdersService(repository, invoiceService);
+    const service = new OrdersService(
+      repository,
+      invoiceService,
+      paymentService,
+    );
 
     await expect(service.findAllForAdmin({ page: 1, limit: 10 })).resolves.toBe(
       result,
@@ -32,10 +41,51 @@ describe('OrdersService', () => {
     const pdf = Buffer.from('pdf');
     repository.getInvoiceDataForAdmin.mockResolvedValue(invoiceData as never);
     invoiceService.generate.mockResolvedValue(pdf);
-    const service = new OrdersService(repository, invoiceService);
+    const service = new OrdersService(
+      repository,
+      invoiceService,
+      paymentService,
+    );
 
     await expect(service.generateInvoiceForAdmin(4)).resolves.toBe(pdf);
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(repository.getInvoiceDataForAdmin).toHaveBeenCalledWith(4);
+  });
+
+  it('cancels and deletes a payment-pending order', async () => {
+    repository.findByIdForAdmin.mockResolvedValue({
+      id: 4,
+      status: 'PAYMENT_PENDING',
+    } as never);
+    repository.deleteRemovable.mockResolvedValue(true);
+    const service = new OrdersService(
+      repository,
+      invoiceService,
+      paymentService,
+    );
+
+    await expect(service.deleteForAdmin(4)).resolves.toBeUndefined();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(paymentService.cancelForOrderDeletion).toHaveBeenCalledWith(4);
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(repository.deleteRemovable).toHaveBeenCalledWith(4);
+  });
+
+  it('rejects deleting a paid order', async () => {
+    repository.findByIdForAdmin.mockResolvedValue({
+      id: 4,
+      status: 'PAID',
+    } as never);
+    const service = new OrdersService(
+      repository,
+      invoiceService,
+      paymentService,
+    );
+
+    await expect(service.deleteForAdmin(4)).rejects.toMatchObject({
+      code: 'ORDER_DELETE_NOT_ALLOWED',
+    });
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(repository.deleteRemovable).not.toHaveBeenCalled();
   });
 });

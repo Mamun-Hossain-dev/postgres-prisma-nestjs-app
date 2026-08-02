@@ -4,6 +4,7 @@ import type { PaginationOptions } from '../../common/interfaces/pagination.inter
 import { ORDER_REPOSITORY } from './constants/order.tokens';
 import { InvoiceService } from './invoices/invoice.service';
 import type { OrderRepository } from './repositories/order.repository';
+import { PaymentService } from '../payments/payment.service';
 
 @Injectable()
 export class OrdersService {
@@ -11,6 +12,7 @@ export class OrdersService {
     @Inject(ORDER_REPOSITORY)
     private readonly repository: OrderRepository,
     private readonly invoiceService: InvoiceService,
+    private readonly paymentService: PaymentService,
   ) {}
 
   findAll(userId: number, options: PaginationOptions) {
@@ -31,6 +33,20 @@ export class OrdersService {
     const order = await this.repository.findByIdForAdmin(orderId);
     if (!order) throw this.orderNotFound();
     return order;
+  }
+
+  async deleteForAdmin(orderId: number): Promise<void> {
+    const order = await this.repository.findByIdForAdmin(orderId);
+    if (!order) throw this.orderNotFound();
+    if (order.status !== 'PAYMENT_PENDING' && order.status !== 'CANCELLED') {
+      throw this.orderDeleteNotAllowed();
+    }
+    if (order.status === 'PAYMENT_PENDING') {
+      await this.paymentService.cancelForOrderDeletion(orderId);
+    }
+    if (!(await this.repository.deleteRemovable(orderId))) {
+      throw this.orderDeleteNotAllowed();
+    }
   }
 
   async generateInvoice(userId: number, orderId: number): Promise<Buffer> {
@@ -57,5 +73,15 @@ export class OrdersService {
       code: 'ORDER_NOT_FOUND',
       status: 404,
     });
+  }
+
+  private orderDeleteNotAllowed() {
+    return new AppException(
+      'Only payment-pending or cancelled orders can be deleted',
+      {
+        code: 'ORDER_DELETE_NOT_ALLOWED',
+        status: 409,
+      },
+    );
   }
 }

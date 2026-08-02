@@ -4,8 +4,10 @@ import { InvoiceService } from './invoices/invoice.service';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { PrismaOrderRepository } from './repositories/prisma-order.repository';
+import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
+  imports: [PaymentsModule],
   controllers: [OrdersController],
   providers: [
     OrdersService,

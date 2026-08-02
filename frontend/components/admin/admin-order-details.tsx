@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Package } from "lucide-react";
 import { AdminOrderInvoiceButton } from "@/components/admin/admin-order-invoice-button";
+import {
+  AdminOrderDeleteButton,
+  canDeleteOrder,
+} from "@/components/admin/admin-order-delete-button";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { OrderStatusBadge } from "@/components/admin/admin-orders";
 import { useAuth } from "@/components/auth-provider";
@@ -51,11 +55,22 @@ export function AdminOrderDetails({ orderId }: { orderId: number }) {
         title={order.orderNumber}
         description={`Placed ${new Date(order.createdAt).toLocaleString("en-BD")}`}
         action={
-          order.status === "PAID" ? (
-            <AdminOrderInvoiceButton
-              orderId={order.id}
-              orderNumber={order.orderNumber}
-            />
+          order.status === "PAID" || canDeleteOrder(order.status) ? (
+            <div className="flex flex-wrap gap-3">
+              {order.status === "PAID" && (
+                <AdminOrderInvoiceButton
+                  orderId={order.id}
+                  orderNumber={order.orderNumber}
+                />
+              )}
+              {canDeleteOrder(order.status) && (
+                <AdminOrderDeleteButton
+                  orderId={order.id}
+                  orderNumber={order.orderNumber}
+                  redirectAfterDelete
+                />
+              )}
+            </div>
           ) : undefined
         }
       />

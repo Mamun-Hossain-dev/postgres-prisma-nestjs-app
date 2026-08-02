@@ -7,6 +7,8 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly code = "HTTP_ERROR",
+    readonly details?: unknown,
   ) {
     super(message);
   }
@@ -30,12 +32,20 @@ export async function apiFetch<T>(
     },
   });
   const payload = (await response.json().catch(() => null)) as
-    ApiEnvelope<T> | { message?: string } | null;
+    | ApiEnvelope<T>
+    | {
+        message?: string;
+        error?: { code?: string; message?: string; details?: unknown };
+      }
+    | null;
 
   if (!response.ok) {
+    const failure = payload && "error" in payload ? payload.error : undefined;
     throw new ApiError(
-      payload?.message ?? "Something went wrong",
+      failure?.message ?? payload?.message ?? "Something went wrong",
       response.status,
+      failure?.code,
+      failure?.details,
     );
   }
 
@@ -55,10 +65,13 @@ export async function apiFetchBlob(
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as {
       message?: string;
+      error?: { code?: string; message?: string; details?: unknown };
     } | null;
     throw new ApiError(
-      payload?.message ?? "Unable to download file",
+      payload?.error?.message ?? payload?.message ?? "Unable to download file",
       response.status,
+      payload?.error?.code,
+      payload?.error?.details,
     );
   }
   return response.blob();

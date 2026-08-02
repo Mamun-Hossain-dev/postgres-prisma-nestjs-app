@@ -77,6 +77,39 @@ export class PrismaOrderRepository implements OrderRepository {
     });
   }
 
+  async deleteRemovable(orderId: number): Promise<boolean> {
+    return this.prisma.$transaction(async (prisma) => {
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: {
+          status: true,
+          couponRedemption: {
+            select: { couponId: true, status: true },
+          },
+        },
+      });
+      if (
+        !order ||
+        (order.status !== 'PAYMENT_PENDING' && order.status !== 'CANCELLED')
+      ) {
+        return false;
+      }
+
+      if (order.couponRedemption?.status === 'RESERVED') {
+        await prisma.coupon.updateMany({
+          where: {
+            id: order.couponRedemption.couponId,
+            remainingUses: { not: null },
+          },
+          data: { remainingUses: { increment: 1 } },
+        });
+      }
+      await prisma.payment.deleteMany({ where: { orderId } });
+      await prisma.order.delete({ where: { id: orderId } });
+      return true;
+    });
+  }
+
   async getInvoiceData(
     userId: number,
     orderId: number,

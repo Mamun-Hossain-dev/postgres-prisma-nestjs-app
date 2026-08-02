@@ -18,4 +18,5 @@ export interface PaymentRpcError {
   code: string;
   message: string;
   status: number;
+  details?: unknown;
 }

@@ -40,6 +40,7 @@ export class PaymentRpcClient {
         {
           code: rpcError?.code ?? 'PAYMENT_RPC_UNAVAILABLE',
           status: rpcError?.status ?? 503,
+          details: rpcError?.details,
           cause: error,
         },
       );

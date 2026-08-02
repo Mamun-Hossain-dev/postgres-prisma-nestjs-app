@@ -126,6 +126,9 @@ export class StripeService implements PaymentGateway {
       id: intent.id,
       clientSecret: intent.client_secret,
       status: intent.status,
+      amount: intent.amount,
+      currency: intent.currency,
+      metadata: intent.metadata,
     };
   }
 

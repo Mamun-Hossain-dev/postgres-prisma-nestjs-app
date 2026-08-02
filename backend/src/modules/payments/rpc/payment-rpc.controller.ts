@@ -32,6 +32,7 @@ export class PaymentRpcController {
           code: error.code,
           message: error.message,
           status: error.getStatus(),
+          details: error.details,
         } satisfies PaymentRpcError);
       }
 

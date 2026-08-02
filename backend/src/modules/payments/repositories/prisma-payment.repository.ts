@@ -45,6 +45,14 @@ export class PrismaPaymentRepository implements PaymentRepository {
     });
   }
 
+  findByOrderId(orderId: number): Promise<PaymentView | null> {
+    return this.prisma.payment.findFirst({
+      where: { orderId },
+      orderBy: { createdAt: 'desc' },
+      include: paymentInclude,
+    });
+  }
+
   findOwnedById(
     userId: number,
     paymentId: number,

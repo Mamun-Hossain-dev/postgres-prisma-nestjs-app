@@ -18,6 +18,7 @@ import type {
   PublicPaymentView,
 } from './interfaces/payment.interface';
 import type { PaymentRepository } from './repositories/payment.repository';
+import { PaymentWebhookService } from './payment-webhook.service';
 
 @Injectable()
 export class PaymentService {
@@ -31,6 +32,7 @@ export class PaymentService {
     private readonly repository: PaymentRepository,
     private readonly gateway: PaymentGateway,
     private readonly redis: RedisService,
+    private readonly webhookService: PaymentWebhookService,
     configService: ConfigService,
   ) {
     this.currency = configService.getOrThrow<string>('stripe.currency');
@@ -108,10 +110,7 @@ export class PaymentService {
               { code: 'ACTIVE_CHECKOUT_EXISTS', status: 409 },
             );
           }
-          return this.toSession(
-            active,
-            await this.retrieveIntent(active.providerIntentId),
-          );
+          return this.restoreSession(active);
         }
         await this.cancelReplacedCheckout(active);
       }
@@ -162,9 +161,36 @@ export class PaymentService {
         status: 409,
       });
     }
-    return this.toSession(
-      payment,
-      await this.retrieveIntent(payment.providerIntentId),
+    return this.restoreSession(payment);
+  }
+
+  async cancelForOrderDeletion(orderId: number): Promise<void> {
+    const payment = await this.repository.findByOrderId(orderId);
+    if (!payment) return;
+    if (payment.status === 'SUCCEEDED' || payment.status === 'REFUNDED') {
+      throw new AppException('A completed payment order cannot be deleted', {
+        code: 'ORDER_PAYMENT_FINALIZED',
+        status: 409,
+      });
+    }
+    if (payment.status === 'CANCELLED' || payment.status === 'FAILED') return;
+
+    if (payment.providerIntentId) {
+      try {
+        await this.gateway.cancelPaymentIntent(payment.providerIntentId);
+      } catch {
+        throw new AppException(
+          'The Stripe payment could not be cancelled; refresh its payment status before deleting the order',
+          {
+            code: 'ORDER_PAYMENT_CANCELLATION_FAILED',
+            status: 409,
+          },
+        );
+      }
+    }
+    await this.repository.markCancelled(
+      payment.id,
+      'Cancelled before the pending order was deleted by an administrator',
     );
   }
 
@@ -181,10 +207,7 @@ export class PaymentService {
     if (!payment.providerIntentId) {
       return this.createAndAttachIntent(payment, email);
     }
-    return this.toSession(
-      payment,
-      await this.retrieveIntent(payment.providerIntentId),
-    );
+    return this.restoreSession(payment);
   }
 
   private async createAndAttachIntent(
@@ -335,8 +358,11 @@ export class PaymentService {
   private async cancelReplacedCheckout(payment: PaymentView): Promise<void> {
     if (payment.providerIntentId) {
       try {
+        const intent = await this.retrieveIntent(payment.providerIntentId);
+        await this.rejectAndReconcileSucceededIntent(payment, intent);
         await this.gateway.cancelPaymentIntent(payment.providerIntentId);
       } catch (error) {
+        if (error instanceof AppException) throw error;
         const gatewayError =
           error instanceof PaymentGatewayError
             ? error
@@ -372,6 +398,33 @@ export class PaymentService {
         status: 502,
       });
     }
+  }
+
+  private async restoreSession(payment: PaymentView): Promise<CheckoutSession> {
+    const intent = await this.retrieveIntent(payment.providerIntentId!);
+    await this.rejectAndReconcileSucceededIntent(payment, intent);
+    return this.toSession(payment, intent);
+  }
+
+  private async rejectAndReconcileSucceededIntent(
+    payment: PaymentView,
+    intent: PaymentIntentResult,
+  ): Promise<void> {
+    if (intent.status !== 'succeeded') return;
+    await this.webhookService.handleVerified({
+      id: `reconciliation:${intent.id}:succeeded`,
+      type: 'payment_intent.succeeded',
+      paymentIntentId: intent.id,
+      paymentStatus: 'SUCCEEDED',
+      amount: intent.amount,
+      currency: intent.currency,
+      metadata: intent.metadata,
+    });
+    throw new AppException('Your previous checkout payment already succeeded', {
+      code: 'PAYMENT_ALREADY_SUCCEEDED',
+      status: 409,
+      details: { paymentId: payment.id },
+    });
   }
 
   private paymentNotFound() {
