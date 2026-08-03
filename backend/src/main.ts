@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -15,7 +16,9 @@ const logger = new Logger('Bootstrap');
 
 async function bootstrap() {
   logger.log('Creating Nest application');
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
+  });
   app.enableShutdownHooks();
   logger.log('Nest application created');
 
@@ -24,6 +27,8 @@ async function bootstrap() {
   const isProduction = configService.getOrThrow<boolean>('app.isProduction');
   const port = configService.getOrThrow<number>('app.port');
   const host = configService.getOrThrow<string>('app.host');
+
+  if (isProduction) app.set('trust proxy', 1);
 
   app.use(helmet());
 

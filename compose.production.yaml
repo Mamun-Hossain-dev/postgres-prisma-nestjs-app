@@ -1,0 +1,105 @@
+name: devicedock
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
+services:
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
+    networks: [app]
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?RABBITMQ_USER is required}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging: *default-logging
+    networks: [app]
+
+  migrate:
+    image: ${DOCKERHUB_USERNAME:?DOCKERHUB_USERNAME is required}/devicedock-migrate:latest
+    pull_policy: always
+    restart: "no"
+    env_file:
+      - ./backend/backend.env
+    logging: *default-logging
+    networks: [app]
+
+  backend:
+    image: ${DOCKERHUB_USERNAME:?DOCKERHUB_USERNAME is required}/devicedock-backend:latest
+    pull_policy: always
+    restart: unless-stopped
+    env_file:
+      - ./backend/backend.env
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 8080
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:?RABBITMQ_USER is required}:${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}@rabbitmq:5672
+      NODE_OPTIONS: --dns-result-order=ipv4first --no-network-family-autoselection
+    ports:
+      - 127.0.0.1:${BACKEND_BIND_PORT:-8080}:8080
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    security_opt:
+      - no-new-privileges:true
+    logging: *default-logging
+    networks: [app]
+
+  frontend:
+    image: ${DOCKERHUB_USERNAME:?DOCKERHUB_USERNAME is required}/devicedock-frontend:latest
+    pull_policy: always
+    restart: unless-stopped
+    env_file:
+      - ./frontend/frontend.env
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+      API_INTERNAL_URL: http://backend:8080/api/v1
+      NODE_OPTIONS: --dns-result-order=ipv4first --no-network-family-autoselection
+    ports:
+      - 127.0.0.1:${FRONTEND_BIND_PORT:-3000}:3000
+    depends_on:
+      backend:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    logging: *default-logging
+    networks: [app]
+
+networks:
+  app:
+
+volumes:
+  redis_data:
+  rabbitmq_data:

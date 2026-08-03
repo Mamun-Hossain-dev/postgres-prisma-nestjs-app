@@ -129,6 +129,10 @@ Payment Intents accept cards only, and checkout amounts are fixed to BDT.
 Requirements: Node.js 22+, pnpm, Docker, a PostgreSQL/Neon database, and
 Cloudinary credentials.
 
+For the Docker Hub production deployment, including Docker/Nginx installation,
+environment setup, image build commands, and TLS, see
+[DEPLOYMENT.md](./DEPLOYMENT.md).
+
 ### Backend
 
 ```bash
@@ -169,7 +173,7 @@ settings, and Google OAuth credentials in `frontend/.env.local`.
 
 ```bash
 cp backend/.env.example backend/.env
-cp .env.example .env
+cp .env.local.example .env
 docker compose up -d --build
 ```
 
