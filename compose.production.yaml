@@ -63,6 +63,18 @@ services:
       NODE_OPTIONS: --dns-result-order=ipv4first --no-network-family-autoselection
     ports:
       - 127.0.0.1:${BACKEND_BIND_PORT:-8080}:8080
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8080/api/v1/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     depends_on:
       redis:
         condition: service_healthy
