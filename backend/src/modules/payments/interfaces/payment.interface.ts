@@ -6,6 +6,9 @@ export type OrderStatus =
   | 'PAYMENT_PROCESSING'
   | 'PAID'
   | 'COD_CONFIRMED'
+  | 'PROCESSING'
+  | 'SHIPPED'
+  | 'DELIVERED'
   | 'PAYMENT_FAILED'
   | 'CANCELLED';
 
@@ -28,6 +31,11 @@ export interface OrderView {
   userId: number;
   customerName: string;
   customerEmail: string;
+  customerPhone: string;
+  deliveryAddressLine: string;
+  deliveryArea: string;
+  deliveryCity: string;
+  deliveryPostalCode: string | null;
   couponId: number | null;
   couponCode: string | null;
   paymentMethod: CheckoutPaymentMethod;
@@ -99,6 +107,13 @@ export interface CheckoutOptions {
   paymentMethod: CheckoutPaymentMethod;
   deliveryZone: DeliveryZone;
   couponCode?: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  deliveryAddressLine: string;
+  deliveryArea: string;
+  deliveryCity: string;
+  deliveryPostalCode?: string;
 }
 
 export interface PaymentSucceededEvent {
@@ -110,6 +125,11 @@ export interface PaymentSucceededEvent {
     id: number;
     name: string;
     email: string;
+    phone: string;
+    addressLine: string;
+    area: string;
+    city: string;
+    postalCode: string | null;
   };
   items: Array<{
     productTitle: string;

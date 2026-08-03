@@ -5,11 +5,13 @@ import {
   IsArray,
   IsIn,
   IsInt,
+  IsEmail,
   IsUUID,
   IsOptional,
   IsString,
   Length,
   Min,
+  MaxLength,
   ValidateNested,
 } from 'class-validator';
 import type {
@@ -39,6 +41,35 @@ export class CreateCheckoutDto {
 
   @IsIn(deliveryZones)
   deliveryZone!: DeliveryZone;
+
+  @IsString()
+  @Length(2, 100)
+  customerName!: string;
+
+  @IsEmail()
+  @MaxLength(254)
+  customerEmail!: string;
+
+  @IsString()
+  @Length(7, 30)
+  customerPhone!: string;
+
+  @IsString()
+  @Length(5, 240)
+  deliveryAddressLine!: string;
+
+  @IsString()
+  @Length(2, 100)
+  deliveryArea!: string;
+
+  @IsString()
+  @Length(2, 100)
+  deliveryCity!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  deliveryPostalCode?: string;
 
   @IsOptional()
   @IsString()

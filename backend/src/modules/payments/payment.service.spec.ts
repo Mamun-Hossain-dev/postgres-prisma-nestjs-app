@@ -26,6 +26,11 @@ const payment: PaymentView = {
     userId: 7,
     customerName: 'Test User',
     customerEmail: 'test@example.com',
+    customerPhone: '01700000000',
+    deliveryAddressLine: 'House 1, Road 2',
+    deliveryArea: 'Dhanmondi',
+    deliveryCity: 'Dhaka',
+    deliveryPostalCode: '1209',
     couponId: null,
     couponCode: null,
     paymentMethod: 'CARD',
@@ -72,11 +77,13 @@ describe('PaymentService', () => {
     attachProviderIntent: jest.fn(),
     markCreationFailed: jest.fn(),
     markCancelled: jest.fn(),
+    markRefundedAndCancel: jest.fn(),
   } as unknown as jest.Mocked<PaymentRepository>;
   const gateway = {
     createPaymentIntent: jest.fn(),
     retrievePaymentIntent: jest.fn(),
     cancelPaymentIntent: jest.fn(),
+    refund: jest.fn(),
   } as unknown as jest.Mocked<PaymentGateway>;
   const redis = {
     ready: true,
@@ -99,7 +106,17 @@ describe('PaymentService', () => {
     email: 'test@example.com',
   } as never;
   const items = [{ productId: 1, quantity: 2 }];
-  const options = { paymentMethod: 'CARD', deliveryZone: 'DHAKA' } as const;
+  const options = {
+    paymentMethod: 'CARD',
+    deliveryZone: 'DHAKA',
+    customerName: 'Test User',
+    customerEmail: 'test@example.com',
+    customerPhone: '01700000000',
+    deliveryAddressLine: 'House 1, Road 2',
+    deliveryArea: 'Dhanmondi',
+    deliveryCity: 'Dhaka',
+    deliveryPostalCode: '1209',
+  } as const;
 
   beforeEach(() => jest.clearAllMocks());
 
@@ -338,5 +355,30 @@ describe('PaymentService', () => {
     });
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(gateway.cancelPaymentIntent).not.toHaveBeenCalled();
+  });
+
+  it('refunds a successful payment when an admin cancels the order', async () => {
+    repository.findByOrderId.mockResolvedValue({
+      ...payment,
+      status: 'SUCCEEDED',
+    });
+    gateway.refund.mockResolvedValue({ id: 're_123', status: 'succeeded' });
+    const service = new PaymentService(
+      repository,
+      gateway,
+      redis,
+      webhookService,
+      config,
+    );
+
+    await expect(service.cancelForAdmin(2)).resolves.toBeUndefined();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(gateway.refund).toHaveBeenCalledWith(
+      'pi_123',
+      payment.amount,
+      'admin-order-cancel-2',
+    );
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(repository.markRefundedAndCancel).toHaveBeenCalledWith(payment.id);
   });
 });

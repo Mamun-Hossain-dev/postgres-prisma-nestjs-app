@@ -27,6 +27,20 @@ export class InvoiceService {
       document.fontSize(14).text('Customer');
       document.fontSize(11).text(data.customer.name);
       document.text(data.customer.email);
+      document.text(data.customer.phone);
+      document.text(
+        [
+          data.customer.addressLine,
+          data.customer.area,
+          data.customer.city,
+          data.customer.postalCode,
+        ]
+          .filter(Boolean)
+          .join(', '),
+      );
+      document.text(
+        `Delivery zone: ${data.deliveryZone === 'DHAKA' ? 'Inside Dhaka' : 'Outside Dhaka'}`,
+      );
       document.moveDown();
       document.fontSize(14).text('Purchased products');
       document.moveDown(0.5);

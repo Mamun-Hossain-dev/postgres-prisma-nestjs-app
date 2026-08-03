@@ -99,6 +99,12 @@ export class OperationsController {
     return this.service.getCoupons();
   }
 
+  @Public()
+  @Get('coupons/available')
+  getAvailableCoupons() {
+    return this.service.getAvailableCoupons();
+  }
+
   @Post('coupons')
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)

@@ -3,6 +3,9 @@ enum OrderStatus {
   PAYMENT_PROCESSING
   PAID
   COD_CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
   PAYMENT_FAILED
   CANCELLED
 }
@@ -47,29 +50,34 @@ enum CouponRedemptionStatus {
 }
 
 model Order {
-  id               Int                   @id @default(autoincrement())
-  orderNumber      String                @unique
-  userId           Int
-  user             User                  @relation(fields: [userId], references: [id], onDelete: Restrict)
-  customerName     String
-  customerEmail    String
-  couponId         Int?
-  coupon           Coupon?               @relation(fields: [couponId], references: [id], onDelete: SetNull)
-  couponCode       String?
-  paymentMethod    CheckoutPaymentMethod @default(CARD)
-  deliveryZone     DeliveryZone          @default(DHAKA)
-  subtotalAmount   Int
-  discountAmount   Int                   @default(0)
-  deliveryCharge   Int
-  totalAmount      Int
-  currency         String
-  status           OrderStatus           @default(PAYMENT_PENDING)
-  items            OrderItem[]
-  payments         Payment[]
-  couponRedemption CouponRedemption?
-  paidAt           DateTime?
-  createdAt        DateTime              @default(now())
-  updatedAt        DateTime              @updatedAt
+  id                  Int                   @id @default(autoincrement())
+  orderNumber         String                @unique
+  userId              Int
+  user                User                  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  customerName        String
+  customerEmail       String
+  customerPhone       String
+  deliveryAddressLine String
+  deliveryArea        String
+  deliveryCity        String
+  deliveryPostalCode  String?
+  couponId            Int?
+  coupon              Coupon?               @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  couponCode          String?
+  paymentMethod       CheckoutPaymentMethod @default(CARD)
+  deliveryZone        DeliveryZone          @default(DHAKA)
+  subtotalAmount      Int
+  discountAmount      Int                   @default(0)
+  deliveryCharge      Int
+  totalAmount         Int
+  currency            String
+  status              OrderStatus           @default(PAYMENT_PENDING)
+  items               OrderItem[]
+  payments            Payment[]
+  couponRedemption    CouponRedemption?
+  paidAt              DateTime?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
 
   @@index([userId, createdAt])
   @@index([status])

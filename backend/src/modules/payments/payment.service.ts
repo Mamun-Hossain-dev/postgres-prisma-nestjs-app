@@ -19,6 +19,11 @@ import type {
 } from './interfaces/payment.interface';
 import type { PaymentRepository } from './repositories/payment.repository';
 import { PaymentWebhookService } from './payment-webhook.service';
+import {
+  getDeliveryCharge,
+  getDueOnDelivery,
+  getPayableAmount,
+} from './utils/checkout-amount.util';
 
 @Injectable()
 export class PaymentService {
@@ -60,7 +65,7 @@ export class PaymentService {
     );
     if (existing) {
       this.assertCheckoutMatches(existing, items, options);
-      return this.resumeOrReturn(existing, user.email);
+      return this.resumeOrReturn(existing);
     }
 
     if (!this.redis.ready) {
@@ -98,7 +103,7 @@ export class PaymentService {
       );
       if (retry) {
         this.assertCheckoutMatches(retry, items, options);
-        return this.resumeOrReturn(retry, user.email);
+        return this.resumeOrReturn(retry);
       }
 
       const active = await this.repository.findActiveByUser(user.id);
@@ -123,7 +128,7 @@ export class PaymentService {
         this.currency,
         this.minorUnit,
       );
-      return await this.createAndAttachIntent(payment, user.email);
+      return await this.createAndAttachIntent(payment);
     } finally {
       try {
         const released = await this.redis.releaseLock(lockKey, lockToken);
@@ -194,10 +199,52 @@ export class PaymentService {
     );
   }
 
-  private async resumeOrReturn(
-    payment: PaymentView,
-    email: string,
-  ): Promise<CheckoutSession> {
+  async cancelForAdmin(orderId: number): Promise<void> {
+    const payment = await this.repository.findByOrderId(orderId);
+    if (!payment) return;
+    if (payment.status === 'REFUNDED' || payment.status === 'CANCELLED') return;
+
+    if (payment.status === 'SUCCEEDED') {
+      if (!payment.providerIntentId) {
+        throw new AppException('The completed payment cannot be refunded', {
+          code: 'ORDER_REFUND_UNAVAILABLE',
+          status: 409,
+        });
+      }
+      try {
+        await this.gateway.refund(
+          payment.providerIntentId,
+          payment.amount,
+          `admin-order-cancel-${orderId}`,
+        );
+      } catch (error) {
+        const gatewayError =
+          error instanceof PaymentGatewayError
+            ? error
+            : new PaymentGatewayError(
+                'The payment refund failed',
+                'ORDER_REFUND_FAILED',
+              );
+        throw new AppException(gatewayError.message, {
+          code: gatewayError.code,
+          status: 502,
+        });
+      }
+      await this.repository.markRefundedAndCancel(payment.id);
+      return;
+    }
+
+    if (payment.status === 'FAILED') return;
+    if (payment.providerIntentId) {
+      await this.gateway.cancelPaymentIntent(payment.providerIntentId);
+    }
+    await this.repository.markCancelled(
+      payment.id,
+      'Order cancelled by an administrator',
+    );
+  }
+
+  private async resumeOrReturn(payment: PaymentView): Promise<CheckoutSession> {
     if (payment.status === 'FAILED' || payment.status === 'CANCELLED') {
       throw new AppException('This checkout attempt cannot be reused', {
         code: 'CHECKOUT_ATTEMPT_FINALIZED',
@@ -205,14 +252,13 @@ export class PaymentService {
       });
     }
     if (!payment.providerIntentId) {
-      return this.createAndAttachIntent(payment, email);
+      return this.createAndAttachIntent(payment);
     }
     return this.restoreSession(payment);
   }
 
   private async createAndAttachIntent(
     payment: PaymentView,
-    email: string,
   ): Promise<CheckoutSession> {
     let intent: PaymentIntentResult;
     try {
@@ -220,7 +266,7 @@ export class PaymentService {
         amount: payment.amount,
         currency: payment.currency,
         idempotencyKey: payment.idempotencyKey,
-        receiptEmail: email,
+        receiptEmail: payment.order.customerEmail,
         metadata: {
           paymentId: String(payment.id),
           orderId: String(payment.orderId),
@@ -282,10 +328,11 @@ export class PaymentService {
       discountAmount: payment.order.discountAmount,
       deliveryCharge: payment.order.deliveryCharge,
       orderTotal: payment.order.totalAmount,
-      dueOnDelivery:
-        payment.order.paymentMethod === 'CASH_ON_DELIVERY'
-          ? payment.order.subtotalAmount - payment.order.discountAmount
-          : 0,
+      dueOnDelivery: getDueOnDelivery(
+        payment.order.paymentMethod,
+        payment.order.totalAmount,
+        payment.amount,
+      ),
       items: payment.order.items,
     };
   }
@@ -295,8 +342,16 @@ export class PaymentService {
     items: CheckoutItemInput[],
     options: CheckoutOptions,
   ): boolean {
-    const expectedDeliveryCharge =
-      (options.deliveryZone === 'DHAKA' ? 60 : 120) * this.minorUnit;
+    const expectedDeliveryCharge = getDeliveryCharge(
+      options.deliveryZone,
+      this.minorUnit,
+    );
+    const expectedAmount = getPayableAmount(
+      options.paymentMethod,
+      payment.order.totalAmount,
+      expectedDeliveryCharge,
+      this.minorUnit,
+    );
     const expectedCoupon = options.couponCode?.trim().toUpperCase() || null;
     const requestedItems = [...items].sort((a, b) => a.productId - b.productId);
     const savedItems = payment.order.items
@@ -309,7 +364,18 @@ export class PaymentService {
       payment.order.paymentMethod === options.paymentMethod &&
       payment.order.deliveryZone === options.deliveryZone &&
       payment.order.deliveryCharge === expectedDeliveryCharge &&
+      payment.amount === expectedAmount &&
       payment.order.couponCode === expectedCoupon &&
+      payment.order.customerName === options.customerName.trim() &&
+      payment.order.customerEmail ===
+        options.customerEmail.trim().toLowerCase() &&
+      payment.order.customerPhone === options.customerPhone.trim() &&
+      payment.order.deliveryAddressLine ===
+        options.deliveryAddressLine.trim() &&
+      payment.order.deliveryArea === options.deliveryArea.trim() &&
+      payment.order.deliveryCity === options.deliveryCity.trim() &&
+      payment.order.deliveryPostalCode ===
+        (options.deliveryPostalCode?.trim() || null) &&
       requestedItems.length === savedItems.length &&
       requestedItems.every(
         (item, index) =>
@@ -333,12 +399,16 @@ export class PaymentService {
   }
 
   private assertCurrentCheckout(payment: PaymentView): void {
-    const expectedDeliveryCharge =
-      (payment.order.deliveryZone === 'DHAKA' ? 60 : 120) * this.minorUnit;
-    const expectedAmount =
-      payment.order.paymentMethod === 'CASH_ON_DELIVERY'
-        ? expectedDeliveryCharge
-        : payment.order.totalAmount;
+    const expectedDeliveryCharge = getDeliveryCharge(
+      payment.order.deliveryZone,
+      this.minorUnit,
+    );
+    const expectedAmount = getPayableAmount(
+      payment.order.paymentMethod,
+      payment.order.totalAmount,
+      expectedDeliveryCharge,
+      this.minorUnit,
+    );
     if (
       payment.currency.toLowerCase() !== this.currency ||
       payment.order.currency.toLowerCase() !== this.currency ||

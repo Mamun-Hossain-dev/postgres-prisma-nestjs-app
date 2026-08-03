@@ -474,10 +474,13 @@ export function AdminCoupons() {
   const { accessToken } = useAuth();
   const queryClient = useQueryClient();
   const [code, setCode] = useState("");
+  const [description, setDescription] = useState("");
   const [type, setType] = useState<"PERCENTAGE" | "FIXED">("PERCENTAGE");
   const [value, setValue] = useState(10);
   const [minimum, setMinimum] = useState(0);
   const [limit, setLimit] = useState("");
+  const [startsAt, setStartsAt] = useState("");
+  const [endsAt, setEndsAt] = useState("");
   const query = useQuery({
     queryKey: ["operations", "coupons"],
     queryFn: () => apiFetch<Coupon[]>("/operations/coupons", {}, accessToken),
@@ -491,16 +494,22 @@ export function AdminCoupons() {
           method: "POST",
           body: JSON.stringify({
             code,
+            ...(description.trim() ? { description: description.trim() } : {}),
             type,
             value: type === "FIXED" ? Math.round(value * 100) : value,
             minimumAmount: Math.round(minimum * 100),
             ...(limit ? { usageLimit: Number(limit) } : {}),
+            ...(startsAt ? { startsAt: new Date(startsAt).toISOString() } : {}),
+            ...(endsAt ? { endsAt: new Date(endsAt).toISOString() } : {}),
           }),
         },
         accessToken,
       ),
     onSuccess: async () => {
       setCode("");
+      setDescription("");
+      setStartsAt("");
+      setEndsAt("");
       toast.success("Coupon created");
       await queryClient.invalidateQueries({
         queryKey: ["operations", "coupons"],
@@ -582,6 +591,30 @@ export function AdminCoupons() {
             />
           </Field>
         </div>
+        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+          <Field label="Public description" hint="Shown on the landing page">
+            <Input
+              value={description}
+              maxLength={200}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="Save on selected devices"
+            />
+          </Field>
+          <Field label="Starts at" hint="Optional">
+            <Input
+              type="datetime-local"
+              value={startsAt}
+              onChange={(event) => setStartsAt(event.target.value)}
+            />
+          </Field>
+          <Field label="Ends at" hint="Optional">
+            <Input
+              type="datetime-local"
+              value={endsAt}
+              onChange={(event) => setEndsAt(event.target.value)}
+            />
+          </Field>
+        </div>
         <Button
           className="mt-5"
           disabled={code.length < 3}
@@ -603,8 +636,16 @@ export function AdminCoupons() {
               >
                 <div>
                   <p className="font-bold">{coupon.code}</p>
+                  {coupon.description && (
+                    <p className="mt-1 text-sm text-black/55">
+                      {coupon.description}
+                    </p>
+                  )}
                   <p className="mt-1 text-xs text-black/40">
                     Minimum {minorMoney(coupon.minimumAmount, "bdt")}
+                    {coupon.endsAt
+                      ? ` · Ends ${new Intl.DateTimeFormat("en-BD", { dateStyle: "medium" }).format(new Date(coupon.endsAt))}`
+                      : " · No expiry"}
                   </p>
                 </div>
                 <p className="font-bold">

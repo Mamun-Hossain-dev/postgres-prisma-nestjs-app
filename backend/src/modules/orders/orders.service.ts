@@ -5,6 +5,18 @@ import { ORDER_REPOSITORY } from './constants/order.tokens';
 import { InvoiceService } from './invoices/invoice.service';
 import type { OrderRepository } from './repositories/order.repository';
 import { PaymentService } from '../payments/payment.service';
+import type { OrderStatus } from '../payments/interfaces/payment.interface';
+
+const statusTransitions: Partial<Record<OrderStatus, readonly OrderStatus[]>> =
+  {
+    PAYMENT_PENDING: ['CANCELLED'],
+    PAYMENT_PROCESSING: ['CANCELLED'],
+    PAYMENT_FAILED: ['CANCELLED'],
+    PAID: ['PROCESSING', 'CANCELLED'],
+    COD_CONFIRMED: ['PROCESSING', 'CANCELLED'],
+    PROCESSING: ['SHIPPED', 'CANCELLED'],
+    SHIPPED: ['DELIVERED'],
+  };
 
 @Injectable()
 export class OrdersService {
@@ -33,6 +45,22 @@ export class OrdersService {
     const order = await this.repository.findByIdForAdmin(orderId);
     if (!order) throw this.orderNotFound();
     return order;
+  }
+
+  async updateStatusForAdmin(orderId: number, status: OrderStatus) {
+    const order = await this.repository.findByIdForAdmin(orderId);
+    if (!order) throw this.orderNotFound();
+    if (!statusTransitions[order.status]?.includes(status)) {
+      throw new AppException(
+        `Order cannot move from ${order.status} to ${status}`,
+        { code: 'INVALID_ORDER_STATUS_TRANSITION', status: 409 },
+      );
+    }
+    if (status === 'CANCELLED' && order.status !== 'PAYMENT_FAILED') {
+      await this.paymentService.cancelForAdmin(orderId);
+      return this.findOneForAdmin(orderId);
+    }
+    return this.repository.updateStatus(orderId, status);
   }
 
   async deleteForAdmin(orderId: number): Promise<void> {

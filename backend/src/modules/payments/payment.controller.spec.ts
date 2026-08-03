@@ -26,6 +26,13 @@ describe('PaymentController', () => {
       idempotencyKey: '9cf8ed35-c195-49af-a2f1-e747d802b023',
       paymentMethod: 'CASH_ON_DELIVERY',
       deliveryZone: 'OUTSIDE_DHAKA',
+      customerName: 'Customer',
+      customerEmail: 'delivery@example.com',
+      customerPhone: '01700000000',
+      deliveryAddressLine: 'House 1, Road 2',
+      deliveryArea: 'Dhanmondi',
+      deliveryCity: 'Dhaka',
+      deliveryPostalCode: '1209',
       items: [{ productId: 3, quantity: 2 }],
     });
 
@@ -41,6 +48,13 @@ describe('PaymentController', () => {
       options: {
         paymentMethod: 'CASH_ON_DELIVERY',
         deliveryZone: 'OUTSIDE_DHAKA',
+        customerName: 'Customer',
+        customerEmail: 'delivery@example.com',
+        customerPhone: '01700000000',
+        deliveryAddressLine: 'House 1, Road 2',
+        deliveryArea: 'Dhanmondi',
+        deliveryCity: 'Dhaka',
+        deliveryPostalCode: '1209',
       },
     });
   });

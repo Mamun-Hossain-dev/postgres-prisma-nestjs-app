@@ -97,7 +97,8 @@ export function OrdersPage() {
                     <Badge
                       tone={
                         order.status === "PAID" ||
-                        order.status === "COD_CONFIRMED"
+                        order.status === "COD_CONFIRMED" ||
+                        order.status === "DELIVERED"
                           ? "success"
                           : order.status === "PAYMENT_FAILED" ||
                               order.status === "CANCELLED"
@@ -113,9 +114,29 @@ export function OrdersPage() {
                     <p className="mt-1 text-xs text-black/40">
                       {order.paymentMethod === "CARD"
                         ? "Paid by card"
-                        : `${minorMoney(order.subtotalAmount - order.discountAmount, order.currency)} due on delivery`}
+                        : `${minorMoney(
+                            Math.max(
+                              0,
+                              order.totalAmount -
+                                (order.payments?.[0]?.amount ??
+                                  order.deliveryCharge),
+                            ),
+                            order.currency,
+                          )} due on delivery`}
                     </p>
                   </div>
+                </div>
+                <div className="border-b bg-black/[0.018] px-6 py-4 text-sm">
+                  <p className="font-semibold">
+                    Deliver to {order.customerName} · {order.customerPhone}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-black/45">
+                    {order.deliveryAddressLine}, {order.deliveryArea},{" "}
+                    {order.deliveryCity}
+                    {order.deliveryPostalCode
+                      ? ` ${order.deliveryPostalCode}`
+                      : ""}
+                  </p>
                 </div>
                 <div className="divide-y px-6">
                   {order.items.map((item) => (
@@ -135,7 +156,13 @@ export function OrdersPage() {
                     </div>
                   ))}
                 </div>
-                {order.status === "PAID" && (
+                {[
+                  "PAID",
+                  "COD_CONFIRMED",
+                  "PROCESSING",
+                  "SHIPPED",
+                  "DELIVERED",
+                ].includes(order.status) && (
                   <div className="border-t p-5 text-right">
                     <Button
                       variant="outline"

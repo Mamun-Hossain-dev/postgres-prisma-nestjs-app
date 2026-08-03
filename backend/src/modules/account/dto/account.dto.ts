@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsString,
   MaxLength,
+  MinLength,
 } from 'class-validator';
 
 export enum DeliveryZoneDto {
@@ -28,11 +29,13 @@ export class SaveAddressDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(30)
+  @MinLength(7)
   phone!: string;
 
   @IsString()
   @IsNotEmpty()
   @MaxLength(240)
+  @MinLength(5)
   addressLine!: string;
 
   @IsString()

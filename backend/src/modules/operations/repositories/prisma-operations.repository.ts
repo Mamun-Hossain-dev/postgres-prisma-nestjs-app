@@ -158,6 +158,32 @@ export class PrismaOperationsRepository implements OperationsRepository {
     return this.prisma.coupon.findMany({ orderBy: { createdAt: 'desc' } });
   }
 
+  getAvailableCoupons() {
+    const now = new Date();
+    return this.prisma.coupon.findMany({
+      where: {
+        isActive: true,
+        AND: [
+          { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
+          { OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
+          { OR: [{ remainingUses: null }, { remainingUses: { gt: 0 } }] },
+        ],
+      },
+      select: {
+        id: true,
+        code: true,
+        description: true,
+        type: true,
+        value: true,
+        minimumAmount: true,
+        remainingUses: true,
+        endsAt: true,
+      },
+      orderBy: [{ endsAt: 'asc' }, { createdAt: 'desc' }],
+      take: 8,
+    });
+  }
+
   createCoupon(input: CreateCouponDto) {
     return this.prisma.coupon
       .create({

@@ -99,14 +99,24 @@ export function AddressesPage() {
               <Input {...register("recipientName", { required: true })} />
             </Field>
             <Field label="Phone">
-              <Input {...register("phone", { required: true })} />
+              <Input
+                type="tel"
+                placeholder="e.g. 01XXXXXXXXX"
+                {...register("phone", { required: true, minLength: 7 })}
+              />
             </Field>
             <Field label="Area">
               <Input {...register("area", { required: true })} />
             </Field>
             <div className="sm:col-span-2">
               <Field label="Address">
-                <Input {...register("addressLine", { required: true })} />
+                <Input
+                  placeholder="House, road, block or village"
+                  {...register("addressLine", {
+                    required: true,
+                    minLength: 5,
+                  })}
+                />
               </Field>
             </div>
             <Field label="City">

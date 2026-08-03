@@ -70,7 +70,7 @@ export class NotificationConsumer {
         title: `Order ${event.orderNumber} confirmed`,
         message:
           event.paymentMethod === 'CASH_ON_DELIVERY'
-            ? 'Your delivery charge was paid. Product payment is due on delivery.'
+            ? 'Your card deposit was paid. The remaining balance is due on delivery.'
             : 'Your card payment was verified and your order is confirmed.',
       });
       this.logger.log(`Notification sent to user ${event.customer.id}`);

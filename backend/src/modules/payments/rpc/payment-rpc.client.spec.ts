@@ -9,7 +9,17 @@ describe('PaymentRpcClient', () => {
     customer: { id: 1, name: 'Customer', email: 'customer@example.com' },
     idempotencyKey: '9cf8ed35-c195-49af-a2f1-e747d802b023',
     items: [{ productId: 3, quantity: 2 }],
-  };
+    options: {
+      paymentMethod: 'CARD',
+      deliveryZone: 'DHAKA',
+      customerName: 'Customer',
+      customerEmail: 'customer@example.com',
+      customerPhone: '01700000000',
+      deliveryAddressLine: 'House 1, Road 2',
+      deliveryArea: 'Dhanmondi',
+      deliveryCity: 'Dhaka',
+    },
+  } as const;
   const config = {
     getOrThrow: jest.fn().mockReturnValue(10_000),
   } as unknown as ConfigService;

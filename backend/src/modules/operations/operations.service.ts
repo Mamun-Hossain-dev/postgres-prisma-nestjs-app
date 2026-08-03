@@ -61,6 +61,10 @@ export class OperationsService {
     return this.repository.getCoupons();
   }
 
+  getAvailableCoupons() {
+    return this.repository.getAvailableCoupons();
+  }
+
   createCoupon(input: CreateCouponDto) {
     this.validateCoupon(input);
     return this.repository.createCoupon(input);

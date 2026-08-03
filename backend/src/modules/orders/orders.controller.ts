@@ -2,6 +2,8 @@ import {
   Controller,
   Delete,
   Get,
+  Patch,
+  Body,
   Param,
   ParseIntPipe,
   Query,
@@ -17,6 +19,7 @@ import { OrdersService } from './orders.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Role } from '../users/interfaces/user.interface';
+import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 
 @Controller('orders')
 export class OrdersController {
@@ -36,6 +39,17 @@ export class OrdersController {
   @ResponseMessage('Order fetched successfully')
   findOneForAdmin(@Param('id', ParseIntPipe) id: number) {
     return this.ordersService.findOneForAdmin(id);
+  }
+
+  @Patch('admin/:id/status')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
+  @ResponseMessage('Order status updated successfully')
+  updateStatusForAdmin(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateOrderStatusDto,
+  ) {
+    return this.ordersService.updateStatusForAdmin(id, dto.status);
   }
 
   @Delete('admin/:id')

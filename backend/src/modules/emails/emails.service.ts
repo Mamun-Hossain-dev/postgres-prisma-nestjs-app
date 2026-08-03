@@ -80,7 +80,7 @@ export class EmailsService {
     }).format(event.dueOnDelivery / 100);
     const confirmation =
       event.paymentMethod === 'CASH_ON_DELIVERY'
-        ? `Your delivery charge for order ${event.orderNumber} is paid. ${dueOnDelivery} is due in cash on delivery.`
+        ? `Your card deposit for order ${event.orderNumber} is paid. ${dueOnDelivery} is due in cash on delivery.`
         : `Your payment for order ${event.orderNumber} is confirmed.`;
     await this.transporter.sendMail({
       from: this.configService.getOrThrow<string>('email.from'),
@@ -104,6 +104,71 @@ export class EmailsService {
         },
       ],
     });
+  }
+
+  async sendNewOrderToAdmin(
+    event: PaymentSucceededEvent,
+    invoice: Buffer,
+  ): Promise<void> {
+    if (!this.configService.get<boolean>('email.enabled', false)) return;
+
+    const orderTotal = this.money(event.orderTotal, event.currency);
+    const paidNow = this.money(event.totalAmount, event.currency);
+    const address = [
+      event.customer.addressLine,
+      event.customer.area,
+      event.customer.city,
+      event.customer.postalCode,
+    ]
+      .filter(Boolean)
+      .join(', ');
+    const items = event.items
+      .map(
+        (item) =>
+          `${item.productTitle} (${item.productSku}) × ${item.quantity} — ${this.money(item.totalAmount, event.currency)}`,
+      )
+      .join('\n');
+    const htmlItems = event.items
+      .map(
+        (item) =>
+          `<li>${this.escapeHtml(item.productTitle)} (${this.escapeHtml(item.productSku)}) × ${item.quantity} — ${this.escapeHtml(this.money(item.totalAmount, event.currency))}</li>`,
+      )
+      .join('');
+
+    await this.transporter.sendMail({
+      from: this.configService.getOrThrow<string>('email.from'),
+      to: this.configService.getOrThrow<string>('email.adminTo'),
+      subject: `New confirmed order ${event.orderNumber}`,
+      text: [
+        `Order: ${event.orderNumber}`,
+        `Customer: ${event.customer.name}`,
+        `Email: ${event.customer.email}`,
+        `Phone: ${event.customer.phone}`,
+        `Address: ${address}`,
+        `Delivery zone: ${event.deliveryZone}`,
+        `Payment: ${event.paymentMethod}`,
+        '',
+        items,
+        '',
+        `Order total: ${orderTotal}`,
+        `Paid now: ${paidNow}`,
+      ].join('\n'),
+      html: `<main style="font-family:Arial,sans-serif;max-width:680px;margin:auto;padding:32px"><p style="color:#b4472f;font-weight:700">DeviceDock</p><h1>New confirmed order</h1><p><strong>${this.escapeHtml(event.orderNumber)}</strong></p><h2>Customer and delivery</h2><p>${this.escapeHtml(event.customer.name)}<br />${this.escapeHtml(event.customer.email)}<br />${this.escapeHtml(event.customer.phone)}<br />${this.escapeHtml(address)}</p><h2>Products</h2><ul>${htmlItems}</ul><p><strong>Order total: ${this.escapeHtml(orderTotal)}</strong><br />Paid now: ${this.escapeHtml(paidNow)}</p></main>`,
+      attachments: [
+        {
+          filename: `devicedock-${event.orderNumber}.pdf`,
+          content: invoice,
+          contentType: 'application/pdf',
+        },
+      ],
+    });
+  }
+
+  private money(amount: number, currency: string): string {
+    return new Intl.NumberFormat('en-BD', {
+      style: 'currency',
+      currency: currency.toUpperCase(),
+    }).format(amount / 100);
   }
 
   private escapeHtml(value: string): string {

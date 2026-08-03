@@ -9,7 +9,11 @@ import {
   canDeleteOrder,
 } from "@/components/admin/admin-order-delete-button";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
-import { OrderStatusBadge } from "@/components/admin/admin-orders";
+import {
+  canInvoiceOrder,
+  OrderStatusBadge,
+} from "@/components/admin/admin-orders";
+import { AdminOrderStatusControl } from "@/components/admin/admin-order-status-control";
 import { useAuth } from "@/components/auth-provider";
 import { EmptyState } from "@/components/ui/empty-state";
 import { apiFetch, minorMoney } from "@/lib/api";
@@ -55,9 +59,9 @@ export function AdminOrderDetails({ orderId }: { orderId: number }) {
         title={order.orderNumber}
         description={`Placed ${new Date(order.createdAt).toLocaleString("en-BD")}`}
         action={
-          order.status === "PAID" || canDeleteOrder(order.status) ? (
+          canInvoiceOrder(order.status) || canDeleteOrder(order.status) ? (
             <div className="flex flex-wrap gap-3">
-              {order.status === "PAID" && (
+              {canInvoiceOrder(order.status) && (
                 <AdminOrderInvoiceButton
                   orderId={order.id}
                   orderNumber={order.orderNumber}
@@ -127,6 +131,12 @@ export function AdminOrderDetails({ orderId }: { orderId: number }) {
           <p className="mt-1 break-all text-sm text-white/55">
             {order.customerEmail}
           </p>
+          <p className="mt-1 text-sm text-white/55">{order.customerPhone}</p>
+          <p className="mt-4 text-sm leading-6 text-white/70">
+            {order.deliveryAddressLine}, {order.deliveryArea},{" "}
+            {order.deliveryCity}
+            {order.deliveryPostalCode ? ` ${order.deliveryPostalCode}` : ""}
+          </p>
           <dl className="mt-8 space-y-4 border-t border-white/10 pt-6 text-sm">
             <div className="flex justify-between gap-4">
               <dt className="text-white/45">Order ID</dt>
@@ -159,6 +169,12 @@ export function AdminOrderDetails({ orderId }: { orderId: number }) {
               </dd>
             </div>
           </dl>
+          <div className="mt-8 border-t border-white/10 pt-6">
+            <p className="mb-3 text-xs font-bold uppercase tracking-wider text-white/40">
+              Fulfilment
+            </p>
+            <AdminOrderStatusControl order={order} />
+          </div>
         </aside>
       </div>
     </main>

@@ -19,6 +19,7 @@ describe('OperationsService', () => {
 
     await service.adjustStock(4, 12, 7, 'Counted in warehouse');
 
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(productsService.adjustStock).toHaveBeenCalledWith(
       4,
       12,
@@ -37,15 +38,17 @@ describe('OperationsService', () => {
         isActive: true,
       }),
     ).toThrow('Percentage discount cannot exceed 100');
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(repository.createCoupon).not.toHaveBeenCalled();
   });
 
   it('delegates verified review creation to persistence', async () => {
     const input = { rating: 5, title: 'Excellent', comment: 'Worth buying.' };
-    repository.createReview.mockResolvedValue({ id: 9 } as never);
+    repository.createReview.mockResolvedValue({ id: 9 });
 
     await service.createReview(3, 8, input);
 
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(repository.createReview).toHaveBeenCalledWith(3, 8, input);
   });
 });

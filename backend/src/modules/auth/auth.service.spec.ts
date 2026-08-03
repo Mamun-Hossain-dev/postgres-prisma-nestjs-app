@@ -291,5 +291,12 @@ describe('AuthService', () => {
     });
     expect(result.auth.user).not.toHaveProperty('googleId');
     expect(result.auth.accessToken).toBe('signed-jwt-token');
+    expect(userEventsPublisher.publishCreated).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 1,
+        name: 'Mamun',
+        email: 'mamun@example.com',
+      }),
+    );
   });
 });

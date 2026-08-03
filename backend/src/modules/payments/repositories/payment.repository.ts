@@ -32,5 +32,6 @@ export interface PaymentRepository {
     message: string,
   ): Promise<void>;
   markCancelled(paymentId: number, reason: string): Promise<void>;
+  markRefundedAndCancel(paymentId: number): Promise<void>;
   processWebhook(event: VerifiedPaymentEvent): Promise<WebhookProcessingResult>;
 }

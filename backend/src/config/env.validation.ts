@@ -67,6 +67,7 @@ const envSchema = z
     SMTP_USER: z.string().optional(),
     SMTP_PASSWORD: z.string().optional(),
     MAIL_FROM: z.string().optional(),
+    MAIL_ADMIN_TO: z.string().email().optional(),
     STRIPE_ENABLED: booleanString,
     STRIPE_SECRET_KEY: z.string().optional(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
@@ -92,6 +93,14 @@ const envSchema = z
           code: 'custom',
           path: ['MAIL_FROM'],
           message: 'MAIL_FROM is required when MAIL_ENABLED is true',
+        });
+      }
+
+      if (!env.MAIL_ADMIN_TO) {
+        context.addIssue({
+          code: 'custom',
+          path: ['MAIL_ADMIN_TO'],
+          message: 'MAIL_ADMIN_TO is required when MAIL_ENABLED is true',
         });
       }
 

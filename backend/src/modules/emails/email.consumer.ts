@@ -70,6 +70,7 @@ export class EmailConsumer {
       }
       const invoice = await this.invoiceService.generate(event);
       await this.emailsService.sendPaymentConfirmation(event, invoice);
+      await this.emailsService.sendNewOrderToAdmin(event, invoice);
       await this.eventProcessing.complete(consumer, event.eventId);
       channel.ack(message);
     } catch (error) {

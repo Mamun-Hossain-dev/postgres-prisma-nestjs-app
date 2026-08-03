@@ -41,6 +41,15 @@ export class PaymentController {
       options: {
         paymentMethod: dto.paymentMethod,
         deliveryZone: dto.deliveryZone,
+        customerName: dto.customerName,
+        customerEmail: dto.customerEmail,
+        customerPhone: dto.customerPhone,
+        deliveryAddressLine: dto.deliveryAddressLine,
+        deliveryArea: dto.deliveryArea,
+        deliveryCity: dto.deliveryCity,
+        ...(dto.deliveryPostalCode
+          ? { deliveryPostalCode: dto.deliveryPostalCode }
+          : {}),
         ...(dto.couponCode ? { couponCode: dto.couponCode } : {}),
       },
     });

@@ -79,6 +79,9 @@ export function AdminOrders() {
                         <p className="mt-1 text-xs text-black/40">
                           {order.customerEmail}
                         </p>
+                        <p className="mt-1 text-xs text-black/40">
+                          {order.customerPhone}
+                        </p>
                       </td>
                       <td className="px-6 py-5 text-black/55">
                         {new Date(order.createdAt).toLocaleDateString("en-BD")}
@@ -91,7 +94,7 @@ export function AdminOrders() {
                       </td>
                       <td className="px-6 py-5">
                         <div className="flex justify-end gap-2">
-                          {order.status === "PAID" && (
+                          {canInvoiceOrder(order.status) && (
                             <AdminOrderInvoiceButton
                               compact
                               orderId={order.id}
@@ -138,10 +141,20 @@ export function AdminOrders() {
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {
   const tone =
-    status === "PAID" || status === "COD_CONFIRMED"
+    status === "PAID" || status === "COD_CONFIRMED" || status === "DELIVERED"
       ? "success"
       : status === "PAYMENT_FAILED" || status === "CANCELLED"
         ? "danger"
         : "warning";
   return <Badge tone={tone}>{status.replaceAll("_", " ")}</Badge>;
+}
+
+export function canInvoiceOrder(status: OrderStatus): boolean {
+  return [
+    "PAID",
+    "COD_CONFIRMED",
+    "PROCESSING",
+    "SHIPPED",
+    "DELIVERED",
+  ].includes(status);
 }

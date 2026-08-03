@@ -13,6 +13,11 @@ import type {
   WebhookProcessingResult,
 } from '../interfaces/payment.interface';
 import type { PaymentRepository } from './payment.repository';
+import {
+  getDeliveryCharge,
+  getDueOnDelivery,
+  getPayableAmount,
+} from '../utils/checkout-amount.util';
 
 const paymentInclude = {
   order: {
@@ -167,20 +172,26 @@ export class PrismaPaymentRepository implements PaymentRepository {
           ? Math.floor((subtotalAmount * coupon.value) / 100)
           : Math.min(coupon.value, subtotalAmount)
         : 0;
-      const deliveryCharge =
-        (options.deliveryZone === 'DHAKA' ? 60 : 120) * minorUnit;
+      const deliveryCharge = getDeliveryCharge(options.deliveryZone, minorUnit);
       const discountedSubtotal = subtotalAmount - discountAmount;
       const totalAmount = discountedSubtotal + deliveryCharge;
-      const payableAmount =
-        options.paymentMethod === 'CASH_ON_DELIVERY'
-          ? deliveryCharge
-          : totalAmount;
+      const payableAmount = getPayableAmount(
+        options.paymentMethod,
+        totalAmount,
+        deliveryCharge,
+        minorUnit,
+      );
       const order = await prisma.order.create({
         data: {
           orderNumber: `DD-${randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase()}`,
           userId,
-          customerName: user.name,
-          customerEmail: user.email,
+          customerName: options.customerName.trim(),
+          customerEmail: options.customerEmail.trim().toLowerCase(),
+          customerPhone: options.customerPhone.trim(),
+          deliveryAddressLine: options.deliveryAddressLine.trim(),
+          deliveryArea: options.deliveryArea.trim(),
+          deliveryCity: options.deliveryCity.trim(),
+          deliveryPostalCode: options.deliveryPostalCode?.trim() || null,
           couponId: coupon?.id,
           couponCode,
           paymentMethod: options.paymentMethod,
@@ -259,6 +270,39 @@ export class PrismaPaymentRepository implements PaymentRepository {
         data: { status: 'CANCELLED' },
       });
       await this.releaseCouponReservation(prisma, payment.orderId);
+    });
+  }
+
+  async markRefundedAndCancel(paymentId: number): Promise<void> {
+    await this.prisma.$transaction(async (prisma) => {
+      const refundedAt = new Date();
+      const payment = await prisma.payment.update({
+        where: { id: paymentId },
+        data: { status: 'REFUNDED', refundedAt },
+      });
+      await prisma.order.update({
+        where: { id: payment.orderId },
+        data: { status: 'CANCELLED' },
+      });
+
+      const redemption = await prisma.couponRedemption.findUnique({
+        where: { orderId: payment.orderId },
+        include: { coupon: { select: { remainingUses: true } } },
+      });
+      if (redemption?.status !== 'REDEEMED') return;
+      await prisma.couponRedemption.update({
+        where: { id: redemption.id },
+        data: { status: 'RELEASED' },
+      });
+      await prisma.coupon.update({
+        where: { id: redemption.couponId },
+        data: {
+          usedCount: { decrement: 1 },
+          ...(redemption.coupon.remainingUses !== null
+            ? { remainingUses: { increment: 1 } }
+            : {}),
+        },
+      });
     });
   }
 
@@ -421,6 +465,11 @@ export class PrismaPaymentRepository implements PaymentRepository {
         id: payment.order.userId,
         name: payment.order.customerName,
         email: payment.order.customerEmail,
+        phone: payment.order.customerPhone,
+        addressLine: payment.order.deliveryAddressLine,
+        area: payment.order.deliveryArea,
+        city: payment.order.deliveryCity,
+        postalCode: payment.order.deliveryPostalCode,
       },
       items: payment.order.items.map((item) => ({
         productTitle: item.productTitle,
@@ -434,10 +483,11 @@ export class PrismaPaymentRepository implements PaymentRepository {
       subtotalAmount: payment.order.subtotalAmount,
       discountAmount: payment.order.discountAmount,
       deliveryCharge: payment.order.deliveryCharge,
-      dueOnDelivery:
-        payment.order.paymentMethod === 'CASH_ON_DELIVERY'
-          ? payment.order.subtotalAmount - payment.order.discountAmount
-          : 0,
+      dueOnDelivery: getDueOnDelivery(
+        payment.order.paymentMethod,
+        payment.order.totalAmount,
+        payment.amount,
+      ),
       paymentMethod: payment.order.paymentMethod,
       deliveryZone: payment.order.deliveryZone,
       currency: payment.currency,

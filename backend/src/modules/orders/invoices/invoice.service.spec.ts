@@ -8,7 +8,16 @@ describe('InvoiceService', () => {
       orderId: 1,
       orderNumber: 'DD-TEST',
       paymentId: 2,
-      customer: { id: 3, name: 'Test User', email: 'test@example.com' },
+      customer: {
+        id: 3,
+        name: 'Test User',
+        email: 'test@example.com',
+        phone: '01700000000',
+        addressLine: 'House 1, Road 2',
+        area: 'Dhanmondi',
+        city: 'Dhaka',
+        postalCode: '1209',
+      },
       items: [
         {
           productTitle: 'Test Phone',

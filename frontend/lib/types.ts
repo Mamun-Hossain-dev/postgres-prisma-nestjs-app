@@ -91,6 +91,18 @@ export interface Coupon {
   endsAt: string | null;
 }
 
+export type PublicCoupon = Pick<
+  Coupon,
+  | "id"
+  | "code"
+  | "description"
+  | "type"
+  | "value"
+  | "minimumAmount"
+  | "remainingUses"
+  | "endsAt"
+>;
+
 export interface ProductCollections {
   featured: Product[];
   newArrivals: Product[];
@@ -248,6 +260,9 @@ export type OrderStatus =
   | "PAYMENT_PROCESSING"
   | "PAID"
   | "COD_CONFIRMED"
+  | "PROCESSING"
+  | "SHIPPED"
+  | "DELIVERED"
   | "PAYMENT_FAILED"
   | "CANCELLED";
 
@@ -267,6 +282,11 @@ export interface Order {
   userId: number;
   customerName: string;
   customerEmail: string;
+  customerPhone: string;
+  deliveryAddressLine: string;
+  deliveryArea: string;
+  deliveryCity: string;
+  deliveryPostalCode: string | null;
   couponCode: string | null;
   paymentMethod: "CARD" | "CASH_ON_DELIVERY";
   deliveryZone: "DHAKA" | "OUTSIDE_DHAKA";
@@ -280,6 +300,7 @@ export interface Order {
   createdAt: string;
   updatedAt: string;
   items: OrderItem[];
+  payments?: Array<{ amount: number; status: PaymentStatus }>;
 }
 
 export interface Payment {

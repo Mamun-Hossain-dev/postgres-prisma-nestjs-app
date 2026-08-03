@@ -1,7 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -11,6 +19,7 @@ import {
   useStripe,
 } from "@stripe/react-stripe-js";
 import {
+  ChevronLeft,
   CreditCard,
   LockKeyhole,
   MapPin,
@@ -23,11 +32,22 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field, Input } from "@/components/ui/field";
 import { ApiError, apiFetch, minorMoney } from "@/lib/api";
+import { CHECKOUT_COUPON_KEY } from "@/lib/checkout-storage";
 import { stripePromise } from "@/lib/stripe";
-import type { CheckoutSession } from "@/lib/types";
+import type { Address, CheckoutSession, PublicCoupon } from "@/lib/types";
 
 const CHECKOUT_SELECTION_KEY = "devicedock-checkout-product-ids";
 const CHECKOUT_IDEMPOTENCY_KEY = "devicedock-checkout-idempotency";
+
+interface DeliveryDetails {
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  deliveryAddressLine: string;
+  deliveryArea: string;
+  deliveryCity: string;
+  deliveryPostalCode: string;
+}
 
 export function CheckoutPage() {
   return (
@@ -41,7 +61,7 @@ function CheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const paymentId = searchParams.get("paymentId");
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const { items, hydrated } = useCart();
   const [selectedIds, setSelectedIds] = useState<number[] | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<
@@ -51,10 +71,69 @@ function CheckoutContent() {
     "DHAKA",
   );
   const [couponCode, setCouponCode] = useState("");
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(
+    null,
+  );
+  const [addressesInitialized, setAddressesInitialized] = useState(false);
+  const [deliveryDetails, setDeliveryDetails] = useState<DeliveryDetails>({
+    customerName: "",
+    customerEmail: "",
+    customerPhone: "",
+    deliveryAddressLine: "",
+    deliveryArea: "",
+    deliveryCity: "",
+    deliveryPostalCode: "",
+  });
 
   useEffect(() => {
     setSelectedIds(readSelectedProductIds());
+    setCouponCode(
+      window.sessionStorage.getItem(CHECKOUT_COUPON_KEY)?.toUpperCase() ?? "",
+    );
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    setDeliveryDetails((current) => ({
+      ...current,
+      customerName: current.customerName || user.name,
+      customerEmail: current.customerEmail || user.email,
+      customerPhone: current.customerPhone || user.phone || "",
+    }));
+  }, [user]);
+
+  const addresses = useQuery({
+    queryKey: ["account", "addresses"],
+    queryFn: () => apiFetch<Address[]>("/account/addresses", {}, accessToken),
+    enabled: Boolean(accessToken),
+    staleTime: 60_000,
+  });
+
+  useEffect(() => {
+    if (addressesInitialized || !addresses.data) return;
+    const preferred =
+      addresses.data.find((address) => address.isDefault) ?? addresses.data[0];
+    if (preferred) {
+      setSelectedAddressId(preferred.id);
+      setDeliveryZone(preferred.deliveryZone);
+      setDeliveryDetails((current) => ({
+        ...current,
+        customerName: preferred.recipientName,
+        customerPhone: preferred.phone,
+        deliveryAddressLine: preferred.addressLine,
+        deliveryArea: preferred.area,
+        deliveryCity: preferred.city,
+        deliveryPostalCode: preferred.postalCode ?? "",
+      }));
+    }
+    setAddressesInitialized(true);
+  }, [addresses.data, addressesInitialized]);
+
+  const availableCoupons = useQuery({
+    queryKey: ["operations", "coupons", "available"],
+    queryFn: () => apiFetch<PublicCoupon[]>("/operations/coupons/available"),
+    staleTime: 60_000,
+  });
 
   const selectedItems = useMemo(
     () =>
@@ -109,6 +188,9 @@ function CheckoutContent() {
             idempotencyKey,
             paymentMethod,
             deliveryZone,
+            ...deliveryDetails,
+            deliveryPostalCode:
+              deliveryDetails.deliveryPostalCode.trim() || undefined,
             ...(couponCode.trim()
               ? { couponCode: couponCode.trim().toUpperCase() }
               : {}),
@@ -135,7 +217,10 @@ function CheckoutContent() {
           return;
         }
       }
-      if (error instanceof ApiError && error.status < 500) {
+      if (
+        error instanceof ApiError &&
+        (error.status < 500 || error.status === 502)
+      ) {
         window.sessionStorage.removeItem(CHECKOUT_IDEMPOTENCY_KEY);
       }
     },
@@ -165,9 +250,9 @@ function CheckoutContent() {
       <div className="mx-auto min-h-[70vh] max-w-3xl px-5 py-12 lg:px-8">
         <Link
           href="/cart"
-          className="text-sm font-bold text-black/45 hover:text-ink"
+          className="inline-flex items-center gap-1 text-sm font-bold text-black/45 hover:text-ink"
         >
-          ← Back to cart
+          <ChevronLeft size={17} aria-hidden="true" /> Back to cart
         </Link>
         <section className="mt-7 rounded-[2rem] border bg-white/65 p-6 shadow-soft sm:p-9">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent">
@@ -175,22 +260,200 @@ function CheckoutContent() {
           </p>
           <h1 className="display mt-3 text-5xl">Complete your order.</h1>
           <p className="mt-4 text-sm leading-6 text-black/45">
-            Choose your delivery area and how you want to pay.
+            Confirm who will receive the order, the complete delivery address,
+            and how you want to pay.
           </p>
+
+          {!!addresses.data?.length && (
+            <fieldset className="mt-8">
+              <div className="flex items-center justify-between gap-4">
+                <legend className="font-bold">Saved addresses</legend>
+                <Link
+                  href="/account/addresses"
+                  className="text-xs font-bold text-accent hover:underline"
+                >
+                  Manage addresses
+                </Link>
+              </div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {addresses.data.map((address) => (
+                  <button
+                    key={address.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedAddressId(address.id);
+                      setDeliveryZone(address.deliveryZone);
+                      setDeliveryDetails((current) => ({
+                        ...current,
+                        customerName: address.recipientName,
+                        customerPhone: address.phone,
+                        deliveryAddressLine: address.addressLine,
+                        deliveryArea: address.area,
+                        deliveryCity: address.city,
+                        deliveryPostalCode: address.postalCode ?? "",
+                      }));
+                    }}
+                    className={`rounded-2xl border p-4 text-left transition ${
+                      selectedAddressId === address.id
+                        ? "border-accent bg-accent/5"
+                        : "bg-white hover:border-black/25"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 text-sm font-bold">
+                      <MapPin size={16} className="text-accent" />
+                      {address.label}
+                      {address.isDefault && (
+                        <span className="text-[10px] uppercase tracking-wider text-black/35">
+                          Default
+                        </span>
+                      )}
+                    </span>
+                    <span className="mt-2 block text-xs leading-5 text-black/45">
+                      {address.addressLine}, {address.area}, {address.city}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          )}
+
+          <fieldset className="mt-8">
+            <div className="flex items-center justify-between gap-4">
+              <legend className="font-bold">Contact & delivery details</legend>
+              {!addresses.data?.length && (
+                <Link
+                  href="/account/addresses"
+                  className="text-xs font-bold text-accent hover:underline"
+                >
+                  Save an address
+                </Link>
+              )}
+            </div>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <Field label="Recipient name">
+                <Input
+                  required
+                  value={deliveryDetails.customerName}
+                  onChange={(event) =>
+                    updateDeliveryDetail(
+                      setDeliveryDetails,
+                      setSelectedAddressId,
+                      "customerName",
+                      event.target.value,
+                    )
+                  }
+                />
+              </Field>
+              <Field label="Email address">
+                <Input
+                  required
+                  type="email"
+                  value={deliveryDetails.customerEmail}
+                  onChange={(event) =>
+                    updateDeliveryDetail(
+                      setDeliveryDetails,
+                      setSelectedAddressId,
+                      "customerEmail",
+                      event.target.value,
+                    )
+                  }
+                />
+              </Field>
+              <Field label="Phone number">
+                <Input
+                  required
+                  type="tel"
+                  value={deliveryDetails.customerPhone}
+                  onChange={(event) =>
+                    updateDeliveryDetail(
+                      setDeliveryDetails,
+                      setSelectedAddressId,
+                      "customerPhone",
+                      event.target.value,
+                    )
+                  }
+                />
+              </Field>
+              <Field label="Area">
+                <Input
+                  required
+                  value={deliveryDetails.deliveryArea}
+                  onChange={(event) =>
+                    updateDeliveryDetail(
+                      setDeliveryDetails,
+                      setSelectedAddressId,
+                      "deliveryArea",
+                      event.target.value,
+                    )
+                  }
+                />
+              </Field>
+              <div className="sm:col-span-2">
+                <Field label="Full street address">
+                  <Input
+                    required
+                    value={deliveryDetails.deliveryAddressLine}
+                    placeholder="House, road, block or village"
+                    onChange={(event) =>
+                      updateDeliveryDetail(
+                        setDeliveryDetails,
+                        setSelectedAddressId,
+                        "deliveryAddressLine",
+                        event.target.value,
+                      )
+                    }
+                  />
+                </Field>
+              </div>
+              <Field label="City / district">
+                <Input
+                  required
+                  value={deliveryDetails.deliveryCity}
+                  onChange={(event) =>
+                    updateDeliveryDetail(
+                      setDeliveryDetails,
+                      setSelectedAddressId,
+                      "deliveryCity",
+                      event.target.value,
+                    )
+                  }
+                />
+              </Field>
+              <Field label="Postal code" hint="Optional">
+                <Input
+                  value={deliveryDetails.deliveryPostalCode}
+                  onChange={(event) =>
+                    updateDeliveryDetail(
+                      setDeliveryDetails,
+                      setSelectedAddressId,
+                      "deliveryPostalCode",
+                      event.target.value,
+                    )
+                  }
+                />
+              </Field>
+            </div>
+          </fieldset>
 
           <fieldset className="mt-8">
             <legend className="font-bold">Delivery area</legend>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <ChoiceButton
                 selected={deliveryZone === "DHAKA"}
-                onClick={() => setDeliveryZone("DHAKA")}
+                onClick={() => {
+                  setDeliveryZone("DHAKA");
+                  setSelectedAddressId(null);
+                }}
                 icon={<MapPin size={20} />}
                 title="Inside Dhaka"
                 description="৳60 delivery charge"
               />
               <ChoiceButton
                 selected={deliveryZone === "OUTSIDE_DHAKA"}
-                onClick={() => setDeliveryZone("OUTSIDE_DHAKA")}
+                onClick={() => {
+                  setDeliveryZone("OUTSIDE_DHAKA");
+                  setSelectedAddressId(null);
+                }}
                 icon={<Truck size={20} />}
                 title="Outside Dhaka"
                 description="৳120 delivery charge"
@@ -205,13 +468,43 @@ function CheckoutContent() {
             >
               <Input
                 value={couponCode}
-                onChange={(event) =>
-                  setCouponCode(event.target.value.toUpperCase())
-                }
+                onChange={(event) => {
+                  const value = event.target.value.toUpperCase();
+                  setCouponCode(value);
+                  if (value) {
+                    window.sessionStorage.setItem(CHECKOUT_COUPON_KEY, value);
+                  } else {
+                    window.sessionStorage.removeItem(CHECKOUT_COUPON_KEY);
+                  }
+                }}
                 placeholder="e.g. SAVE10"
                 maxLength={32}
               />
             </Field>
+            {!!availableCoupons.data?.length && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {availableCoupons.data.map((coupon) => (
+                  <button
+                    key={coupon.id}
+                    type="button"
+                    onClick={() => {
+                      setCouponCode(coupon.code);
+                      window.sessionStorage.setItem(
+                        CHECKOUT_COUPON_KEY,
+                        coupon.code,
+                      );
+                    }}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+                      couponCode === coupon.code
+                        ? "border-accent bg-accent text-white"
+                        : "bg-white hover:border-accent hover:text-accent"
+                    }`}
+                  >
+                    {coupon.code} · {formatCouponDiscount(coupon)}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <fieldset className="mt-8">
@@ -229,7 +522,11 @@ function CheckoutContent() {
                 onClick={() => setPaymentMethod("CASH_ON_DELIVERY")}
                 icon={<Truck size={20} />}
                 title="Cash on delivery"
-                description="Pay delivery charge now, products on delivery"
+                description={
+                  deliveryZone === "DHAKA"
+                    ? "Pay a ৳100 deposit now, the rest on delivery"
+                    : "Pay ৳120 delivery now, products on delivery"
+                }
               />
             </div>
           </fieldset>
@@ -241,10 +538,14 @@ function CheckoutContent() {
           )}
           <Button
             className="mt-8 h-12 w-full"
-            disabled={!accessToken}
+            disabled={
+              !accessToken || !hasCompleteDeliveryDetails(deliveryDetails)
+            }
             onClick={() => checkout.mutate()}
           >
-            Continue to card payment
+            {paymentMethod === "CARD"
+              ? "Continue to card payment"
+              : "Continue to COD deposit"}
           </Button>
         </section>
       </div>
@@ -256,9 +557,9 @@ function CheckoutContent() {
       <div className="mb-7">
         <Link
           href="/cart"
-          className="text-sm font-bold text-black/45 hover:text-ink"
+          className="inline-flex items-center gap-1 text-sm font-bold text-black/45 hover:text-ink"
         >
-          ← Back to cart
+          <ChevronLeft size={17} aria-hidden="true" /> Back to cart
         </Link>
       </div>
       <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
@@ -272,7 +573,7 @@ function CheckoutContent() {
           <p className="mt-4 max-w-xl text-sm leading-6 text-black/45">
             {session.paymentMethod === "CARD"
               ? "Pay your order total securely by card."
-              : "Pay only the delivery charge by card now. Pay for the products in cash when they arrive."}
+              : "Pay the card deposit shown in the summary now. It includes delivery and is deducted from the order total; pay the remaining balance on delivery."}
           </p>
           <Elements
             stripe={stripePromise}
@@ -404,7 +705,7 @@ function StripePaymentForm({
         disabled={!stripe || !elements}
         className="mt-6 h-12 w-full"
       >
-        {paymentMethod === "CARD" ? "Pay securely" : "Pay delivery charge"}
+        {paymentMethod === "CARD" ? "Pay securely" : "Pay COD deposit"}
       </Button>
       <p className="mt-4 text-center text-xs text-black/40">
         Your card is processed securely by Stripe. The order is confirmed only
@@ -453,6 +754,33 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
       <span className="text-white/45">{label}</span>
       <span className="font-semibold">{value}</span>
     </div>
+  );
+}
+
+function formatCouponDiscount(coupon: PublicCoupon): string {
+  return coupon.type === "PERCENTAGE"
+    ? `${coupon.value}% off`
+    : `${minorMoney(coupon.value, "bdt")} off`;
+}
+
+function updateDeliveryDetail(
+  setDetails: Dispatch<SetStateAction<DeliveryDetails>>,
+  setSelectedAddressId: Dispatch<SetStateAction<number | null>>,
+  field: keyof DeliveryDetails,
+  value: string,
+) {
+  setSelectedAddressId(null);
+  setDetails((current) => ({ ...current, [field]: value }));
+}
+
+function hasCompleteDeliveryDetails(details: DeliveryDetails): boolean {
+  return Boolean(
+    details.customerName.trim().length >= 2 &&
+    details.customerEmail.includes("@") &&
+    details.customerPhone.trim().length >= 7 &&
+    details.deliveryAddressLine.trim().length >= 5 &&
+    details.deliveryArea.trim().length >= 2 &&
+    details.deliveryCity.trim().length >= 2,
   );
 }
 

@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -11,6 +12,7 @@ import {
   Cable,
   Check,
   ChevronRight,
+  Copy,
   CreditCard,
   Headphones,
   Headset,
@@ -20,15 +22,18 @@ import {
   Smartphone,
   Sparkles,
   Tablet,
+  TicketPercent,
   Truck,
   Watch,
   Zap,
 } from "lucide-react";
-import { apiFetch, money } from "@/lib/api";
+import { apiFetch, minorMoney, money } from "@/lib/api";
+import { CHECKOUT_COUPON_KEY } from "@/lib/checkout-storage";
 import type {
   NewsletterSubscriber,
   Product,
   ProductCollections,
+  PublicCoupon,
 } from "@/lib/types";
 import { demoProducts } from "@/lib/demo-products";
 import { ProductCard } from "@/components/product-card";
@@ -90,7 +95,7 @@ const faqs = [
   ],
   [
     "Which payment options are available?",
-    "You can pay the full order by card or choose cash on delivery. Cash-on-delivery orders require the delivery charge to be paid by card first.",
+    "You can pay the full order by card or choose cash on delivery. Cash-on-delivery orders require a ৳100 deposit inside Dhaka or ৳120 outside Dhaka; it is deducted from the order total.",
   ],
   [
     "Where does DeviceDock deliver?",
@@ -168,6 +173,8 @@ export function HomePage() {
           })}
         </div>
       </section>
+
+      <AvailableCoupons />
 
       <section className="mx-auto px-5 py-16 lg:px-8 lg:py-20">
         <SectionHeading
@@ -406,9 +413,147 @@ export function HomePage() {
   );
 }
 
+function AvailableCoupons() {
+  const router = useRouter();
+  const [copiedCouponId, setCopiedCouponId] = useState<number | null>(null);
+  const coupons = useQuery({
+    queryKey: ["operations", "coupons", "available"],
+    queryFn: () => apiFetch<PublicCoupon[]>("/operations/coupons/available"),
+    staleTime: 60_000,
+  });
+
+  if (!coupons.data?.length) return null;
+
+  const copyCoupon = async (coupon: PublicCoupon) => {
+    window.sessionStorage.setItem(CHECKOUT_COUPON_KEY, coupon.code);
+    try {
+      await navigator.clipboard.writeText(coupon.code);
+    } catch {
+      // The coupon is still saved for checkout when clipboard access is denied.
+    }
+    setCopiedCouponId(coupon.id);
+    toast.success(`${coupon.code} saved for checkout`);
+  };
+
+  const selectCoupon = (coupon: PublicCoupon) => {
+    window.sessionStorage.setItem(CHECKOUT_COUPON_KEY, coupon.code);
+    toast.success(`${coupon.code} will be applied at checkout`);
+    router.push("/shop");
+  };
+
+  return (
+    <section className="px-5 py-8 lg:px-8">
+      <div className="mx-auto grid overflow-hidden rounded-[2rem] border bg-gradient-to-br from-white via-[#f7f4f2] to-[#eef0f3] lg:grid-cols-[0.72fr_1.28fr]">
+        <div className="flex flex-col justify-between p-7 sm:p-10 lg:border-r lg:border-black/10">
+          <div>
+            <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-accent shadow-sm">
+              <TicketPercent size={21} />
+            </span>
+            <p className="mt-8 text-xs font-bold uppercase tracking-[0.18em] text-accent">
+              Available coupons
+            </p>
+            <h2 className="mt-3 max-w-md text-4xl font-bold tracking-[-0.05em] sm:text-5xl">
+              A better price is ready.
+            </h2>
+            <p className="mt-4 max-w-md text-sm leading-6 text-black/50">
+              Save a code now, then use it when you are ready to check out.
+            </p>
+          </div>
+          <div className="mt-8 flex items-center gap-2 text-xs font-semibold text-black/45">
+            <Check size={14} className="text-accent" /> Saved securely for this
+            checkout session
+          </div>
+        </div>
+
+        <div className="grid content-center gap-4 border-t border-black/10 p-4 sm:p-6 lg:border-t-0">
+          {coupons.data.map((coupon) => (
+            <article
+              key={coupon.id}
+              className="group relative overflow-hidden rounded-[1.75rem] border border-black/10 bg-white shadow-soft transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_22px_60px_rgba(10,10,11,0.12)]"
+            >
+              <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full bg-accent/[0.07] transition duration-500 group-hover:scale-110" />
+              <div className="grid sm:grid-cols-[minmax(0,1fr)_220px]">
+                <div className="relative p-6 sm:p-7">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-[#f7e7e1] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-accent">
+                      Checkout offer
+                    </span>
+                    {coupon.remainingUses !== null &&
+                      coupon.remainingUses <= 10 && (
+                        <span className="text-[11px] font-semibold text-black/40">
+                          {coupon.remainingUses} uses left
+                        </span>
+                      )}
+                  </div>
+                  <p className="mt-5 text-3xl font-black tracking-[-0.045em] sm:text-4xl">
+                    {coupon.type === "PERCENTAGE"
+                      ? `${coupon.value}% off`
+                      : `${minorMoney(coupon.value, "bdt")} off`}
+                  </p>
+                  <p className="mt-2 max-w-lg text-sm leading-6 text-black/50">
+                    {coupon.description ?? "A little less at checkout, on us."}
+                  </p>
+                  <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-[11px] font-semibold text-black/40">
+                    <span>
+                      Min. order {minorMoney(coupon.minimumAmount, "bdt")}
+                    </span>
+                    <span>
+                      {coupon.endsAt
+                        ? `Ends ${new Intl.DateTimeFormat("en-BD", { dateStyle: "medium" }).format(new Date(coupon.endsAt))}`
+                        : "No expiry date"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="relative flex flex-col justify-center border-t border-dashed border-black/15 bg-black/[0.018] p-5 sm:border-l sm:border-t-0">
+                  <span className="absolute -left-3 -top-3 hidden h-6 w-6 rounded-full border border-black/10 bg-[#f4f3f3] sm:block" />
+                  <span className="absolute -bottom-3 -left-3 hidden h-6 w-6 rounded-full border border-black/10 bg-[#f4f3f3] sm:block" />
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-black/35">
+                    Your code
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void copyCoupon(coupon)}
+                    className="flex w-full items-center justify-between rounded-xl border border-dashed border-accent/45 bg-white px-4 py-3.5 text-left transition hover:border-accent hover:bg-accent/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+                    aria-label={`Copy coupon ${coupon.code}`}
+                  >
+                    <span className="font-mono text-sm font-black tracking-[0.12em] text-accent">
+                      {coupon.code}
+                    </span>
+                    {copiedCouponId === coupon.id ? (
+                      <Check size={16} className="text-accent" />
+                    ) : (
+                      <Copy size={16} className="text-accent" />
+                    )}
+                  </button>
+                  <p
+                    className="mt-2 min-h-4 text-[10px] font-semibold text-black/35"
+                    aria-live="polite"
+                  >
+                    {copiedCouponId === coupon.id
+                      ? "Copied and saved"
+                      : "Tap to copy and save"}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => selectCoupon(coupon)}
+                    className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-ink px-5 text-sm font-bold text-white transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+                  >
+                    Shop with this code <ArrowRight size={15} />
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Hero() {
   return (
-    <section className="bg-white px-3 pb-3 pt-3 sm:px-5 sm:pb-5 lg:px-8">
+    <section className="bg-white px-3 pb-8 pt-3 sm:px-5 sm:pb-10 lg:px-8">
       <div className="relative mx-auto min-h-[560px] overflow-hidden rounded-[1.75rem] bg-[#0c0d10] text-white sm:min-h-[620px]">
         <Image
           src="/images/gadget-hero.png"

@@ -9,6 +9,7 @@ describe('OrdersService', () => {
     findAllByUser: jest.fn(),
     findById: jest.fn(),
     findByIdForAdmin: jest.fn(),
+    updateStatus: jest.fn(),
     deleteRemovable: jest.fn(),
     getInvoiceData: jest.fn(),
     getInvoiceDataForAdmin: jest.fn(),
@@ -18,6 +19,7 @@ describe('OrdersService', () => {
   } as unknown as jest.Mocked<InvoiceService>;
   const paymentService = {
     cancelForOrderDeletion: jest.fn(),
+    cancelForAdmin: jest.fn(),
   } as unknown as jest.Mocked<PaymentService>;
 
   beforeEach(() => jest.clearAllMocks());
@@ -87,5 +89,42 @@ describe('OrdersService', () => {
     });
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(repository.deleteRemovable).not.toHaveBeenCalled();
+  });
+
+  it('moves a confirmed order into processing', async () => {
+    const order = { id: 4, status: 'PAID' };
+    repository.findByIdForAdmin.mockResolvedValue(order as never);
+    repository.updateStatus.mockResolvedValue({
+      ...order,
+      status: 'PROCESSING',
+    } as never);
+    const service = new OrdersService(
+      repository,
+      invoiceService,
+      paymentService,
+    );
+
+    await expect(
+      service.updateStatusForAdmin(4, 'PROCESSING'),
+    ).resolves.toMatchObject({ status: 'PROCESSING' });
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(repository.updateStatus).toHaveBeenCalledWith(4, 'PROCESSING');
+  });
+
+  it('refunds through the payment service when an admin cancels a paid order', async () => {
+    repository.findByIdForAdmin
+      .mockResolvedValueOnce({ id: 4, status: 'PAID' } as never)
+      .mockResolvedValueOnce({ id: 4, status: 'CANCELLED' } as never);
+    const service = new OrdersService(
+      repository,
+      invoiceService,
+      paymentService,
+    );
+
+    await expect(
+      service.updateStatusForAdmin(4, 'CANCELLED'),
+    ).resolves.toMatchObject({ status: 'CANCELLED' });
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(paymentService.cancelForAdmin).toHaveBeenCalledWith(4);
   });
 });

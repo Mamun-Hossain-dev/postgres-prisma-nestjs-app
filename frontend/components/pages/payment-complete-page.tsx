@@ -4,12 +4,13 @@ import { Suspense, useEffect } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Clock3, XCircle } from "lucide-react";
+import { LoaderCircle, ShieldCheck, XCircle } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { useCart } from "@/components/cart-provider";
 import { apiFetch } from "@/lib/api";
 import type { Payment } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CHECKOUT_COUPON_KEY } from "@/lib/checkout-storage";
 
 const finalStatuses = new Set(["SUCCEEDED", "FAILED", "CANCELLED"]);
 const CHECKOUT_SELECTION_KEY = "devicedock-checkout-product-ids";
@@ -45,6 +46,7 @@ function PaymentCompleteContent() {
       removeItems(readSelectedProductIds());
       window.sessionStorage.removeItem(CHECKOUT_SELECTION_KEY);
       window.sessionStorage.removeItem(CHECKOUT_IDEMPOTENCY_KEY);
+      window.sessionStorage.removeItem(CHECKOUT_COUPON_KEY);
       router.replace(`/payment/success?paymentId=${paymentId}`);
     } else if (
       payment.data.status === "FAILED" ||
@@ -74,18 +76,29 @@ function PaymentCompleteContent() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[70vh] max-w-2xl items-center px-5 py-16">
-      <section className="w-full rounded-[2.25rem] border bg-white/65 p-8 text-center shadow-soft sm:p-12">
-        <Clock3 className="mx-auto animate-pulse text-accent" size={52} />
-        <p className="mt-7 text-xs font-bold uppercase tracking-[0.22em] text-accent">
-          Secure verification
-        </p>
-        <h1 className="display mt-3 text-5xl">Confirming your payment.</h1>
-        <p className="mx-auto mt-5 max-w-lg text-sm leading-7 text-black/50">
-          We are waiting for Stripe&apos;s verified webhook. You will be
-          redirected automatically when the final status is available.
-        </p>
-      </section>
+    <div
+      className="mx-auto flex min-h-[70vh] max-w-xl flex-col items-center justify-center px-5 py-16 text-center"
+      role="status"
+      aria-live="polite"
+    >
+      <div className="relative grid h-24 w-24 place-items-center rounded-full bg-accent/10">
+        <LoaderCircle className="animate-spin text-accent" size={54} />
+        <ShieldCheck className="absolute text-accent" size={21} />
+      </div>
+      <p className="mt-8 text-xs font-bold uppercase tracking-[0.22em] text-accent">
+        Secure confirmation in progress
+      </p>
+      <h1 className="display mt-3 text-5xl">Just a moment.</h1>
+      <p className="mt-5 max-w-md text-sm leading-7 text-black/50">
+        Stripe is securely confirming your payment with DeviceDock. This may
+        take a few seconds. Please keep this page open—we will continue
+        automatically.
+      </p>
+      <div className="mt-7 flex items-center gap-2 text-xs font-semibold text-black/40">
+        <span className="h-2 w-2 animate-bounce rounded-full bg-accent [animation-delay:-0.3s]" />
+        <span className="h-2 w-2 animate-bounce rounded-full bg-accent [animation-delay:-0.15s]" />
+        <span className="h-2 w-2 animate-bounce rounded-full bg-accent" />
+      </div>
     </div>
   );
 }

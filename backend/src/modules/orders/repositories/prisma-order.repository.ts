@@ -7,9 +7,15 @@ import type {
 } from '../../payments/interfaces/payment.interface';
 import type { OrderRepository } from './order.repository';
 import { toRepositoryPagination } from '../../../common/utils/pagination.util';
+import { getDueOnDelivery } from '../../payments/utils/checkout-amount.util';
 
 const orderInclude = {
   items: { orderBy: { id: 'asc' as const } },
+  payments: {
+    orderBy: { createdAt: 'desc' as const },
+    take: 1,
+    select: { amount: true, status: true },
+  },
 };
 
 @Injectable()
@@ -77,6 +83,28 @@ export class PrismaOrderRepository implements OrderRepository {
     });
   }
 
+  async updateStatus(
+    orderId: number,
+    status: OrderView['status'],
+  ): Promise<OrderView> {
+    return this.prisma.$transaction(async (prisma) => {
+      const current = await prisma.order.findUniqueOrThrow({
+        where: { id: orderId },
+        select: { paidAt: true },
+      });
+      return prisma.order.update({
+        where: { id: orderId },
+        data: {
+          status,
+          ...(status === 'DELIVERED' && !current.paidAt
+            ? { paidAt: new Date() }
+            : {}),
+        },
+        include: orderInclude,
+      });
+    });
+  }
+
   async deleteRemovable(orderId: number): Promise<boolean> {
     return this.prisma.$transaction(async (prisma) => {
       const order = await prisma.order.findUnique({
@@ -128,7 +156,12 @@ export class PrismaOrderRepository implements OrderRepository {
     userId?: number;
   }): Promise<PaymentSucceededEvent | null> {
     const order = await this.prisma.order.findFirst({
-      where: { ...where, status: 'PAID' },
+      where: {
+        ...where,
+        status: {
+          in: ['PAID', 'COD_CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'],
+        },
+      },
       include: {
         items: { orderBy: { id: 'asc' } },
         payments: {
@@ -150,6 +183,11 @@ export class PrismaOrderRepository implements OrderRepository {
         id: order.userId,
         name: order.customerName,
         email: order.customerEmail,
+        phone: order.customerPhone,
+        addressLine: order.deliveryAddressLine,
+        area: order.deliveryArea,
+        city: order.deliveryCity,
+        postalCode: order.deliveryPostalCode,
       },
       items: order.items.map((item) => ({
         productTitle: item.productTitle,
@@ -158,12 +196,20 @@ export class PrismaOrderRepository implements OrderRepository {
         quantity: item.quantity,
         totalAmount: item.totalAmount,
       })),
-      totalAmount: order.totalAmount,
+      totalAmount:
+        order.status === 'DELIVERED' ? order.totalAmount : payment.amount,
       orderTotal: order.totalAmount,
       subtotalAmount: order.subtotalAmount,
       discountAmount: order.discountAmount,
       deliveryCharge: order.deliveryCharge,
-      dueOnDelivery: 0,
+      dueOnDelivery:
+        order.status === 'DELIVERED'
+          ? 0
+          : getDueOnDelivery(
+              order.paymentMethod,
+              order.totalAmount,
+              payment.amount,
+            ),
       paymentMethod: order.paymentMethod,
       deliveryZone: order.deliveryZone,
       currency: order.currency,

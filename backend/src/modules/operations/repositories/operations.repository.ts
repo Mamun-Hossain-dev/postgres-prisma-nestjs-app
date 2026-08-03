@@ -17,6 +17,7 @@ export interface OperationsRepository {
   getReviews(query: ReviewQueryDto): Promise<unknown>;
   moderateReview(id: number, status: 'APPROVED' | 'REJECTED'): Promise<unknown>;
   getCoupons(): Promise<unknown>;
+  getAvailableCoupons(): Promise<unknown>;
   createCoupon(input: CreateCouponDto): Promise<unknown>;
   updateCoupon(id: number, input: UpdateCouponDto): Promise<unknown>;
   deleteCoupon(id: number): Promise<void>;
