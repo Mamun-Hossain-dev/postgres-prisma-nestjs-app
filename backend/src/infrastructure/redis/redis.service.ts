@@ -83,6 +83,20 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     await this.client.set(key, value);
   }
 
+  async setMany(
+    entries: Array<{ key: string; value: string }>,
+    ttl?: number,
+  ): Promise<void> {
+    if (!this.isReady || !entries.length) return;
+
+    const pipeline = this.client.pipeline();
+    entries.forEach(({ key, value }) => {
+      if (ttl) pipeline.set(key, value, 'EX', ttl);
+      else pipeline.set(key, value);
+    });
+    await pipeline.exec();
+  }
+
   getClient(): Redis {
     return this.client;
   }

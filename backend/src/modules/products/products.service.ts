@@ -43,6 +43,8 @@ export class ProductsService {
   async getAllProducts(
     options: PaginationOptions & Omit<ProductListOptions, 'skip' | 'take'>,
   ): Promise<PaginatedResult<Product>> {
+    const publishedBefore = new Date();
+    publishedBefore.setSeconds(0, 0);
     const result = await this.productsRepository.findAll({
       ...toRepositoryPagination(options),
       search: options.search?.trim(),
@@ -53,7 +55,7 @@ export class ProductsService {
       featured: options.featured,
       status: ProductStatus.ACTIVE,
       onSale: options.onSale,
-      publishedBefore: new Date(),
+      publishedBefore,
       sort: options.sort,
     });
     return toPaginatedResult(result, options);

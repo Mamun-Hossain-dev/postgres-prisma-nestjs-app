@@ -13,6 +13,7 @@ export function createRabbitMqOptions(
       queueOptions: { durable: true },
       noAck: false,
       prefetchCount: configService.getOrThrow<number>('rabbitmq.prefetchCount'),
+      isGlobalPrefetchCount: false,
     },
   };
 }

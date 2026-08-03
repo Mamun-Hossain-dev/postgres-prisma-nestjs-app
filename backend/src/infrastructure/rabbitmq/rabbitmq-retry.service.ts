@@ -9,6 +9,10 @@ import type {
   RabbitMqChannel,
   RabbitMqMessage,
 } from './interfaces/rabbitmq-channel.interface';
+import {
+  acknowledgeRabbitMqMessage,
+  requeueRabbitMqMessage,
+} from './rabbitmq-ack.util';
 
 const RETRY_ATTEMPT_HEADER = 'x-retry-attempt';
 const LAST_ERROR_HEADER = 'x-last-error';
@@ -49,10 +53,23 @@ export class RabbitMqRetryService {
     } catch (retryError) {
       const retryErrorMessage =
         retryError instanceof Error ? retryError.message : String(retryError);
+      const channelClosed = this.isClosedChannelError(retryErrorMessage);
+
+      if (!channelClosed) {
+        try {
+          requeueRabbitMqMessage(channel, message);
+        } catch (nackError) {
+          this.logger.error(
+            `Could not requeue failed message from ${sourceQueue}: ${this.errorMessage(nackError)}`,
+          );
+        }
+      }
+
       this.logger.error(
-        `Could not route failed message from ${sourceQueue}: ${retryErrorMessage}`,
+        channelClosed
+          ? `RabbitMQ channel closed while routing ${sourceQueue}; the broker will requeue unacknowledged delivery tag ${message.fields?.deliveryTag ?? 'unknown'}: ${retryErrorMessage}`
+          : `Could not route failed message from ${sourceQueue}; requeued original message: ${retryErrorMessage}`,
       );
-      channel.nack(message, false, true);
     }
   }
 
@@ -79,7 +96,7 @@ export class RabbitMqRetryService {
       persistent: true,
       headers: this.buildHeaders(message, nextAttempt, errorMessage),
     });
-    channel.ack(message);
+    acknowledgeRabbitMqMessage(channel, message);
 
     this.logger.warn(
       `Scheduled retry ${nextAttempt}/${RabbitMqRetryDelays.length} for ${sourceQueue} in ${delay}ms`,
@@ -100,7 +117,7 @@ export class RabbitMqRetryService {
       persistent: true,
       headers: this.buildHeaders(message, currentAttempt, errorMessage),
     });
-    channel.ack(message);
+    acknowledgeRabbitMqMessage(channel, message);
 
     this.logger.error(
       `Moved message from ${sourceQueue} to ${deadLetterQueue} after ${currentAttempt} retries`,
@@ -124,5 +141,13 @@ export class RabbitMqRetryService {
       [RETRY_ATTEMPT_HEADER]: attempt,
       [LAST_ERROR_HEADER]: errorMessage,
     };
+  }
+
+  private errorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+  }
+
+  private isClosedChannelError(errorMessage: string): boolean {
+    return /channel (?:closed|ended)|illegaloperationerror/i.test(errorMessage);
   }
 }

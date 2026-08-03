@@ -152,9 +152,25 @@ describe('RabbitMqRetryService', () => {
     expect(channel.nack).not.toHaveBeenCalled();
   });
 
-  it('requeues the source message when routing to a retry queue fails', async () => {
+  it('leaves the source unacknowledged when its channel closes', async () => {
     const channel = createChannel();
     channel.sendToQueue.mockRejectedValue(new Error('RabbitMQ channel closed'));
+    const message = createMessage();
+    const service = new RabbitMqRetryService();
+
+    await service.handleFailure(
+      createContext(channel, message),
+      RabbitMqQueues.EMAILS,
+      new Error('SMTP offline'),
+    );
+
+    expect(channel.ack).not.toHaveBeenCalled();
+    expect(channel.nack).not.toHaveBeenCalled();
+  });
+
+  it('requeues the source message when routing fails on an open channel', async () => {
+    const channel = createChannel();
+    channel.assertQueue.mockRejectedValue(new Error('Queue unavailable'));
     const message = createMessage();
     const service = new RabbitMqRetryService();
 

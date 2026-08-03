@@ -1,4 +1,5 @@
 import { AppException } from '../../../common/exceptions/app.exception';
+import type { RmqContext } from '@nestjs/microservices';
 import type { PaymentService } from '../payment.service';
 import { PaymentRpcController } from './payment-rpc.controller';
 
@@ -22,14 +23,29 @@ describe('PaymentRpcController', () => {
     } as const,
   };
 
+  function createContext() {
+    const channel = { ack: jest.fn() };
+    const message = { content: Buffer.from('payment'), properties: {} };
+    const context = {
+      getChannelRef: () => channel,
+      getMessage: () => message,
+    } as unknown as RmqContext;
+
+    return { channel, context, message };
+  }
+
   beforeEach(() => jest.clearAllMocks());
 
   it('returns as soon as the checkout session is created', async () => {
     const result = { paymentIntentId: 'pi_1', clientSecret: 'secret' };
     paymentService.createCheckout.mockResolvedValue(result as never);
     const controller = new PaymentRpcController(paymentService);
+    const { channel, context, message } = createContext();
 
-    await expect(controller.processPayment(command)).resolves.toBe(result);
+    await expect(controller.processPayment(command, context)).resolves.toBe(
+      result,
+    );
+    expect(channel.ack).toHaveBeenCalledWith(message);
   });
 
   it('serializes stable application errors for the RPC client', async () => {
@@ -40,13 +56,17 @@ describe('PaymentRpcController', () => {
       }),
     );
     const controller = new PaymentRpcController(paymentService);
+    const { channel, context, message } = createContext();
 
-    await expect(controller.processPayment(command)).rejects.toMatchObject({
+    await expect(
+      controller.processPayment(command, context),
+    ).rejects.toMatchObject({
       error: {
         code: 'CHECKOUT_ALREADY_IN_PROGRESS',
         message: 'Checkout is already running',
         status: 409,
       },
     });
+    expect(channel.ack).toHaveBeenCalledWith(message);
   });
 });

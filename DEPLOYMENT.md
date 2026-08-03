@@ -306,10 +306,14 @@ VPS:
 
 ```bash
 cd /opt/devicedock
-docker compose --env-file .env -f compose.production.yaml pull
-docker compose --env-file .env -f compose.production.yaml up -d --remove-orphans
+docker compose --env-file .env -f compose.production.yaml pull --policy always
+docker compose --env-file .env -f compose.production.yaml up -d \
+  --pull never \
+  --force-recreate \
+  --remove-orphans
 docker compose --env-file .env -f compose.production.yaml ps
-docker compose --env-file .env -f compose.production.yaml logs --tail=100 backend frontend
+docker compose --env-file .env -f compose.production.yaml logs \
+  --tail=200 migrate backend frontend redis rabbitmq
 ```
 
 Compose uses `pull_policy: always`, so the current `latest` images are checked

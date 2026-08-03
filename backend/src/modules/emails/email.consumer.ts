@@ -5,6 +5,7 @@ import type {
   RabbitMqChannel,
   RabbitMqMessage,
 } from '../../infrastructure/rabbitmq/interfaces/rabbitmq-channel.interface';
+import { acknowledgeRabbitMqMessage } from '../../infrastructure/rabbitmq/rabbitmq-ack.util';
 import { RabbitMqRetryService } from '../../infrastructure/rabbitmq/rabbitmq-retry.service';
 import { UserEvents } from '../users/events/user.events';
 import type { UserCreatedEvent } from '../users/events/user.events';
@@ -38,7 +39,7 @@ export class EmailConsumer {
 
     try {
       await this.emailsService.sendWelcomeEmail(user.email, user.name);
-      channel.ack(message);
+      acknowledgeRabbitMqMessage(channel, message);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -65,16 +66,22 @@ export class EmailConsumer {
     try {
       const claimed = await this.eventProcessing.claim(consumer, event.eventId);
       if (!claimed) {
-        channel.ack(message);
+        acknowledgeRabbitMqMessage(channel, message);
         return;
       }
       const invoice = await this.invoiceService.generate(event);
       await this.emailsService.sendPaymentConfirmation(event, invoice);
       await this.emailsService.sendNewOrderToAdmin(event, invoice);
       await this.eventProcessing.complete(consumer, event.eventId);
-      channel.ack(message);
+      acknowledgeRabbitMqMessage(channel, message);
     } catch (error) {
-      await this.eventProcessing.release(consumer, event.eventId);
+      try {
+        await this.eventProcessing.release(consumer, event.eventId);
+      } catch (releaseError) {
+        this.logger.error(
+          `Could not release email event claim ${event.eventId}: ${releaseError instanceof Error ? releaseError.message : String(releaseError)}`,
+        );
+      }
       await this.retryService.handleFailure(
         context,
         RabbitMqQueues.EMAILS,

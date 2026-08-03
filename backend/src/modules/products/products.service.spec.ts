@@ -23,7 +23,7 @@ describe('ProductsService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    repository.findAll.mockResolvedValue([]);
+    repository.findAll.mockResolvedValue({ data: [], totalItems: 0 });
     repository.findById.mockResolvedValue(null);
     repository.create.mockResolvedValue({
       id: 1,
@@ -60,6 +60,22 @@ describe('ProductsService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  it('uses a stable minute boundary for public catalog cache keys', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-08-03T10:30:45.123Z'));
+
+    try {
+      await service.getAllProducts({ page: 1, limit: 12 });
+    } finally {
+      jest.useRealTimers();
+    }
+
+    expect(repository.findAll).toHaveBeenCalledWith(
+      expect.objectContaining({
+        publishedBefore: new Date('2026-08-03T10:30:00.000Z'),
+      }),
+    );
   });
 
   it('rejects updates that would exceed four total product images', async () => {

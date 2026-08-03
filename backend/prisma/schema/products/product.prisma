@@ -46,6 +46,7 @@ model Product {
   @@index([brand])
   @@index([isFeatured])
   @@index([status, publishedAt])
+  @@index([status, category, createdAt])
   @@index([isTrending])
   @@index([isBestSeller])
   @@map("products")

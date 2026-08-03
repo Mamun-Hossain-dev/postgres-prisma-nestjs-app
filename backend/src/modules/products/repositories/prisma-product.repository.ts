@@ -21,6 +21,7 @@ export class PrismaProductRepository implements ProductRepository {
   async findAll(
     options: ProductListOptions,
   ): Promise<RepositoryPaginatedResult<Product>> {
+    const now = options.publishedBefore ?? new Date();
     const where = {
       ...(options.search
         ? {
@@ -74,16 +75,10 @@ export class PrismaProductRepository implements ProductRepository {
             compareAtPrice: { not: null },
             AND: [
               {
-                OR: [
-                  { offerStartsAt: null },
-                  { offerStartsAt: { lte: new Date() } },
-                ],
+                OR: [{ offerStartsAt: null }, { offerStartsAt: { lte: now } }],
               },
               {
-                OR: [
-                  { offerEndsAt: null },
-                  { offerEndsAt: { gte: new Date() } },
-                ],
+                OR: [{ offerEndsAt: null }, { offerEndsAt: { gte: now } }],
               },
             ],
           }
@@ -110,7 +105,7 @@ export class PrismaProductRepository implements ProductRepository {
             ? { title: 'asc' as const }
             : { createdAt: 'desc' as const };
 
-    const [data, totalItems] = await this.prisma.$transaction([
+    const [data, totalItems] = await Promise.all([
       this.prisma.product.findMany({
         skip: options.skip,
         take: options.take,
@@ -152,7 +147,7 @@ export class PrismaProductRepository implements ProductRepository {
     };
 
     const [featured, newArrivals, offers, bestSellers, trending, brands] =
-      await this.prisma.$transaction([
+      await Promise.all([
         this.prisma.product.findMany({
           where: { ...active, isFeatured: true },
           take: limit,

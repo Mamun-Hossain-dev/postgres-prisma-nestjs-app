@@ -168,6 +168,7 @@ export function CartPage() {
                   />
                   <Link
                     href={`/products/${item.productId}`}
+                    prefetch={false}
                     className="relative aspect-square overflow-hidden rounded-2xl bg-[#d9d1c1]"
                   >
                     {image ? (
@@ -185,7 +186,10 @@ export function CartPage() {
                     <p className="text-[11px] font-bold uppercase tracking-wider text-black/40">
                       {item.product.brand}
                     </p>
-                    <Link href={`/products/${item.productId}`}>
+                    <Link
+                      href={`/products/${item.productId}`}
+                      prefetch={false}
+                    >
                       <h2 className="display mt-1 text-xl sm:text-2xl">
                         {item.product.title}
                       </h2>

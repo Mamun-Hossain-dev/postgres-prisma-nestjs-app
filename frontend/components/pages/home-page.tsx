@@ -299,6 +299,7 @@ export function HomePage() {
                   <Link
                     key={product.id}
                     href={`/products/${product.id}`}
+                    prefetch={false}
                     className="group relative min-h-80 overflow-hidden rounded-[1.75rem] border border-white/10 bg-gradient-to-br from-white/[0.09] to-white/[0.02] p-6"
                   >
                     <span className="text-xs font-bold text-white/30">
@@ -353,6 +354,7 @@ export function HomePage() {
                 <Link
                   key={product.id}
                   href={`/products/${product.id}`}
+                  prefetch={false}
                   className="group grid grid-cols-[36px_1fr_auto] items-center gap-4 px-5 py-4 transition hover:bg-black/[0.025]"
                 >
                   <span className="text-xs font-bold text-black/25">
@@ -648,6 +650,7 @@ function LimitedOffer({ product }: { product: Product }) {
           <div className="mt-7 flex flex-wrap gap-3">
             <Link
               href={`/products/${product.id}`}
+              prefetch={false}
               className="rounded-full bg-white px-6 py-3.5 text-sm font-bold text-ink"
             >
               View offer
@@ -680,6 +683,7 @@ function CompactProduct({ product, rank }: { product: Product; rank: number }) {
   return (
     <Link
       href={`/products/${product.id}`}
+      prefetch={false}
       className="group grid grid-cols-[auto_80px_1fr_auto] items-center gap-4 border-b p-5 transition hover:bg-black/[0.025] md:odd:border-r"
     >
       <span className="text-xs font-extrabold text-black/20">0{rank}</span>

@@ -32,6 +32,7 @@ export function ProductCard({ product }: { product: Product }) {
     <article className="group relative min-w-0">
       <Link
         href={`/products/${product.id}`}
+        prefetch={false}
         className={`relative block aspect-[4/4.2] overflow-hidden rounded-[1.5rem] bg-gradient-to-br ${categoryTone[product.category]}`}
       >
         {image ? (
@@ -67,7 +68,7 @@ export function ProductCard({ product }: { product: Product }) {
         </p>
         <div className="mt-1.5 flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <Link href={`/products/${product.id}`}>
+            <Link href={`/products/${product.id}`} prefetch={false}>
               <h3 className="truncate text-base font-bold tracking-[-0.02em] transition group-hover:text-accent">
                 {product.title}
               </h3>

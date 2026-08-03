@@ -5,6 +5,7 @@ import type {
   RabbitMqChannel,
   RabbitMqMessage,
 } from '../../infrastructure/rabbitmq/interfaces/rabbitmq-channel.interface';
+import { acknowledgeRabbitMqMessage } from '../../infrastructure/rabbitmq/rabbitmq-ack.util';
 import { RabbitMqRetryService } from '../../infrastructure/rabbitmq/rabbitmq-retry.service';
 import { UserEvents } from '../users/events/user.events';
 import type { UserCreatedEvent } from '../users/events/user.events';
@@ -34,7 +35,7 @@ export class AnalyticsConsumer {
 
     try {
       this.logger.log(`Analytics event received for user ${user.id}`);
-      channel.ack(message);
+      acknowledgeRabbitMqMessage(channel, message);
     } catch (error) {
       await this.retryService.handleFailure(
         context,
@@ -55,14 +56,20 @@ export class AnalyticsConsumer {
     try {
       const claimed = await this.eventProcessing.claim(consumer, event.eventId);
       if (!claimed) {
-        channel.ack(message);
+        acknowledgeRabbitMqMessage(channel, message);
         return;
       }
       this.logger.log(`Payment analytics event for order ${event.orderId}`);
       await this.eventProcessing.complete(consumer, event.eventId);
-      channel.ack(message);
+      acknowledgeRabbitMqMessage(channel, message);
     } catch (error) {
-      await this.eventProcessing.release(consumer, event.eventId);
+      try {
+        await this.eventProcessing.release(consumer, event.eventId);
+      } catch (releaseError) {
+        this.logger.error(
+          `Could not release analytics event claim ${event.eventId}: ${releaseError instanceof Error ? releaseError.message : String(releaseError)}`,
+        );
+      }
       await this.retryService.handleFailure(
         context,
         RabbitMqQueues.ANALYTICS,

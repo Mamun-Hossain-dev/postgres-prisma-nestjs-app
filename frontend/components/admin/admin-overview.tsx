@@ -192,6 +192,7 @@ export function AdminOverview() {
                 <Link
                   href={`/products/${product.id}`}
                   key={product.id}
+                  prefetch={false}
                   className="grid grid-cols-[1fr_auto] gap-5 py-4"
                 >
                   <div>

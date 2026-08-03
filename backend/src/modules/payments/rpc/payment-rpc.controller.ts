@@ -1,6 +1,17 @@
 import { Controller, Logger } from '@nestjs/common';
-import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
+import {
+  Ctx,
+  MessagePattern,
+  Payload,
+  RmqContext,
+  RpcException,
+} from '@nestjs/microservices';
 import { AppException } from '../../../common/exceptions/app.exception';
+import type {
+  RabbitMqChannel,
+  RabbitMqMessage,
+} from '../../../infrastructure/rabbitmq/interfaces/rabbitmq-channel.interface';
+import { acknowledgeRabbitMqMessage } from '../../../infrastructure/rabbitmq/rabbitmq-ack.util';
 import { PaymentCommands } from '../constants/payment.constants';
 import { PaymentService } from '../payment.service';
 import type {
@@ -18,15 +29,20 @@ export class PaymentRpcController {
   @MessagePattern(PaymentCommands.PROCESS)
   async processPayment(
     @Payload() command: ProcessPaymentCommand,
+    @Ctx() context: RmqContext,
   ): Promise<ProcessPaymentResult> {
     try {
-      return await this.paymentService.createCheckout(
+      const result = await this.paymentService.createCheckout(
         command.customer,
         command.idempotencyKey,
         command.items,
         command.options,
       );
+      this.acknowledge(context);
+      return result;
     } catch (error) {
+      this.acknowledge(context);
+
       if (error instanceof AppException) {
         throw new RpcException({
           code: error.code,
@@ -46,5 +62,11 @@ export class PaymentRpcController {
         status: 500,
       } satisfies PaymentRpcError);
     }
+  }
+
+  private acknowledge(context: RmqContext): void {
+    const channel = context.getChannelRef() as RabbitMqChannel;
+    const message = context.getMessage() as RabbitMqMessage;
+    acknowledgeRabbitMqMessage(channel, message);
   }
 }

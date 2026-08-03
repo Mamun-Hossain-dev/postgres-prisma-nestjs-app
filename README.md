@@ -38,7 +38,8 @@ Install dependencies inside each directory so their lockfiles remain separate.
 - Password changes and per-device Redis session revocation
 - Feature-first modular architecture and dependency injection
 - Repository pattern for persistence boundaries
-- Redis cache, throttling, and distributed checkout locks
+- Redis detail, collection, and short-lived catalog-list caches with write
+  invalidation, plus throttling and distributed checkout locks
 - Stripe Payment Intent, webhook verification, and idempotent payment handling
 - Card checkout and delivery-fee-prepaid cash on delivery
 - Audited inventory adjustments and catalog category/brand reporting
@@ -74,7 +75,10 @@ changing checkout business logic.
 
 User and product persistence uses the `Logging -> Cached -> Prisma` decorator
 chain. PostgreSQL remains the source of truth; Redis is limited to caching,
-sessions, throttling, and short-lived coordination locks.
+sessions, throttling, and short-lived coordination locks. Public catalog lists
+use deterministic one-minute cache keys and concurrent cache misses share one
+database load; every product write invalidates affected list and collection
+caches.
 
 ## Payment flow
 
@@ -123,7 +127,8 @@ Payment Intents accept cards only, and checkout amounts are fixed to BDT.
   movement record with the operator and reason in the same transaction.
 - **RabbitMQ events:** `ClientProxy.emit()` and `@EventPattern()` handle work
   that does not belong in the webhook response. Consumers manually acknowledge
-  messages after success and route failures through timed retries to a DLQ.
+  messages at most once after success and route failures through timed retries
+  to a DLQ. A closed channel leaves its delivery for RabbitMQ to requeue.
 - **RPC vs events:** Checkout uses `ClientProxy.send()` with
   `@MessagePattern('process.payment')` because it needs the Payment Intent
   immediately. Payment completion side effects use `emit()` events and never

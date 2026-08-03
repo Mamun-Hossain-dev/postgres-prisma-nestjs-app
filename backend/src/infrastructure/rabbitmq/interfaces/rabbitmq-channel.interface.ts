@@ -1,5 +1,9 @@
 export interface RabbitMqMessage {
   content: Buffer;
+  fields?: {
+    deliveryTag?: number;
+    redelivered?: boolean;
+  };
   properties?: {
     headers?: Record<string, unknown>;
   };
@@ -20,7 +24,7 @@ export interface RabbitMqChannel {
       persistent: boolean;
       headers: Record<string, unknown>;
     },
-  ): Promise<boolean>;
+  ): boolean | Promise<boolean>;
   ack(message: RabbitMqMessage): void;
   nack(message: RabbitMqMessage, allUpTo: boolean, requeue: boolean): void;
 }
