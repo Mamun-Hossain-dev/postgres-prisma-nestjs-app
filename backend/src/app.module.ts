@@ -27,6 +27,7 @@ import { AccountModule } from './modules/account/account.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { OperationsModule } from './modules/operations/operations.module';
+import { RefundsModule } from './modules/refunds/refunds.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { OperationsModule } from './modules/operations/operations.module';
     PaymentsModule,
     OrdersModule,
     OperationsModule,
+    RefundsModule,
   ],
   controllers: [AppController],
   providers: [

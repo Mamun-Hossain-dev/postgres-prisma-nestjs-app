@@ -67,6 +67,7 @@ export class StripeService implements PaymentGateway {
     paymentIntentId: string,
     amount?: number,
     idempotencyKey?: string,
+    reason?: string,
   ) {
     this.assertEnabled();
     try {
@@ -74,6 +75,7 @@ export class StripeService implements PaymentGateway {
         {
           payment_intent: paymentIntentId,
           ...(amount === undefined ? {} : { amount }),
+          ...(reason ? { metadata: { reason } } : {}),
         },
         idempotencyKey ? { idempotencyKey } : undefined,
       );
@@ -94,6 +96,25 @@ export class StripeService implements PaymentGateway {
       );
     } catch {
       throw new WebhookVerificationError('Invalid Stripe webhook signature');
+    }
+
+    if (event.type.startsWith('refund.')) {
+      const refund = event.data.object as Stripe.Refund;
+      return {
+        id: event.id,
+        type: event.type,
+        refundId: refund.id,
+        paymentIntentId:
+          typeof refund.payment_intent === 'string'
+            ? refund.payment_intent
+            : refund.payment_intent?.id,
+        refundStatus: this.mapRefundStatus(refund.status),
+        refundAmount: refund.amount,
+        currency: refund.currency,
+        refundReason: refund.metadata?.reason ?? null,
+        failureCode: refund.failure_reason,
+        failureMessage: refund.failure_reason,
+      };
     }
 
     if (!event.type.startsWith('payment_intent.')) {
@@ -138,6 +159,12 @@ export class StripeService implements PaymentGateway {
     if (type === 'payment_intent.canceled') return 'CANCELLED' as const;
     if (type === 'payment_intent.payment_failed') return 'FAILED' as const;
     return undefined;
+  }
+
+  private mapRefundStatus(status: string | null) {
+    if (status === 'succeeded') return 'SUCCEEDED' as const;
+    if (status === 'failed' || status === 'canceled') return 'FAILED' as const;
+    return 'PENDING' as const;
   }
 
   private assertEnabled(): void {

@@ -13,11 +13,25 @@ const transitions: Partial<Record<OrderStatus, OrderStatus[]>> = {
   PAYMENT_PENDING: ["CANCELLED"],
   PAYMENT_PROCESSING: ["CANCELLED"],
   PAYMENT_FAILED: ["CANCELLED"],
-  PAID: ["PROCESSING", "CANCELLED"],
-  COD_CONFIRMED: ["PROCESSING", "CANCELLED"],
-  PROCESSING: ["SHIPPED", "CANCELLED"],
+  PAID: ["PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"],
+  COD_CONFIRMED: ["PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"],
+  PROCESSING: ["SHIPPED", "DELIVERED", "CANCELLED"],
   SHIPPED: ["DELIVERED"],
 };
+
+const statusLabels: Partial<Record<OrderStatus, string>> = {
+  PROCESSING: "Processing",
+  SHIPPED: "Shipped",
+  DELIVERED: "Delivered (fulfilled)",
+  CANCELLED: "Cancelled",
+};
+
+const fulfilledStatuses: OrderStatus[] = [
+  "PAID",
+  "COD_CONFIRMED",
+  "PROCESSING",
+  "SHIPPED",
+];
 
 export function AdminOrderStatusControl({ order }: { order: Order }) {
   const { accessToken } = useAuth();
@@ -53,6 +67,7 @@ export function AdminOrderStatusControl({ order }: { order: Order }) {
     );
   }
 
+  const canFulfil = fulfilledStatuses.includes(order.status);
   const submit = () => {
     if (!status) return;
     if (status === "CANCELLED") {
@@ -72,7 +87,7 @@ export function AdminOrderStatusControl({ order }: { order: Order }) {
         >
           {options.map((option) => (
             <option key={option} value={option} className="text-ink">
-              {option.replaceAll("_", " ")}
+              {statusLabels[option] ?? option.replaceAll("_", " ")}
             </option>
           ))}
         </select>
@@ -84,6 +99,15 @@ export function AdminOrderStatusControl({ order }: { order: Order }) {
         >
           Update fulfilment status
         </Button>
+        {canFulfil && (
+          <Button
+            type="button"
+            loading={update.isPending}
+            onClick={() => update.mutate("DELIVERED")}
+          >
+            Mark as fulfilled
+          </Button>
+        )}
       </div>
       <ConfirmDialog
         open={confirmingCancellation}

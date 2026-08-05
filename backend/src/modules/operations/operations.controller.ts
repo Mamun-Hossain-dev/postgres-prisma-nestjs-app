@@ -15,6 +15,7 @@ import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { ResponseMessage } from '../../common/utils/api-response.util';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import type { PublicUser } from '../users/interfaces/user.interface';
 import { Role } from '../users/interfaces/user.interface';
 import {
@@ -56,6 +57,23 @@ export class OperationsController {
     @Body() dto: AdjustStockDto,
   ) {
     return this.service.adjustStock(id, dto.quantity, user.id, dto.reason);
+  }
+
+  @Get('inventory/:id/movements')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.SELLER)
+  getProductMovements(
+    @Param('id', ParseIntPipe) id: number,
+    @Query() query: PaginationQueryDto,
+  ) {
+    return this.service.getProductMovements(id, query);
+  }
+
+  @Get('analytics')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
+  getAnalytics() {
+    return this.service.getAnalytics();
   }
 
   @Public()

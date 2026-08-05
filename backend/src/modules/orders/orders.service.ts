@@ -1,10 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { AppException } from '../../common/exceptions/app.exception';
 import type { PaginationOptions } from '../../common/interfaces/pagination.interface';
 import { ORDER_REPOSITORY } from './constants/order.tokens';
 import { InvoiceService } from './invoices/invoice.service';
 import type { OrderRepository } from './repositories/order.repository';
+import type { AdminOrderQueryDto } from './dto/admin-order-query.dto';
 import { PaymentService } from '../payments/payment.service';
+import { PaymentEventsPublisher } from '../payments/events/payment-events.publisher';
 import type { OrderStatus } from '../payments/interfaces/payment.interface';
 
 const statusTransitions: Partial<Record<OrderStatus, readonly OrderStatus[]>> =
@@ -12,9 +15,9 @@ const statusTransitions: Partial<Record<OrderStatus, readonly OrderStatus[]>> =
     PAYMENT_PENDING: ['CANCELLED'],
     PAYMENT_PROCESSING: ['CANCELLED'],
     PAYMENT_FAILED: ['CANCELLED'],
-    PAID: ['PROCESSING', 'CANCELLED'],
-    COD_CONFIRMED: ['PROCESSING', 'CANCELLED'],
-    PROCESSING: ['SHIPPED', 'CANCELLED'],
+    PAID: ['PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'],
+    COD_CONFIRMED: ['PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'],
+    PROCESSING: ['SHIPPED', 'DELIVERED', 'CANCELLED'],
     SHIPPED: ['DELIVERED'],
   };
 
@@ -25,13 +28,14 @@ export class OrdersService {
     private readonly repository: OrderRepository,
     private readonly invoiceService: InvoiceService,
     private readonly paymentService: PaymentService,
+    private readonly paymentEventsPublisher: PaymentEventsPublisher,
   ) {}
 
   findAll(userId: number, options: PaginationOptions) {
     return this.repository.findAllByUser(userId, options);
   }
 
-  findAllForAdmin(options: PaginationOptions) {
+  findAllForAdmin(options: AdminOrderQueryDto) {
     return this.repository.findAll(options);
   }
 
@@ -87,6 +91,18 @@ export class OrdersService {
     const data = await this.repository.getInvoiceDataForAdmin(orderId);
     if (!data) throw this.invoiceNotAvailable();
     return this.invoiceService.generate(data);
+  }
+
+  async resendConfirmationForAdmin(orderId: number) {
+    const data = await this.repository.getInvoiceDataForAdmin(orderId);
+    if (!data) throw this.invoiceNotAvailable();
+    const event = { ...data, eventId: `resend-${randomUUID()}` };
+    await this.paymentEventsPublisher.publishSucceeded(event);
+    return {
+      orderId,
+      orderNumber: event.orderNumber,
+      eventId: event.eventId,
+    };
   }
 
   private invoiceNotAvailable() {

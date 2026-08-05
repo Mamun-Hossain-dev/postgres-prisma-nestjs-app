@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AdminInventory } from "@/components/admin/admin-operations";
+import { AdminInventory } from "@/components/admin/admin-inventory";
 
 export const metadata: Metadata = { title: "Inventory - DeviceDock Admin" };
 export default function Page() {

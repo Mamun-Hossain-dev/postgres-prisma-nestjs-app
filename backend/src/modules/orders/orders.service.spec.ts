@@ -2,6 +2,7 @@ import type { InvoiceService } from './invoices/invoice.service';
 import { OrdersService } from './orders.service';
 import type { OrderRepository } from './repositories/order.repository';
 import type { PaymentService } from '../payments/payment.service';
+import type { PaymentEventsPublisher } from '../payments/events/payment-events.publisher';
 
 describe('OrdersService', () => {
   const repository = {
@@ -21,6 +22,9 @@ describe('OrdersService', () => {
     cancelForOrderDeletion: jest.fn(),
     cancelForAdmin: jest.fn(),
   } as unknown as jest.Mocked<PaymentService>;
+  const paymentEventsPublisher = {
+    publishSucceeded: jest.fn(),
+  } as unknown as jest.Mocked<PaymentEventsPublisher>;
 
   beforeEach(() => jest.clearAllMocks());
 
@@ -31,6 +35,7 @@ describe('OrdersService', () => {
       repository,
       invoiceService,
       paymentService,
+      paymentEventsPublisher,
     );
 
     await expect(service.findAllForAdmin({ page: 1, limit: 10 })).resolves.toBe(
@@ -47,6 +52,7 @@ describe('OrdersService', () => {
       repository,
       invoiceService,
       paymentService,
+      paymentEventsPublisher,
     );
 
     await expect(service.generateInvoiceForAdmin(4)).resolves.toBe(pdf);
@@ -64,6 +70,7 @@ describe('OrdersService', () => {
       repository,
       invoiceService,
       paymentService,
+      paymentEventsPublisher,
     );
 
     await expect(service.deleteForAdmin(4)).resolves.toBeUndefined();
@@ -82,6 +89,7 @@ describe('OrdersService', () => {
       repository,
       invoiceService,
       paymentService,
+      paymentEventsPublisher,
     );
 
     await expect(service.deleteForAdmin(4)).rejects.toMatchObject({
@@ -102,6 +110,7 @@ describe('OrdersService', () => {
       repository,
       invoiceService,
       paymentService,
+      paymentEventsPublisher,
     );
 
     await expect(
@@ -119,6 +128,7 @@ describe('OrdersService', () => {
       repository,
       invoiceService,
       paymentService,
+      paymentEventsPublisher,
     );
 
     await expect(
@@ -126,5 +136,48 @@ describe('OrdersService', () => {
     ).resolves.toMatchObject({ status: 'CANCELLED' });
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(paymentService.cancelForAdmin).toHaveBeenCalledWith(4);
+  });
+
+  it('marks a confirmed order as delivered directly', async () => {
+    const order = { id: 4, status: 'PAID' };
+    repository.findByIdForAdmin.mockResolvedValue(order as never);
+    repository.updateStatus.mockResolvedValue({
+      ...order,
+      status: 'DELIVERED',
+    } as never);
+    const service = new OrdersService(
+      repository,
+      invoiceService,
+      paymentService,
+      paymentEventsPublisher,
+    );
+
+    await expect(
+      service.updateStatusForAdmin(4, 'DELIVERED'),
+    ).resolves.toMatchObject({ status: 'DELIVERED' });
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(repository.updateStatus).toHaveBeenCalledWith(4, 'DELIVERED');
+  });
+
+  it('re-publishes a paid order confirmation email', async () => {
+    const invoiceData = { orderId: 4, orderNumber: 'DD-123' };
+    repository.getInvoiceDataForAdmin.mockResolvedValue(invoiceData as never);
+    paymentEventsPublisher.publishSucceeded.mockResolvedValue();
+    const service = new OrdersService(
+      repository,
+      invoiceService,
+      paymentService,
+      paymentEventsPublisher,
+    );
+
+    const result = await service.resendConfirmationForAdmin(4);
+
+    expect(result.orderId).toBe(4);
+    expect(result.orderNumber).toBe('DD-123');
+    expect(result.eventId).toMatch(/^resend-/);
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(paymentEventsPublisher.publishSucceeded).toHaveBeenCalledWith(
+      expect.objectContaining({ orderId: 4 }),
+    );
   });
 });

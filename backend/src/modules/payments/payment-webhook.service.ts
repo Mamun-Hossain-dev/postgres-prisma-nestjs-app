@@ -21,7 +21,7 @@ export class PaymentWebhookService {
     private readonly eventsPublisher: PaymentEventsPublisher,
   ) {}
 
-  async handle(rawBody: Buffer, signature: string): Promise<void> {
+  handle(rawBody: Buffer, signature: string): GatewayWebhookEvent {
     let event: GatewayWebhookEvent;
     try {
       event = this.gateway.verifyWebhook(rawBody, signature);
@@ -35,7 +35,7 @@ export class PaymentWebhookService {
       throw error;
     }
 
-    await this.handleVerified(event);
+    return event;
   }
 
   async handleVerified(event: GatewayWebhookEvent): Promise<void> {

@@ -7,6 +7,7 @@ import {
   PaymentGateway,
   PaymentGatewayError,
   type PaymentIntentResult,
+  type GatewayWebhookEvent,
 } from './gateways/payment-gateway.interface';
 import { PAYMENT_REPOSITORY } from './constants/payment.constants';
 import type {
@@ -19,6 +20,10 @@ import type {
 } from './interfaces/payment.interface';
 import type { PaymentRepository } from './repositories/payment.repository';
 import { PaymentWebhookService } from './payment-webhook.service';
+import { REFUND_REPOSITORY } from './refunds/constants/refund.constants';
+import type { RefundRepository } from './refunds/repositories/refund.repository';
+import type { RefundView } from './refunds/interfaces/refund.interface';
+import { RefundEventsPublisher } from './refunds/refund-events.publisher';
 import {
   getDeliveryCharge,
   getDueOnDelivery,
@@ -38,6 +43,9 @@ export class PaymentService {
     private readonly gateway: PaymentGateway,
     private readonly redis: RedisService,
     private readonly webhookService: PaymentWebhookService,
+    @Inject(REFUND_REPOSITORY)
+    private readonly refundRepository: RefundRepository,
+    private readonly refundEventsPublisher: RefundEventsPublisher,
     configService: ConfigService,
   ) {
     this.currency = configService.getOrThrow<string>('stripe.currency');
@@ -242,6 +250,194 @@ export class PaymentService {
       payment.id,
       'Order cancelled by an administrator',
     );
+  }
+
+  async requestRefund(
+    paymentId: number,
+    requestedByUserId: number,
+    amount: number | undefined,
+    reason: string | undefined,
+    idempotencyKey: string,
+  ): Promise<RefundView> {
+    if (!this.redis.ready) {
+      throw new AppException('Refunds are temporarily unavailable', {
+        code: 'REFUND_LOCK_UNAVAILABLE',
+        status: 503,
+      });
+    }
+
+    const existing =
+      await this.refundRepository.findByIdempotencyKey(idempotencyKey);
+    if (existing) {
+      this.assertRefundRequestMatches(existing, paymentId, amount);
+      return existing;
+    }
+
+    const lockKey = `refund:payment:${paymentId}`;
+    const lockToken = randomUUID();
+    let acquired = false;
+    try {
+      acquired = await this.redis.acquireLock(
+        lockKey,
+        lockToken,
+        this.lockTtlSeconds,
+      );
+    } catch {
+      throw new AppException('Refunds are temporarily unavailable', {
+        code: 'REFUND_LOCK_UNAVAILABLE',
+        status: 503,
+      });
+    }
+    if (!acquired) {
+      throw new AppException('A refund is already being processed', {
+        code: 'REFUND_ALREADY_IN_PROGRESS',
+        status: 409,
+      });
+    }
+
+    try {
+      const retry =
+        await this.refundRepository.findByIdempotencyKey(idempotencyKey);
+      if (retry) {
+        this.assertRefundRequestMatches(retry, paymentId, amount);
+        return retry;
+      }
+
+      const payment = await this.repository.findById(paymentId);
+      if (!payment) throw this.refundPaymentNotFound();
+
+      const refundAmount = await this.resolveRefundAmount(payment, amount);
+      let refundResult: { id: string; status: string | null };
+      try {
+        refundResult = await this.gateway.refund(
+          payment.providerIntentId!,
+          refundAmount,
+          idempotencyKey,
+          reason?.trim(),
+        );
+      } catch (error) {
+        if (error instanceof AppException) throw error;
+        const gatewayError =
+          error instanceof PaymentGatewayError
+            ? error
+            : new PaymentGatewayError(
+                'The refund request failed',
+                'REFUND_REQUEST_FAILED',
+              );
+        throw new AppException(gatewayError.message, {
+          code: gatewayError.code,
+          status: 502,
+        });
+      }
+
+      try {
+        return await this.refundRepository.createForPayment(payment, {
+          providerRefundId: refundResult.id,
+          amount: refundAmount,
+          reason: reason?.trim() || null,
+          requestedById: requestedByUserId,
+          idempotencyKey,
+        });
+      } catch (error) {
+        this.logger.error(
+          `Refund ${refundResult.id} was created at the gateway but could not be saved`,
+          error instanceof Error ? error.stack : undefined,
+        );
+        throw new AppException(
+          'The refund was created but could not be recorded; retry with the same idempotency key',
+          { code: 'REFUND_RECORD_FAILED', status: 502 },
+        );
+      }
+    } finally {
+      try {
+        const released = await this.redis.releaseLock(lockKey, lockToken);
+        if (!released) {
+          this.logger.warn(`Refund lock expired: ${lockKey}`);
+        }
+      } catch {
+        this.logger.warn(`Refund lock was not released: ${lockKey}`);
+      }
+    }
+  }
+
+  async processRefundWebhook(event: GatewayWebhookEvent): Promise<void> {
+    if (!event.refundId) {
+      this.logger.debug(`Refund webhook has no refund id: ${event.id}`);
+      return;
+    }
+    const result = await this.refundRepository.processRefundWebhook(event);
+    if (result.completedEvent) {
+      await this.refundEventsPublisher.publishCompleted(result.completedEvent);
+    }
+  }
+
+  private async resolveRefundAmount(
+    payment: PaymentView,
+    requestedAmount?: number,
+  ): Promise<number> {
+    if (payment.status !== 'SUCCEEDED') {
+      throw new AppException('Only successful payments can be refunded', {
+        code: 'REFUND_PAYMENT_NOT_SUCCESSFUL',
+        status: 409,
+      });
+    }
+    if (!payment.providerIntentId) {
+      throw new AppException('The completed payment cannot be refunded', {
+        code: 'REFUND_UNAVAILABLE',
+        status: 409,
+      });
+    }
+
+    const refunds = await this.refundRepository.findAllByPaymentId(payment.id);
+    const alreadyRefunded = refunds.reduce(
+      (sum, refund) => (refund.status === 'FAILED' ? sum : sum + refund.amount),
+      0,
+    );
+    const remaining = payment.amount - alreadyRefunded;
+    if (remaining <= 0) {
+      throw new AppException('This payment is already fully refunded', {
+        code: 'REFUND_PAYMENT_FULLY_REFUNDED',
+        status: 409,
+      });
+    }
+
+    const amount = requestedAmount ?? remaining;
+    if (amount > payment.amount) {
+      throw new AppException('Refund amount exceeds the paid amount', {
+        code: 'INVALID_REFUND_AMOUNT',
+        status: 400,
+      });
+    }
+    if (amount > remaining) {
+      throw new AppException('Refund amount exceeds the refundable balance', {
+        code: 'REFUND_AMOUNT_EXCEEDS_REMAINING',
+        status: 409,
+      });
+    }
+    return amount;
+  }
+
+  private assertRefundRequestMatches(
+    refund: RefundView,
+    paymentId: number,
+    amount?: number,
+  ): void {
+    if (
+      refund.paymentId !== paymentId ||
+      (amount && amount !== refund.amount)
+    ) {
+      throw new AppException('Refund request details changed; use a new id', {
+        code: 'REFUND_REQUEST_CHANGED',
+        status: 409,
+      });
+    }
+  }
+
+  private refundPaymentNotFound() {
+    return new AppException('Payment not found', {
+      code: 'REFUND_PAYMENT_NOT_FOUND',
+      status: 404,
+    });
   }
 
   private async resumeOrReturn(payment: PaymentView): Promise<CheckoutSession> {

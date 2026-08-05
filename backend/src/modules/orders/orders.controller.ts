@@ -1,9 +1,10 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
   Patch,
-  Body,
+  Post,
   Param,
   ParseIntPipe,
   Query,
@@ -16,6 +17,7 @@ import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { ResponseMessage } from '../../common/utils/api-response.util';
 import type { PublicUser } from '../users/interfaces/user.interface';
 import { OrdersService } from './orders.service';
+import { AdminOrderQueryDto } from './dto/admin-order-query.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Role } from '../users/interfaces/user.interface';
@@ -29,7 +31,7 @@ export class OrdersController {
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @ResponseMessage('Orders fetched successfully')
-  findAllForAdmin(@Query() query: PaginationQueryDto) {
+  findAllForAdmin(@Query() query: AdminOrderQueryDto) {
     return this.ordersService.findAllForAdmin(query);
   }
 
@@ -59,6 +61,14 @@ export class OrdersController {
   async deleteForAdmin(@Param('id', ParseIntPipe) id: number) {
     await this.ordersService.deleteForAdmin(id);
     return null;
+  }
+
+  @Post('admin/:id/resend-confirmation')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
+  @ResponseMessage('Confirmation email resent successfully')
+  resendConfirmation(@Param('id', ParseIntPipe) id: number) {
+    return this.ordersService.resendConfirmationForAdmin(id);
   }
 
   @Get('admin/:id/invoice')

@@ -86,7 +86,12 @@ export class PaymentController {
         status: 400,
       });
     }
-    await this.webhookService.handle(request.rawBody, signature);
+    const event = this.webhookService.handle(request.rawBody, signature);
+    if (event.type.startsWith('refund.')) {
+      await this.paymentService.processRefundWebhook(event);
+      return null;
+    }
+    await this.webhookService.handleVerified(event);
     return null;
   }
 }

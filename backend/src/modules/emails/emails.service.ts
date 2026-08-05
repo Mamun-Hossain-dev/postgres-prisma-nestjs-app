@@ -4,6 +4,7 @@ import type { Transporter } from 'nodemailer';
 import { EMAIL_TRANSPORTER } from './constants/email.tokens';
 import { buildWelcomeEmail } from './templates/welcome-email.template';
 import type { PaymentSucceededEvent } from '../payments/interfaces/payment.interface';
+import type { RefundCompletedEvent } from '../payments/refunds/interfaces/refund.interface';
 
 @Injectable()
 export class EmailsService {
@@ -161,6 +162,31 @@ export class EmailsService {
           contentType: 'application/pdf',
         },
       ],
+    });
+  }
+
+  async sendRefundConfirmation(event: RefundCompletedEvent): Promise<void> {
+    if (!this.configService.get<boolean>('email.enabled', false)) {
+      this.logger.debug(
+        `Refund confirmation skipped for ${event.customer.email}: mail is disabled`,
+      );
+      return;
+    }
+
+    const amount = this.money(event.amount, event.currency);
+    await this.transporter.sendMail({
+      from: this.configService.getOrThrow<string>('email.from'),
+      to: event.customer.email,
+      subject: `Refund issued for order ${event.orderNumber}`,
+      text: [
+        `Hello ${event.customer.name},`,
+        '',
+        `A refund of ${amount} for order ${event.orderNumber} has been issued.`,
+        'The amount will be returned to your original payment method within a few business days.',
+        ...(event.reason ? [`Reason: ${event.reason}`] : []),
+        `Refund ID: ${event.refundId}`,
+      ].join('\n'),
+      html: `<main style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:32px"><p style="color:#b4472f;font-weight:700">DeviceDock</p><h1>Refund issued</h1><p>Hello ${this.escapeHtml(event.customer.name)},</p><p>A refund of <strong>${this.escapeHtml(amount)}</strong> for order <strong>${this.escapeHtml(event.orderNumber)}</strong> has been issued.</p><p>The amount will be returned to your original payment method within a few business days.</p>${event.reason ? `<p>Reason: ${this.escapeHtml(event.reason)}</p>` : ''}<p>Refund ID: ${event.refundId}</p></main>`,
     });
   }
 

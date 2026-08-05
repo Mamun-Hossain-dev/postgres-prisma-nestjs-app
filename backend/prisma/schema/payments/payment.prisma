@@ -33,6 +33,12 @@ enum PaymentProvider {
   STRIPE
 }
 
+enum RefundStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
 enum ConsumerEventStatus {
   PROCESSING
   PROCESSED
@@ -155,12 +161,37 @@ model Payment {
   failureMessage   String?
   paidAt           DateTime?
   refundedAt       DateTime?
+  refunds          Refund[]
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
   @@index([orderId, createdAt])
   @@index([status])
   @@map("payments")
+}
+
+model Refund {
+  id               Int             @id @default(autoincrement())
+  paymentId        Int
+  payment          Payment         @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  provider         PaymentProvider @default(STRIPE)
+  providerRefundId String?         @unique
+  amount           Int
+  currency         String
+  reason           String?
+  status           RefundStatus    @default(PENDING)
+  failureCode      String?
+  failureMessage   String?
+  requestedById    Int?
+  requestedBy      User?           @relation(fields: [requestedById], references: [id], onDelete: SetNull)
+  idempotencyKey   String          @unique
+  completedAt      DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([paymentId, status])
+  @@index([requestedById])
+  @@map("refunds")
 }
 
 model PaymentWebhookEvent {

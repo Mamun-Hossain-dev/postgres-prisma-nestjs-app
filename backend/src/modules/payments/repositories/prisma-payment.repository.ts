@@ -29,6 +29,13 @@ const paymentInclude = {
 export class PrismaPaymentRepository implements PaymentRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  findById(paymentId: number): Promise<PaymentView | null> {
+    return this.prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: paymentInclude,
+    });
+  }
+
   findByIdempotencyKey(
     userId: number,
     idempotencyKey: string,

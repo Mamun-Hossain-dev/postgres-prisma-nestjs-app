@@ -6,6 +6,7 @@ import type {
   OrderView,
   PaymentSucceededEvent,
 } from '../../payments/interfaces/payment.interface';
+import type { AdminOrderQueryDto } from '../dto/admin-order-query.dto';
 
 export interface OrderRepository {
   findAllByUser(
@@ -13,7 +14,7 @@ export interface OrderRepository {
     options: PaginationOptions,
   ): Promise<PaginatedResult<OrderView>>;
   findById(userId: number, orderId: number): Promise<OrderView | null>;
-  findAll(options: PaginationOptions): Promise<PaginatedResult<OrderView>>;
+  findAll(options: AdminOrderQueryDto): Promise<PaginatedResult<OrderView>>;
   findByIdForAdmin(orderId: number): Promise<OrderView | null>;
   updateStatus(
     orderId: number,

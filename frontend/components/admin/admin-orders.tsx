@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useDeferredValue } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowUpRight, ClipboardList } from "lucide-react";
+import { ArrowUpRight, ClipboardList, Search } from "lucide-react";
 import { useState } from "react";
 import { AdminOrderInvoiceButton } from "@/components/admin/admin-order-invoice-button";
 import {
@@ -13,22 +14,41 @@ import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { useAuth } from "@/components/auth-provider";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/field";
 import { Pagination } from "@/components/ui/pagination";
+import { Select, type SelectOption } from "@/components/ui/select";
 import { apiFetch, minorMoney } from "@/lib/api";
 import type { OrderStatus, PaginatedOrders } from "@/lib/types";
 import { ListSkeleton } from "@/components/ui/skeleton";
 
+const statusOptions: SelectOption[] = [
+  { value: "all", label: "All statuses" },
+  { value: "PAYMENT_PENDING", label: "Payment pending" },
+  { value: "PAYMENT_PROCESSING", label: "Payment processing" },
+  { value: "PAYMENT_FAILED", label: "Payment failed" },
+  { value: "PAID", label: "Paid" },
+  { value: "COD_CONFIRMED", label: "COD confirmed" },
+  { value: "PROCESSING", label: "Processing" },
+  { value: "SHIPPED", label: "Shipped" },
+  { value: "DELIVERED", label: "Delivered" },
+  { value: "CANCELLED", label: "Cancelled" },
+];
+
 export function AdminOrders() {
   const { accessToken } = useAuth();
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
+  const [status, setStatus] = useState<"all" | OrderStatus>("all");
+
+  const params = new URLSearchParams({ page: String(page), limit: "12" });
+  if (deferredSearch.trim()) params.set("search", deferredSearch.trim());
+  if (status !== "all") params.set("status", status);
+
   const query = useQuery({
-    queryKey: ["admin", "orders", page],
+    queryKey: ["admin", "orders", params.toString()],
     queryFn: () =>
-      apiFetch<PaginatedOrders>(
-        `/orders/admin/list?page=${page}&limit=12`,
-        {},
-        accessToken,
-      ),
+      apiFetch<PaginatedOrders>(`/orders/admin/list?${params}`, {}, accessToken),
     enabled: Boolean(accessToken),
     placeholderData: (previous) => previous,
   });
@@ -42,6 +62,33 @@ export function AdminOrders() {
       />
 
       <section className="mt-6 overflow-hidden rounded-[2rem] border bg-white/55 shadow-soft">
+        <div className="grid gap-3 border-b p-4 lg:grid-cols-[1fr_210px]">
+          <div className="relative">
+            <Search
+              size={17}
+              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-black/35"
+            />
+            <Input
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              placeholder="Search order number, name, email or phone"
+              aria-label="Search orders"
+              className="h-11 pl-11"
+            />
+          </div>
+          <Select
+            value={status}
+            onValueChange={(value) => {
+              setStatus(value as "all" | OrderStatus);
+              setPage(1);
+            }}
+            options={statusOptions}
+            ariaLabel="Filter by order status"
+          />
+        </div>
         {query.isLoading ? (
           <ListSkeleton rows={7} />
         ) : query.isError ? (
@@ -130,8 +177,16 @@ export function AdminOrders() {
         ) : (
           <EmptyState
             icon={<ClipboardList />}
-            title="No orders yet"
-            description="Customer checkouts will appear here."
+            title={
+              deferredSearch.trim() || status !== "all"
+                ? "No matching orders"
+                : "No orders yet"
+            }
+            description={
+              deferredSearch.trim() || status !== "all"
+                ? "Change the search or status filter to see more orders."
+                : "Customer checkouts will appear here."
+            }
           />
         )}
       </section>

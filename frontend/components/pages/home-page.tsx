@@ -424,8 +424,6 @@ function AvailableCoupons() {
     staleTime: 60_000,
   });
 
-  if (!coupons.data?.length) return null;
-
   const copyCoupon = async (coupon: PublicCoupon) => {
     window.sessionStorage.setItem(CHECKOUT_COUPON_KEY, coupon.code);
     try {
@@ -445,111 +443,144 @@ function AvailableCoupons() {
 
   return (
     <section className="px-5 py-8 lg:px-8">
-      <div className="mx-auto grid overflow-hidden rounded-[2rem] border bg-gradient-to-br from-white via-[#f7f4f2] to-[#eef0f3] lg:grid-cols-[0.72fr_1.28fr]">
-        <div className="flex flex-col justify-between p-7 sm:p-10 lg:border-r lg:border-black/10">
+      <div className="mx-auto grid overflow-hidden rounded-[2rem] bg-[#0b0b0e] text-white lg:grid-cols-[0.72fr_1.28fr]">
+        <div className="flex flex-col justify-between p-7 sm:p-10 lg:border-r lg:border-white/10">
           <div>
-            <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-accent shadow-sm">
+            <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-[#e58a63]">
               <TicketPercent size={21} />
             </span>
-            <p className="mt-8 text-xs font-bold uppercase tracking-[0.18em] text-accent">
+            <p className="mt-8 text-xs font-bold uppercase tracking-[0.18em] text-[#e58a63]">
               Available coupons
             </p>
             <h2 className="mt-3 max-w-md text-4xl font-bold tracking-[-0.05em] sm:text-5xl">
               A better price is ready.
             </h2>
-            <p className="mt-4 max-w-md text-sm leading-6 text-black/50">
+            <p className="mt-4 max-w-md text-sm leading-6 text-white/50">
               Save a code now, then use it when you are ready to check out.
             </p>
           </div>
-          <div className="mt-8 flex items-center gap-2 text-xs font-semibold text-black/45">
-            <Check size={14} className="text-accent" /> Saved securely for this
-            checkout session
+          <div className="mt-8 flex items-center gap-2 text-xs font-semibold text-white/45">
+            <Check size={14} className="text-[#e58a63]" /> Saved securely for
+            this checkout session
           </div>
         </div>
 
-        <div className="grid content-center gap-4 border-t border-black/10 p-4 sm:p-6 lg:border-t-0">
-          {coupons.data.map((coupon) => (
-            <article
-              key={coupon.id}
-              className="group relative overflow-hidden rounded-[1.75rem] border border-black/10 bg-white shadow-soft transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_22px_60px_rgba(10,10,11,0.12)]"
-            >
-              <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full bg-accent/[0.07] transition duration-500 group-hover:scale-110" />
-              <div className="grid sm:grid-cols-[minmax(0,1fr)_220px]">
-                <div className="relative p-6 sm:p-7">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-[#f7e7e1] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-accent">
-                      Checkout offer
-                    </span>
-                    {coupon.remainingUses !== null &&
-                      coupon.remainingUses <= 10 && (
-                        <span className="text-[11px] font-semibold text-black/40">
-                          {coupon.remainingUses} uses left
-                        </span>
-                      )}
+        <div className="grid content-center gap-4 border-t border-white/10 p-4 sm:p-6 lg:border-t-0">
+          {coupons.isLoading ? (
+            <CouponsSkeleton />
+          ) : coupons.data?.length ? (
+            coupons.data.map((coupon) => (
+              <article
+                key={coupon.id}
+                className="group relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/[0.06] backdrop-blur transition duration-300 hover:-translate-y-0.5 hover:border-[#e58a63]/40 hover:bg-white/[0.09]"
+              >
+                <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full bg-[#e58a63]/[0.12] transition duration-500 group-hover:scale-110" />
+                <div className="grid sm:grid-cols-[minmax(0,1fr)_220px]">
+                  <div className="relative p-6 sm:p-7">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full border border-[#e58a63]/30 bg-[#e58a63]/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#e58a63]">
+                        Checkout offer
+                      </span>
+                      {coupon.remainingUses !== null &&
+                        coupon.remainingUses <= 10 && (
+                          <span className="text-[11px] font-semibold text-white/40">
+                            {coupon.remainingUses} uses left
+                          </span>
+                        )}
+                    </div>
+                    <p className="mt-5 text-3xl font-black tracking-[-0.045em] sm:text-4xl">
+                      {coupon.type === "PERCENTAGE"
+                        ? `${coupon.value}% off`
+                        : `${minorMoney(coupon.value, "bdt")} off`}
+                    </p>
+                    <p className="mt-2 max-w-lg text-sm leading-6 text-white/50">
+                      {coupon.description ??
+                        "A little less at checkout, on us."}
+                    </p>
+                    <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-[11px] font-semibold text-white/40">
+                      <span>
+                        Min. order {minorMoney(coupon.minimumAmount, "bdt")}
+                      </span>
+                      <span>
+                        {coupon.endsAt
+                          ? `Ends ${new Intl.DateTimeFormat("en-BD", { dateStyle: "medium" }).format(new Date(coupon.endsAt))}`
+                          : "No expiry date"}
+                      </span>
+                    </div>
                   </div>
-                  <p className="mt-5 text-3xl font-black tracking-[-0.045em] sm:text-4xl">
-                    {coupon.type === "PERCENTAGE"
-                      ? `${coupon.value}% off`
-                      : `${minorMoney(coupon.value, "bdt")} off`}
-                  </p>
-                  <p className="mt-2 max-w-lg text-sm leading-6 text-black/50">
-                    {coupon.description ?? "A little less at checkout, on us."}
-                  </p>
-                  <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-[11px] font-semibold text-black/40">
-                    <span>
-                      Min. order {minorMoney(coupon.minimumAmount, "bdt")}
-                    </span>
-                    <span>
-                      {coupon.endsAt
-                        ? `Ends ${new Intl.DateTimeFormat("en-BD", { dateStyle: "medium" }).format(new Date(coupon.endsAt))}`
-                        : "No expiry date"}
-                    </span>
-                  </div>
-                </div>
 
-                <div className="relative flex flex-col justify-center border-t border-dashed border-black/15 bg-black/[0.018] p-5 sm:border-l sm:border-t-0">
-                  <span className="absolute -left-3 -top-3 hidden h-6 w-6 rounded-full border border-black/10 bg-[#f4f3f3] sm:block" />
-                  <span className="absolute -bottom-3 -left-3 hidden h-6 w-6 rounded-full border border-black/10 bg-[#f4f3f3] sm:block" />
-                  <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-black/35">
-                    Your code
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => void copyCoupon(coupon)}
-                    className="flex w-full items-center justify-between rounded-xl border border-dashed border-accent/45 bg-white px-4 py-3.5 text-left transition hover:border-accent hover:bg-accent/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
-                    aria-label={`Copy coupon ${coupon.code}`}
-                  >
-                    <span className="font-mono text-sm font-black tracking-[0.12em] text-accent">
-                      {coupon.code}
-                    </span>
-                    {copiedCouponId === coupon.id ? (
-                      <Check size={16} className="text-accent" />
-                    ) : (
-                      <Copy size={16} className="text-accent" />
-                    )}
-                  </button>
-                  <p
-                    className="mt-2 min-h-4 text-[10px] font-semibold text-black/35"
-                    aria-live="polite"
-                  >
-                    {copiedCouponId === coupon.id
-                      ? "Copied and saved"
-                      : "Tap to copy and save"}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => selectCoupon(coupon)}
-                    className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-ink px-5 text-sm font-bold text-white transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
-                  >
-                    Shop with this code <ArrowRight size={15} />
-                  </button>
+                  <div className="relative flex flex-col justify-center border-t border-dashed border-white/15 bg-black/25 p-5 sm:border-l sm:border-t-0">
+                    <span className="absolute -left-3 -top-3 hidden h-6 w-6 rounded-full bg-[#0b0b0e] sm:block" />
+                    <span className="absolute -bottom-3 -left-3 hidden h-6 w-6 rounded-full bg-[#0b0b0e] sm:block" />
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white/35">
+                      Your code
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void copyCoupon(coupon)}
+                      className="flex w-full items-center justify-between rounded-xl border border-dashed border-[#e58a63]/50 bg-white/[0.04] px-4 py-3.5 text-left transition hover:border-[#e58a63] hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e58a63] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0b0e]"
+                      aria-label={`Copy coupon ${coupon.code}`}
+                    >
+                      <span className="font-mono text-sm font-black tracking-[0.12em] text-[#e58a63]">
+                        {coupon.code}
+                      </span>
+                      {copiedCouponId === coupon.id ? (
+                        <Check size={16} className="text-[#e58a63]" />
+                      ) : (
+                        <Copy size={16} className="text-[#e58a63]" />
+                      )}
+                    </button>
+                    <p
+                      className="mt-2 min-h-4 text-[10px] font-semibold text-white/35"
+                      aria-live="polite"
+                    >
+                      {copiedCouponId === coupon.id
+                        ? "Copied and saved"
+                        : "Tap to copy and save"}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => selectCoupon(coupon)}
+                      className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#e58a63] px-5 text-sm font-bold text-[#0b0b0e] transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e58a63] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0b0e]"
+                    >
+                      Shop with this code <ArrowRight size={15} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))}
+              </article>
+            ))
+          ) : null}
         </div>
       </div>
     </section>
+  );
+}
+
+function CouponsSkeleton() {
+  return (
+    <>
+      {Array.from({ length: 2 }).map((_, index) => (
+        <div
+          key={index}
+          className="grid overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/[0.06] sm:grid-cols-[minmax(0,1fr)_220px]"
+          role="status"
+          aria-label="Loading coupons"
+        >
+          <div className="p-6 sm:p-7">
+            <Skeleton className="h-6 w-28 rounded-full bg-white/10" />
+            <Skeleton className="mt-5 h-10 w-44 bg-white/10" />
+            <Skeleton className="mt-3 h-4 w-3/4 bg-white/10" />
+            <Skeleton className="mt-6 h-3 w-56 bg-white/10" />
+          </div>
+          <div className="flex flex-col gap-3 border-t border-white/10 p-5 sm:border-l sm:border-t-0">
+            <Skeleton className="h-3 w-16 bg-white/10" />
+            <Skeleton className="h-11 w-full rounded-xl bg-white/10" />
+            <Skeleton className="h-11 w-full rounded-full bg-white/10" />
+          </div>
+        </div>
+      ))}
+      <span className="sr-only">Loading coupons…</span>
+    </>
   );
 }
 

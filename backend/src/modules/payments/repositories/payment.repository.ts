@@ -7,6 +7,7 @@ import type {
 } from '../interfaces/payment.interface';
 
 export interface PaymentRepository {
+  findById(paymentId: number): Promise<PaymentView | null>;
   findByIdempotencyKey(
     userId: number,
     idempotencyKey: string,

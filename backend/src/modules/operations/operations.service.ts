@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { AppException } from '../../common/exceptions/app.exception';
+import type { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { ProductsService } from '../products/products.service';
 import { OPERATIONS_REPOSITORY } from './constants/operations.tokens';
 import type {
@@ -25,6 +26,14 @@ export class OperationsService {
 
   getInventory(query: InventoryQueryDto) {
     return this.repository.getInventory(query);
+  }
+
+  getProductMovements(productId: number, query: PaginationQueryDto) {
+    return this.repository.getProductMovements(productId, query);
+  }
+
+  getAnalytics() {
+    return this.repository.getAnalytics();
   }
 
   adjustStock(

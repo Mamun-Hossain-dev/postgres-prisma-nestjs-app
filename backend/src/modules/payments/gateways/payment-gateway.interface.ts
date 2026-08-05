@@ -20,6 +20,10 @@ export interface GatewayWebhookEvent {
   type: string;
   paymentIntentId?: string;
   paymentStatus?: 'PROCESSING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+  refundId?: string;
+  refundStatus?: 'PENDING' | 'SUCCEEDED' | 'FAILED';
+  refundAmount?: number;
+  refundReason?: string | null;
   amount?: number;
   currency?: string;
   metadata?: Record<string, string>;
@@ -40,6 +44,7 @@ export abstract class PaymentGateway {
     paymentIntentId: string,
     amount?: number,
     idempotencyKey?: string,
+    reason?: string,
   ): Promise<{ id: string; status: string | null }>;
 
   abstract verifyWebhook(

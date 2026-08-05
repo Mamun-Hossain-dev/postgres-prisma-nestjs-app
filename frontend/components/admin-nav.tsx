@@ -13,6 +13,7 @@ import {
   Star,
   Tags,
   TicketPercent,
+  Undo2,
   UsersRound,
   Warehouse,
   MessagesSquare,
@@ -24,6 +25,7 @@ const primary = [
   { href: '/admin/products', label: 'Products', icon: Boxes },
   { href: '/admin/users', label: 'Customers', icon: UsersRound },
   { href: '/admin/orders', label: 'Orders', icon: ClipboardList },
+  { href: '/admin/refunds', label: 'Refunds', icon: Undo2 },
 ];
 
 const operations = [

@@ -22,6 +22,7 @@ model User {
   reviews                Review[]
   stockMovements         StockMovement[]
   couponRedemptions      CouponRedemption[]
+  requestedRefunds        Refund[]
   newsletterSubscriber   NewsletterSubscriber?
   addresses              Address[]
   wishlistItems          WishlistItem[]

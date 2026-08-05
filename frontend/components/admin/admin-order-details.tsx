@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Package } from "lucide-react";
+import { ArrowLeft, Package, RotateCcw } from "lucide-react";
 import { AdminOrderInvoiceButton } from "@/components/admin/admin-order-invoice-button";
 import {
   AdminOrderDeleteButton,
@@ -14,7 +15,9 @@ import {
   OrderStatusBadge,
 } from "@/components/admin/admin-orders";
 import { AdminOrderStatusControl } from "@/components/admin/admin-order-status-control";
+import { AdminRefundDialog } from "@/components/admin/admin-refund-dialog";
 import { useAuth } from "@/components/auth-provider";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { apiFetch, minorMoney } from "@/lib/api";
 import type { Order } from "@/lib/types";
@@ -22,6 +25,7 @@ import { DetailPageSkeleton } from "@/components/ui/skeleton";
 
 export function AdminOrderDetails({ orderId }: { orderId: number }) {
   const { accessToken } = useAuth();
+  const [refundOpen, setRefundOpen] = useState(false);
   const query = useQuery({
     queryKey: ["admin", "orders", orderId],
     queryFn: () => apiFetch<Order>(`/orders/admin/${orderId}`, {}, accessToken),
@@ -175,8 +179,46 @@ export function AdminOrderDetails({ orderId }: { orderId: number }) {
             </p>
             <AdminOrderStatusControl order={order} />
           </div>
+          {canRefundOrder(order) && (
+            <div className="mt-8 border-t border-white/10 pt-6">
+              <p className="mb-3 text-xs font-bold uppercase tracking-wider text-white/40">
+                Refund
+              </p>
+              <dl className="mb-4 space-y-2 text-sm">
+                <div className="flex justify-between gap-4">
+                  <dt className="text-white/45">Payment ID</dt>
+                  <dd>#{order.payments?.[0]?.id}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-white/45">Paid</dt>
+                  <dd>
+                    {minorMoney(order.payments?.[0]?.amount ?? 0, order.currency)}
+                  </dd>
+                </div>
+              </dl>
+              <Button
+                className="w-full"
+                variant="secondary"
+                onClick={() => setRefundOpen(true)}
+              >
+                <RotateCcw size={16} /> Request refund
+              </Button>
+            </div>
+          )}
         </aside>
       </div>
+
+      <AdminRefundDialog
+        open={refundOpen}
+        onOpenChange={setRefundOpen}
+        paymentId={order.payments?.[0]?.id}
+        paymentAmount={order.payments?.[0]?.amount}
+        currency={order.currency}
+      />
     </main>
   );
+}
+
+export function canRefundOrder(order: Order): boolean {
+  return Boolean(order.payments?.some((payment) => payment.status === "SUCCEEDED"));
 }

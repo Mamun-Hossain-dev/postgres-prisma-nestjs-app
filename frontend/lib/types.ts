@@ -59,6 +59,46 @@ export interface InventoryPage extends PaginatedProducts {
   data: Array<Product & { stockMovements: StockMovement[] }>;
 }
 
+export interface StockMovementPage {
+  data: StockMovement[];
+  meta: PaginatedProducts["meta"];
+}
+
+export interface AnalyticsOverview {
+  revenue: {
+    total: number;
+    today: number;
+    last30Days: number;
+    averageOrderValue: number;
+  };
+  orders: {
+    total: number;
+    last30Days: number;
+    pendingFulfilment: number;
+    byStatus: Record<OrderStatus, number>;
+  };
+  customers: {
+    total: number;
+    newLast30Days: number;
+  };
+  salesTrend: Array<{
+    date: string;
+    revenue: number;
+    orders: number;
+  }>;
+  topProducts: Array<{
+    productId: number | null;
+    title: string;
+    sku: string;
+    unitsSold: number;
+    revenue: number;
+  }>;
+  paymentSplit: {
+    CARD: { count: number; amount: number };
+    CASH_ON_DELIVERY: { count: number; amount: number };
+  };
+}
+
 export type ReviewStatus = "PENDING" | "APPROVED" | "REJECTED";
 export interface Review {
   id: number;
@@ -300,7 +340,7 @@ export interface Order {
   createdAt: string;
   updatedAt: string;
   items: OrderItem[];
-  payments?: Array<{ amount: number; status: PaymentStatus }>;
+  payments?: Array<{ id: number; amount: number; status: PaymentStatus }>;
 }
 
 export interface Payment {
@@ -338,5 +378,47 @@ export interface CheckoutSession {
 
 export interface PaginatedOrders {
   data: Order[];
+  meta: PaginatedProducts["meta"];
+}
+
+export type RefundStatus = "PENDING" | "SUCCEEDED" | "FAILED";
+
+export interface Refund {
+  id: number;
+  paymentId: number;
+  providerRefundId: string | null;
+  amount: number;
+  currency: string;
+  reason: string | null;
+  status: RefundStatus;
+  failureCode: string | null;
+  failureMessage: string | null;
+  requestedById: number | null;
+  idempotencyKey: string;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  payment: {
+    id: number;
+    orderId: number;
+    providerIntentId: string | null;
+    status: PaymentStatus;
+    amount: number;
+    currency: string;
+    order: {
+      id: number;
+      orderNumber: string;
+      userId: number;
+      customerName: string;
+      customerEmail: string;
+      paymentMethod: "CARD" | "CASH_ON_DELIVERY";
+      totalAmount: number;
+      status: OrderStatus;
+    };
+  };
+}
+
+export interface PaginatedRefunds {
+  data: Refund[];
   meta: PaginatedProducts["meta"];
 }

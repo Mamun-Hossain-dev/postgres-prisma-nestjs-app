@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import type { PaginationOptions } from '../../../common/interfaces/pagination.interface';
 import type {
@@ -6,6 +7,7 @@ import type {
   PaymentSucceededEvent,
 } from '../../payments/interfaces/payment.interface';
 import type { OrderRepository } from './order.repository';
+import type { AdminOrderQueryDto } from '../dto/admin-order-query.dto';
 import { toRepositoryPagination } from '../../../common/utils/pagination.util';
 import { getDueOnDelivery } from '../../payments/utils/checkout-amount.util';
 
@@ -14,7 +16,7 @@ const orderInclude = {
   payments: {
     orderBy: { createdAt: 'desc' as const },
     take: 1,
-    select: { amount: true, status: true },
+    select: { id: true, amount: true, status: true },
   },
 };
 
@@ -53,15 +55,17 @@ export class PrismaOrderRepository implements OrderRepository {
     });
   }
 
-  async findAll(options: PaginationOptions) {
+  async findAll(options: AdminOrderQueryDto) {
     const pagination = toRepositoryPagination(options);
+    const where = this.buildAdminWhere(options);
     const [data, totalItems] = await this.prisma.$transaction([
       this.prisma.order.findMany({
+        where,
         ...pagination,
         orderBy: { createdAt: 'desc' },
         include: orderInclude,
       }),
-      this.prisma.order.count(),
+      this.prisma.order.count({ where }),
     ]);
     return {
       data,
@@ -74,6 +78,23 @@ export class PrismaOrderRepository implements OrderRepository {
         hasPreviousPage: options.page > 1,
       },
     };
+  }
+
+  private buildAdminWhere(
+    options: AdminOrderQueryDto,
+  ): Prisma.OrderWhereInput | undefined {
+    const where: Prisma.OrderWhereInput = {};
+    if (options.status) where.status = options.status;
+    const search = options.search?.trim();
+    if (search) {
+      where.OR = [
+        { orderNumber: { contains: search, mode: 'insensitive' } },
+        { customerName: { contains: search, mode: 'insensitive' } },
+        { customerEmail: { contains: search, mode: 'insensitive' } },
+        { customerPhone: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+    return Object.keys(where).length > 0 ? where : undefined;
   }
 
   findByIdForAdmin(orderId: number): Promise<OrderView | null> {

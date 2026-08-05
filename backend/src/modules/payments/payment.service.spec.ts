@@ -6,6 +6,9 @@ import type { PaymentView } from './interfaces/payment.interface';
 import { PaymentService } from './payment.service';
 import type { PaymentRepository } from './repositories/payment.repository';
 import type { PaymentWebhookService } from './payment-webhook.service';
+import type { RefundRepository } from './refunds/repositories/refund.repository';
+import type { RefundEventsPublisher } from './refunds/refund-events.publisher';
+import type { RefundView } from './refunds/interfaces/refund.interface';
 
 const payment: PaymentView = {
   id: 1,
@@ -69,6 +72,7 @@ const payableIntent = {
 
 describe('PaymentService', () => {
   const repository = {
+    findById: jest.fn(),
     findByIdempotencyKey: jest.fn(),
     findActiveByUser: jest.fn(),
     findByOrderId: jest.fn(),
@@ -93,6 +97,17 @@ describe('PaymentService', () => {
   const webhookService = {
     handleVerified: jest.fn(),
   } as unknown as jest.Mocked<PaymentWebhookService>;
+  const refundRepository = {
+    findById: jest.fn(),
+    findByIdempotencyKey: jest.fn(),
+    findAllByPaymentId: jest.fn(),
+    findAll: jest.fn(),
+    createForPayment: jest.fn(),
+    processRefundWebhook: jest.fn(),
+  } as unknown as jest.Mocked<RefundRepository>;
+  const refundEventsPublisher = {
+    publishCompleted: jest.fn(),
+  } as unknown as jest.Mocked<RefundEventsPublisher>;
   const config = {
     getOrThrow: jest.fn((key: string) => {
       if (key === 'stripe.currency') return 'bdt';
@@ -128,6 +143,8 @@ describe('PaymentService', () => {
       gateway,
       redis,
       webhookService,
+      refundRepository,
+      refundEventsPublisher,
       config,
     );
 
@@ -148,6 +165,8 @@ describe('PaymentService', () => {
       gateway,
       redis,
       webhookService,
+      refundRepository,
+      refundEventsPublisher,
       config,
     );
 
@@ -173,6 +192,8 @@ describe('PaymentService', () => {
       gateway,
       redis,
       webhookService,
+      refundRepository,
+      refundEventsPublisher,
       config,
     );
 
@@ -227,6 +248,8 @@ describe('PaymentService', () => {
       gateway,
       redis,
       webhookService,
+      refundRepository,
+      refundEventsPublisher,
       config,
     );
 
@@ -271,6 +294,8 @@ describe('PaymentService', () => {
       gateway,
       redis,
       webhookService,
+      refundRepository,
+      refundEventsPublisher,
       config,
     );
 
@@ -308,6 +333,8 @@ describe('PaymentService', () => {
       gateway,
       redis,
       webhookService,
+      refundRepository,
+      refundEventsPublisher,
       config,
     );
 
@@ -324,6 +351,8 @@ describe('PaymentService', () => {
       gateway,
       redis,
       webhookService,
+      refundRepository,
+      refundEventsPublisher,
       config,
     );
 
@@ -347,6 +376,8 @@ describe('PaymentService', () => {
       gateway,
       redis,
       webhookService,
+      refundRepository,
+      refundEventsPublisher,
       config,
     );
 
@@ -368,6 +399,8 @@ describe('PaymentService', () => {
       gateway,
       redis,
       webhookService,
+      refundRepository,
+      refundEventsPublisher,
       config,
     );
 
@@ -380,5 +413,236 @@ describe('PaymentService', () => {
     );
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(repository.markRefundedAndCancel).toHaveBeenCalledWith(payment.id);
+  });
+
+  describe('refund requests', () => {
+    const refund: RefundView = {
+      id: 1,
+      paymentId: 1,
+      providerRefundId: 're_123',
+      amount: payment.amount,
+      currency: 'bdt',
+      reason: null,
+      status: 'PENDING',
+      failureCode: null,
+      failureMessage: null,
+      requestedById: 9,
+      idempotencyKey: '9cf8ed35-c195-49af-a2f1-e747d802b024',
+      completedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      payment: {
+        id: 1,
+        orderId: 2,
+        providerIntentId: 'pi_123',
+        status: 'SUCCEEDED',
+        amount: payment.amount,
+        currency: 'bdt',
+        order: {
+          id: 2,
+          orderNumber: 'DD-TEST',
+          userId: 7,
+          customerName: 'Test User',
+          customerEmail: 'test@example.com',
+          paymentMethod: 'CARD',
+          totalAmount: payment.amount,
+        },
+      },
+    };
+    const request = {
+      paymentId: 1,
+      amount: undefined,
+      reason: undefined,
+      idempotencyKey: refund.idempotencyKey,
+    };
+
+    it('returns an existing refund for an idempotent retry', async () => {
+      refundRepository.findByIdempotencyKey.mockResolvedValue(refund);
+      const service = new PaymentService(
+        repository,
+        gateway,
+        redis,
+        webhookService,
+        refundRepository,
+        refundEventsPublisher,
+        config,
+      );
+
+      await expect(
+        service.requestRefund(
+          request.paymentId,
+          9,
+          request.amount,
+          request.reason,
+          request.idempotencyKey,
+        ),
+      ).resolves.toMatchObject({ id: 1, status: 'PENDING' });
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(gateway.refund).not.toHaveBeenCalled();
+    });
+
+    it('rejects refunds for payments that were never successful', async () => {
+      refundRepository.findByIdempotencyKey.mockResolvedValue(null);
+      repository.findById.mockResolvedValue({ ...payment, status: 'PENDING' });
+      redis.acquireLock.mockResolvedValue(true);
+      redis.releaseLock.mockResolvedValue(true);
+      const service = new PaymentService(
+        repository,
+        gateway,
+        redis,
+        webhookService,
+        refundRepository,
+        refundEventsPublisher,
+        config,
+      );
+
+      await expect(
+        service.requestRefund(
+          request.paymentId,
+          9,
+          request.amount,
+          request.reason,
+          request.idempotencyKey,
+        ),
+      ).rejects.toMatchObject({ code: 'REFUND_PAYMENT_NOT_SUCCESSFUL' });
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(gateway.refund).not.toHaveBeenCalled();
+    });
+
+    it('calls Stripe and saves the refund as PENDING', async () => {
+      refundRepository.findByIdempotencyKey.mockResolvedValue(null);
+      refundRepository.findAllByPaymentId.mockResolvedValue([]);
+      refundRepository.createForPayment.mockResolvedValue(refund);
+      repository.findById.mockResolvedValue({
+        ...payment,
+        status: 'SUCCEEDED',
+      });
+      redis.acquireLock.mockResolvedValue(true);
+      redis.releaseLock.mockResolvedValue(true);
+      gateway.refund.mockResolvedValue({ id: 're_123', status: 'pending' });
+      const service = new PaymentService(
+        repository,
+        gateway,
+        redis,
+        webhookService,
+        refundRepository,
+        refundEventsPublisher,
+        config,
+      );
+
+      await expect(
+        service.requestRefund(
+          request.paymentId,
+          9,
+          request.amount,
+          request.reason,
+          request.idempotencyKey,
+        ),
+      ).resolves.toMatchObject({ status: 'PENDING' });
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(gateway.refund).toHaveBeenCalledWith(
+        'pi_123',
+        payment.amount,
+        request.idempotencyKey,
+        undefined,
+      );
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(refundRepository.createForPayment).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 1 }),
+        expect.objectContaining({
+          providerRefundId: 're_123',
+          amount: payment.amount,
+          idempotencyKey: request.idempotencyKey,
+        }),
+      );
+    });
+
+    it('fails safely when a refund lock is already held', async () => {
+      refundRepository.findByIdempotencyKey.mockResolvedValue(null);
+      redis.acquireLock.mockResolvedValue(false);
+      const service = new PaymentService(
+        repository,
+        gateway,
+        redis,
+        webhookService,
+        refundRepository,
+        refundEventsPublisher,
+        config,
+      );
+
+      await expect(
+        service.requestRefund(
+          request.paymentId,
+          9,
+          request.amount,
+          request.reason,
+          request.idempotencyKey,
+        ),
+      ).rejects.toMatchObject({ code: 'REFUND_ALREADY_IN_PROGRESS' });
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(gateway.refund).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('refund webhooks', () => {
+    it('publishes refund.completed after a successful refund webhook', async () => {
+      const completedEvent = {
+        eventId: 'evt_1',
+        refundId: 1,
+        paymentId: 1,
+        orderId: 2,
+        orderNumber: 'DD-TEST',
+        customer: { id: 7, name: 'Test User', email: 'test@example.com' },
+        amount: payment.amount,
+        currency: 'bdt',
+        reason: null,
+        refundDate: new Date().toISOString(),
+      };
+      refundRepository.processRefundWebhook.mockResolvedValue({
+        duplicate: false,
+        completedEvent,
+      });
+      const service = new PaymentService(
+        repository,
+        gateway,
+        redis,
+        webhookService,
+        refundRepository,
+        refundEventsPublisher,
+        config,
+      );
+
+      await service.processRefundWebhook({
+        id: 'evt_1',
+        type: 'refund.updated',
+        refundId: 're_123',
+        refundStatus: 'SUCCEEDED',
+      });
+
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(refundEventsPublisher.publishCompleted).toHaveBeenCalledWith(
+        completedEvent,
+      );
+    });
+
+    it('ignores refund webhooks without a refund id', async () => {
+      const service = new PaymentService(
+        repository,
+        gateway,
+        redis,
+        webhookService,
+        refundRepository,
+        refundEventsPublisher,
+        config,
+      );
+
+      await service.processRefundWebhook({
+        id: 'evt_2',
+        type: 'refund.created',
+      });
+
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(refundRepository.processRefundWebhook).not.toHaveBeenCalled();
+    });
   });
 });

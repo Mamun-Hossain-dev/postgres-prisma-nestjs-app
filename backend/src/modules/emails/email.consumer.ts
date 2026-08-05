@@ -15,6 +15,11 @@ import {
   PaymentConsumerNames,
 } from '../payments/constants/payment.constants';
 import type { PaymentSucceededEvent } from '../payments/interfaces/payment.interface';
+import {
+  RefundConsumerNames,
+  RefundEvents,
+} from '../payments/refunds/constants/refund.constants';
+import type { RefundCompletedEvent } from '../payments/refunds/interfaces/refund.interface';
 import { EventProcessingService } from '../event-processing/event-processing.service';
 import { InvoiceService } from '../orders/invoices/invoice.service';
 
@@ -80,6 +85,40 @@ export class EmailConsumer {
       } catch (releaseError) {
         this.logger.error(
           `Could not release email event claim ${event.eventId}: ${releaseError instanceof Error ? releaseError.message : String(releaseError)}`,
+        );
+      }
+      await this.retryService.handleFailure(
+        context,
+        RabbitMqQueues.EMAILS,
+        error,
+      );
+    }
+  }
+
+  @EventPattern(RefundEvents.COMPLETED)
+  async handleRefundCompleted(
+    @Payload() event: RefundCompletedEvent,
+    @Ctx() context: RmqContext,
+  ): Promise<void> {
+    const channel = context.getChannelRef() as RabbitMqChannel;
+    const message = context.getMessage() as RabbitMqMessage;
+    const consumer = RefundConsumerNames.EMAIL;
+
+    try {
+      const claimed = await this.eventProcessing.claim(consumer, event.eventId);
+      if (!claimed) {
+        acknowledgeRabbitMqMessage(channel, message);
+        return;
+      }
+      await this.emailsService.sendRefundConfirmation(event);
+      await this.eventProcessing.complete(consumer, event.eventId);
+      acknowledgeRabbitMqMessage(channel, message);
+    } catch (error) {
+      try {
+        await this.eventProcessing.release(consumer, event.eventId);
+      } catch (releaseError) {
+        this.logger.error(
+          `Could not release refund email event claim ${event.eventId}: ${releaseError instanceof Error ? releaseError.message : String(releaseError)}`,
         );
       }
       await this.retryService.handleFailure(

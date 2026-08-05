@@ -41,8 +41,13 @@ Install dependencies inside each directory so their lockfiles remain separate.
 - Redis detail, collection, and short-lived catalog-list caches with write
   invalidation, plus throttling and distributed checkout locks
 - Stripe Payment Intent, webhook verification, and idempotent payment handling
+- Webhook-confirmed refunds with partial-refund support and `refund.completed`
+  events for email, notification, and analytics consumers
 - Card checkout and delivery-fee-prepaid cash on delivery
-- Audited inventory adjustments and catalog category/brand reporting
+- Audited inventory adjustments with full per-product movement history and
+  stock-health filters
+- Admin analytics overview with revenue, sales trends, order pipeline, payment
+  mix, and best sellers
 - Verified-order review submission with admin moderation
 - Usage-limited coupons with checkout reservation and release handling
 - Atomic payment and order status updates with Prisma transactions
@@ -51,8 +56,9 @@ Install dependencies inside each directory so their lockfiles remain separate.
 - Idempotent email, notification, and analytics consumers
 - Payment confirmation email with an attached PDF invoice
 - Admin new-order email with customer, delivery, product, and payment details
-- Admin fulfilment workflow with processing, shipped, delivered, cancellation,
-  and automatic Stripe refunds
+- Admin fulfilment workflow with one-click fulfillment (direct to delivered),
+  shipping, cancellation, confirmation-email resend, and automatic Stripe
+  refunds
 - Cloudinary uploads behind the `FileStorage` abstraction
 - Global validation, response envelopes, logging, and exception handling
 
@@ -108,14 +114,38 @@ and delivery charge online. Cash-on-delivery orders pay a card deposit first:
 credited to the order total and the balance remains due at delivery. Stripe
 Payment Intents accept cards only, and checkout amounts are fixed to BDT.
 
+## Refund flow
+
+```text
+Admin request
+-> business rule validation (payment succeeded, not fully refunded, sufficient balance)
+-> Redis SET NX EX lock on the payment
+-> Stripe Refund API with an idempotency key
+-> Refund saved as REFUND_PENDING with the Stripe refund id
+-> verified Stripe refund webhook
+-> Prisma transaction updates refund and, on a full refund, payment and order
+-> refund.completed events
+-> customer refund email / notification log / analytics log
+```
+
+Refunds live in a dedicated `refunds` table keyed by payment. The Stripe webhook
+remains the source of truth: an admin request only parks a refund as PENDING and
+never marks it completed. Full refunds atomically move the payment to `REFUNDED`,
+cancel the order, and release redeemed coupon usage. Partial refunds keep the
+payment successful, and the refundable balance is recomputed from non-failed
+refunds on every request.
+
 ### Reliability decisions
 
 - **Distributed lock:** Checkout uses Redis `SET NX EX` to prevent double-click
   and concurrent retry races. Release uses a token-checking Lua script so one
-  request cannot release another request's lock.
+  request cannot release another request's lock. Refund requests take a
+  payment-scoped lock with the same mechanism to stop duplicate refunds.
 - **Idempotency:** Checkout UUIDs are stored in PostgreSQL and forwarded as
   Stripe idempotency keys. Stripe event IDs have a unique database constraint,
-  and each RabbitMQ consumer claims an event before processing it.
+  and each RabbitMQ consumer claims an event before processing it. Refund
+  requests carry their own UUID that is persisted and reused as the Stripe
+  idempotency key, and refund webhook events use the same deduplication.
 - **Transactions:** Selected product IDs and quantities are converted into
   server-priced order snapshots with a pending payment atomically.
   Webhook-driven payment and order transitions are also committed together.
@@ -124,7 +154,8 @@ Payment Intents accept cards only, and checkout amounts are fixed to BDT.
   Currently available coupons are published on the storefront and can be saved
   for checkout.
 - **Inventory audit:** Admin stock corrections update the product and create a
-  movement record with the operator and reason in the same transaction.
+  movement record with the operator and reason in the same transaction. A
+  movement-history endpoint lets admins trace every +/– change per product.
 - **RabbitMQ events:** `ClientProxy.emit()` and `@EventPattern()` handle work
   that does not belong in the webhook response. Consumers manually acknowledge
   messages at most once after success and route failures through timed retries
@@ -223,16 +254,23 @@ All routes are relative to `/api/v1`.
 | GET    | `/payments/:id`                 | Owner            | Read webhook-backed status     |
 | GET    | `/payments/:id/session`         | Owner            | Restore checkout session       |
 | POST   | `/payments/webhooks/stripe`     | Stripe signature | Process webhook                |
+| POST   | `/refunds`                      | Admin            | Request a refund               |
+| GET    | `/refunds`                      | Admin            | List refunds                   |
+| GET    | `/refunds/:id`                  | Admin            | Read a refund                  |
 | GET    | `/orders`                       | Authenticated    | List owned orders              |
 | GET    | `/orders/:id`                   | Owner            | Read owned order               |
 | GET    | `/orders/:id/invoice`           | Owner            | Download paid invoice          |
 | GET    | `/orders/admin/list`            | Admin            | List all orders                |
 | GET    | `/orders/admin/:id`             | Admin            | Read any order                 |
 | PATCH  | `/orders/admin/:id/status`      | Admin            | Update fulfilment status       |
+| POST   | `/orders/admin/:id/resend-confirmation` | Admin   | Resend confirmation email      |
 | GET    | `/orders/admin/:id/invoice`     | Admin            | Download paid invoice          |
 | DELETE | `/orders/admin/:id`             | Admin            | Delete pending/cancelled order |
 | GET    | `/operations/summary`           | Admin, Seller    | Catalog operation metrics      |
+| GET    | `/operations/analytics`         | Admin            | Revenue and sales analytics    |
+| GET    | `/operations/inventory`         | Admin, Seller    | Inventory list with stock view |
 | PATCH  | `/operations/inventory/:id`     | Admin, Seller    | Record a stock adjustment      |
+| GET    | `/operations/inventory/:id/movements` | Admin, Seller | Product stock history     |
 | GET    | `/operations/reviews`           | Admin            | Moderate customer reviews      |
 | GET    | `/operations/coupons/available` | Public           | List currently usable coupons  |
 | POST   | `/operations/coupons`           | Admin            | Create a checkout coupon       |
