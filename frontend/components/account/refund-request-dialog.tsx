@@ -7,71 +7,54 @@ import { RotateCcw, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/field";
+import { Field } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import { apiFetch, minorMoney } from "@/lib/api";
-import type { Refund } from "@/lib/types";
+import type { RefundRequest } from "@/lib/types";
 
-export function AdminRefundDialog({
+export function RefundRequestDialog({
   open,
   onOpenChange,
-  paymentId,
-  paymentAmount,
+  orderId,
+  orderNumber,
+  amount,
   currency,
 }: {
   open: boolean;
   onOpenChange(open: boolean): void;
-  paymentId?: number | null;
-  paymentAmount?: number;
-  currency?: string;
+  orderId: number;
+  orderNumber: string;
+  amount: number;
+  currency: string;
 }) {
   const { accessToken } = useAuth();
   const queryClient = useQueryClient();
-  const [paymentIdValue, setPaymentIdValue] = useState(
-    paymentId ? String(paymentId) : "",
-  );
-  const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
 
   useEffect(() => {
-    if (open) {
-      setPaymentIdValue(paymentId ? String(paymentId) : "");
-      setAmount(paymentAmount ? (paymentAmount / 100).toFixed(2) : "");
-      setReason("");
-    }
-  }, [open, paymentId, paymentAmount]);
+    if (open) setReason("");
+  }, [open]);
 
-  const request = useMutation({
+  const submit = useMutation({
     mutationFn: () =>
-      apiFetch<Refund>(
-        "/refunds",
+      apiFetch<RefundRequest>(
+        "/refund-requests",
         {
           method: "POST",
-          body: JSON.stringify({
-            paymentId: Number(paymentIdValue),
-            ...(amount.trim() ? { amount: Math.round(Number(amount) * 100) } : {}),
-            ...(reason.trim() ? { reason: reason.trim() } : {}),
-            idempotencyKey: crypto.randomUUID(),
-          }),
+          body: JSON.stringify({ orderId, reason: reason.trim() }),
         },
         accessToken,
       ),
-    onSuccess: (refund) => {
-      toast.success(
-        refund.status === "SUCCEEDED"
-          ? "Refund completed"
-          : "Refund requested",
-      );
+    onSuccess: () => {
+      toast.success("Refund request submitted for review");
       onOpenChange(false);
-      void queryClient.invalidateQueries({ queryKey: ["admin", "refunds"] });
-      void queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
+      void queryClient.invalidateQueries({ queryKey: ["refund-requests"] });
+      void queryClient.invalidateQueries({ queryKey: ["orders"] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const canSubmit =
-    Number(paymentIdValue) > 0 &&
-    (!amount.trim() || (Number(amount) > 0 && !Number.isNaN(Number(amount))));
+  const canSubmit = reason.trim().length >= 3;
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -85,51 +68,27 @@ export function AdminRefundDialog({
             Request a refund
           </Dialog.Title>
           <Dialog.Description className="mt-3 text-sm leading-6 text-black/55">
-            Return a payment to your customer. You can refund the full amount
-            or a partial amount.
+            Order {orderNumber} · {minorMoney(amount, currency)}. Our team will
+            review your request before the payment is returned.
           </Dialog.Description>
 
           <form
             className="mt-7 space-y-5"
             onSubmit={(event) => {
               event.preventDefault();
-              if (canSubmit) request.mutate();
+              if (canSubmit) submit.mutate();
             }}
           >
-            <Field label="Payment ID">
-              <Input
-                type="number"
-                min={1}
-                value={paymentIdValue}
-                onChange={(event) => setPaymentIdValue(event.target.value)}
-                placeholder="e.g. 42"
-                autoFocus
-                disabled={Boolean(paymentId)}
-              />
-            </Field>
             <Field
-              label="Amount"
-              hint={
-                paymentAmount
-                  ? `Leave empty to refund the full payment (${minorMoney(paymentAmount, currency)}).`
-                  : "Leave empty to refund the full payment amount."
-              }
+              label="Reason"
+              hint="Tell us why you would like your money back."
             >
-              <Input
-                type="number"
-                min={0}
-                step="0.01"
-                value={amount}
-                onChange={(event) => setAmount(event.target.value)}
-                placeholder="Full amount"
-              />
-            </Field>
-            <Field label="Reason (optional)">
               <Textarea
-                rows={3}
+                rows={4}
                 value={reason}
                 onChange={(event) => setReason(event.target.value)}
-                placeholder="e.g. Customer requested cancellation"
+                placeholder="e.g. Item arrived damaged and I would like a full refund"
+                autoFocus
               />
             </Field>
 
@@ -141,10 +100,10 @@ export function AdminRefundDialog({
               </Dialog.Close>
               <Button
                 type="submit"
-                loading={request.isPending}
+                loading={submit.isPending}
                 disabled={!canSubmit}
               >
-                Request refund
+                Submit request
               </Button>
             </div>
           </form>

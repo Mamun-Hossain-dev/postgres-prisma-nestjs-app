@@ -42,7 +42,7 @@ async function refreshBackendToken(token: JWT): Promise<JWT> {
 export const authOptions: NextAuthOptions = {
   session: {
     strategy: 'jwt',
-    maxAge: 15 * 60,
+    maxAge: 30 * 24 * 60 * 60,
   },
   pages: {
     signIn: '/login',
@@ -131,12 +131,17 @@ export const authOptions: NextAuthOptions = {
         token.user = { ...token.user, ...session.user };
       }
 
+      if (trigger === 'update' && session?.refreshAccessToken) {
+        return refreshBackendToken(token);
+      }
+
       if (Date.now() < token.accessTokenExpires) return token;
       return refreshBackendToken(token);
     },
     async session({ session, token }) {
       session.user = token.user;
       session.accessToken = token.accessToken;
+      session.error = token.error;
       return session;
     },
   },

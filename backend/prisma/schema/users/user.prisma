@@ -23,6 +23,8 @@ model User {
   stockMovements         StockMovement[]
   couponRedemptions      CouponRedemption[]
   requestedRefunds        Refund[]
+  refundRequests          RefundRequest[]
+  reviewedRefundRequests  RefundRequest[]   @relation("RefundRequestReviewer")
   newsletterSubscriber   NewsletterSubscriber?
   addresses              Address[]
   wishlistItems          WishlistItem[]

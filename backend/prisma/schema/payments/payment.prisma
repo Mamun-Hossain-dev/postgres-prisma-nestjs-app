@@ -39,6 +39,12 @@ enum RefundStatus {
   FAILED
 }
 
+enum RefundRequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
 enum ConsumerEventStatus {
   PROCESSING
   PROCESSED
@@ -81,6 +87,7 @@ model Order {
   items               OrderItem[]
   payments            Payment[]
   couponRedemption    CouponRedemption?
+  refundRequests      RefundRequest[]
   paidAt              DateTime?
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
@@ -185,6 +192,7 @@ model Refund {
   requestedById    Int?
   requestedBy      User?           @relation(fields: [requestedById], references: [id], onDelete: SetNull)
   idempotencyKey   String          @unique
+  refundRequest    RefundRequest?
   completedAt      DateTime?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
@@ -192,6 +200,29 @@ model Refund {
   @@index([paymentId, status])
   @@index([requestedById])
   @@map("refunds")
+}
+
+model RefundRequest {
+  id           Int                 @id @default(autoincrement())
+  orderId      Int
+  order        Order               @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  userId       Int
+  user         User                @relation(fields: [userId], references: [id], onDelete: Restrict)
+  reason       String
+  status       RefundRequestStatus @default(PENDING)
+  refundId     Int?                    @unique
+  refund       Refund?                 @relation(fields: [refundId], references: [id], onDelete: SetNull)
+  adminId      Int?
+  admin        User?               @relation("RefundRequestReviewer", fields: [adminId], references: [id], onDelete: SetNull)
+  decisionNote String?
+  reviewedAt   DateTime?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([orderId, status])
+  @@index([status, createdAt])
+  @@map("refund_requests")
 }
 
 model PaymentWebhookEvent {

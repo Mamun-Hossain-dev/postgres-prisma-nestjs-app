@@ -51,7 +51,7 @@ export function AdminRefunds() {
       <AdminPageHeader
         eyebrow="Payments"
         title="Refunds."
-        description="Request refunds against captured payments and track them until they settle."
+        description="Refund customer payments and track them until they settle."
         action={
           <Button className="h-12" onClick={() => setCreating(true)}>
             <Plus size={17} /> New refund
@@ -95,7 +95,7 @@ export function AdminRefunds() {
           <EmptyState
             icon={<RotateCcw />}
             title={status === "all" ? "No refunds yet" : `No ${status.toLowerCase()} refunds`}
-            description="Request a refund from an order or use the New refund button above."
+            description="Refund a payment from an order, or create a new refund above."
             action={
               <Button onClick={() => setCreating(true)}>
                 <Plus size={17} /> Request a refund

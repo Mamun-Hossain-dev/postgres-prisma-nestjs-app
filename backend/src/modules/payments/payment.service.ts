@@ -252,6 +252,20 @@ export class PaymentService {
     );
   }
 
+  async getRefundablePaymentForOrder(
+    orderId: number,
+  ): Promise<{ id: number } | null> {
+    const payment = await this.repository.findByOrderId(orderId);
+    if (!payment || payment.status !== 'SUCCEEDED') return null;
+    if (!payment.providerIntentId) {
+      throw new AppException('The completed payment cannot be refunded', {
+        code: 'REFUND_UNAVAILABLE',
+        status: 409,
+      });
+    }
+    return { id: payment.id };
+  }
+
   async requestRefund(
     paymentId: number,
     requestedByUserId: number,

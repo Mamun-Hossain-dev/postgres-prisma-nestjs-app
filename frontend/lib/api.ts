@@ -14,10 +14,36 @@ export class ApiError extends Error {
   }
 }
 
+type TokenRefresher = () => Promise<string | null>;
+
+let refresher: TokenRefresher | null = null;
+let refreshInFlight: Promise<string | null> | null = null;
+
+export function registerTokenRefresher(handler: TokenRefresher | null) {
+  refresher = handler;
+}
+
+function refreshAccessToken(): Promise<string | null> {
+  if (!refresher) return Promise.resolve(null);
+  refreshInFlight ??= refresher().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
+}
+
 export async function apiFetch<T>(
   path: string,
   init: RequestInit = {},
   accessToken?: string | null,
+): Promise<T> {
+  return apiFetchInner<T>(path, init, accessToken, false);
+}
+
+async function apiFetchInner<T>(
+  path: string,
+  init: RequestInit,
+  accessToken: string | undefined | null,
+  retried: boolean,
 ): Promise<T> {
   const isFormData = init.body instanceof FormData;
   const response = await fetch(`${API_URL}${path}`, {
@@ -41,12 +67,19 @@ export async function apiFetch<T>(
 
   if (!response.ok) {
     const failure = payload && "error" in payload ? payload.error : undefined;
-    throw new ApiError(
+    const error = new ApiError(
       failure?.message ?? payload?.message ?? "Something went wrong",
       response.status,
       failure?.code,
       failure?.details,
     );
+    if (error.status === 401 && accessToken && !retried) {
+      const freshToken = await refreshAccessToken();
+      if (freshToken) {
+        return apiFetchInner(path, init, freshToken, true);
+      }
+    }
+    throw error;
   }
 
   return (payload as ApiEnvelope<T>).data;
@@ -55,6 +88,14 @@ export async function apiFetch<T>(
 export async function apiFetchBlob(
   path: string,
   accessToken?: string | null,
+): Promise<Blob> {
+  return apiFetchBlobInner(path, accessToken, false);
+}
+
+async function apiFetchBlobInner(
+  path: string,
+  accessToken: string | undefined | null,
+  retried: boolean,
 ): Promise<Blob> {
   const response = await fetch(`${API_URL}${path}`, {
     credentials: "include",
@@ -67,12 +108,19 @@ export async function apiFetchBlob(
       message?: string;
       error?: { code?: string; message?: string; details?: unknown };
     } | null;
-    throw new ApiError(
+    const error = new ApiError(
       payload?.error?.message ?? payload?.message ?? "Unable to download file",
       response.status,
       payload?.error?.code,
       payload?.error?.details,
     );
+    if (error.status === 401 && accessToken && !retried) {
+      const freshToken = await refreshAccessToken();
+      if (freshToken) {
+        return apiFetchBlobInner(path, freshToken, true);
+      }
+    }
+    throw error;
   }
   return response.blob();
 }

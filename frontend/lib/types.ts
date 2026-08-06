@@ -341,6 +341,19 @@ export interface Order {
   updatedAt: string;
   items: OrderItem[];
   payments?: Array<{ id: number; amount: number; status: PaymentStatus }>;
+  refundRequests?: Array<{
+    id: number;
+    reason: string;
+    status: RefundRequestStatus;
+    decisionNote: string | null;
+    reviewedAt: string | null;
+    createdAt: string;
+    refund: {
+      id: number;
+      amount: number;
+      status: RefundStatus;
+    } | null;
+  }>;
 }
 
 export interface Payment {
@@ -420,5 +433,42 @@ export interface Refund {
 
 export interface PaginatedRefunds {
   data: Refund[];
+  meta: PaginatedProducts["meta"];
+}
+
+export type RefundRequestStatus = "PENDING" | "APPROVED" | "DENIED";
+
+export interface RefundRequest {
+  id: number;
+  orderId: number;
+  userId: number;
+  reason: string;
+  status: RefundRequestStatus;
+  refundId: number | null;
+  adminId: number | null;
+  decisionNote: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  order: {
+    id: number;
+    orderNumber: string;
+    status: OrderStatus;
+    totalAmount: number;
+    currency: string;
+    customerName: string;
+    customerEmail: string;
+    paymentMethod: "CARD" | "CASH_ON_DELIVERY";
+  };
+  refund: {
+    id: number;
+    amount: number;
+    currency: string;
+    status: RefundStatus;
+  } | null;
+}
+
+export interface PaginatedRefundRequests {
+  data: RefundRequest[];
   meta: PaginatedProducts["meta"];
 }

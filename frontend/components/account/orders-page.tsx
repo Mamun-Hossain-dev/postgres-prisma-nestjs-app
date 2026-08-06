@@ -1,25 +1,45 @@
 "use client";
 
+import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Download, Package } from "lucide-react";
+import { Download, Package, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { AccountShell } from "@/components/account-shell";
 import { useAuth } from "@/components/auth-provider";
+import { RefundRequestDialog } from "@/components/account/refund-request-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { apiFetch, apiFetchBlob, minorMoney } from "@/lib/api";
-import type { PaginatedOrders } from "@/lib/types";
+import type {
+  Order,
+  PaginatedOrders,
+  PaginatedRefundRequests,
+} from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function OrdersPage() {
   const { accessToken } = useAuth();
+  const [refundFor, setRefundFor] = useState<Order | null>(null);
   const orders = useQuery({
     queryKey: ["orders"],
     queryFn: () =>
       apiFetch<PaginatedOrders>("/orders?page=1&limit=50", {}, accessToken),
     enabled: Boolean(accessToken),
   });
+  const refundRequests = useQuery({
+    queryKey: ["refund-requests"],
+    queryFn: () =>
+      apiFetch<PaginatedRefundRequests>(
+        "/refund-requests?page=1&limit=50",
+        {},
+        accessToken,
+      ),
+    enabled: Boolean(accessToken),
+  });
+  const requestByOrder = new Map(
+    refundRequests.data?.data.map((request) => [request.orderId, request]),
+  );
   const invoice = useMutation({
     mutationFn: async ({
       orderId,
@@ -156,31 +176,45 @@ export function OrdersPage() {
                     </div>
                   ))}
                 </div>
-                {[
-                  "PAID",
-                  "COD_CONFIRMED",
-                  "PROCESSING",
-                  "SHIPPED",
-                  "DELIVERED",
-                ].includes(order.status) && (
-                  <div className="border-t p-5 text-right">
-                    <Button
-                      variant="outline"
-                      loading={
-                        invoice.isPending &&
-                        invoice.variables?.orderId === order.id
-                      }
-                      onClick={() =>
-                        invoice.mutate({
-                          orderId: order.id,
-                          orderNumber: order.orderNumber,
-                        })
-                      }
-                    >
-                      <Download size={16} /> Download invoice
-                    </Button>
+                {canInvoiceOrder(order.status) ||
+                canRefundOrder(order) ||
+                requestByOrder.has(order.id) ? (
+                  <div className="flex flex-wrap items-center justify-between gap-4 border-t p-5">
+                    <div className="flex items-center gap-3">
+                      {requestByOrder.get(order.id) ? (
+                        <RefundRequestBadge
+                          request={requestByOrder.get(order.id)!}
+                        />
+                      ) : canRefundOrder(order) ? (
+                        <Button
+                          variant="outline"
+                          onClick={() => setRefundFor(order)}
+                        >
+                          <RotateCcw size={16} /> Request refund
+                        </Button>
+                      ) : null}
+                    </div>
+                    <div className="ml-auto">
+                      {canInvoiceOrder(order.status) && (
+                        <Button
+                          variant="outline"
+                          loading={
+                            invoice.isPending &&
+                            invoice.variables?.orderId === order.id
+                          }
+                          onClick={() =>
+                            invoice.mutate({
+                              orderId: order.id,
+                              orderNumber: order.orderNumber,
+                            })
+                          }
+                        >
+                          <Download size={16} /> Download invoice
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                )}
+                ) : null}
               </article>
             ))}
           </div>
@@ -194,6 +228,57 @@ export function OrdersPage() {
           </div>
         )}
       </section>
+
+      <RefundRequestDialog
+        open={Boolean(refundFor)}
+        onOpenChange={(open) => {
+          if (!open) setRefundFor(null);
+        }}
+        orderId={refundFor?.id ?? 0}
+        orderNumber={refundFor?.orderNumber ?? ""}
+        amount={
+          refundFor?.payments?.find(
+            (payment) => payment.status === "SUCCEEDED",
+          )?.amount ?? refundFor?.totalAmount ?? 0
+        }
+        currency={refundFor?.currency ?? ""}
+      />
     </AccountShell>
   );
+}
+
+function canInvoiceOrder(status: Order["status"]): boolean {
+  return [
+    "PAID",
+    "COD_CONFIRMED",
+    "PROCESSING",
+    "SHIPPED",
+    "DELIVERED",
+  ].includes(status);
+}
+
+function canRefundOrder(order: Order): boolean {
+  return Boolean(
+    order.payments?.some((payment) => payment.status === "SUCCEEDED"),
+  );
+}
+
+function RefundRequestBadge({
+  request,
+}: {
+  request: import("@/lib/types").RefundRequest;
+}) {
+  const tone =
+    request.status === "APPROVED"
+      ? "success"
+      : request.status === "DENIED"
+        ? "danger"
+        : "warning";
+  const label =
+    request.status === "PENDING"
+      ? "Refund requested"
+      : request.status === "APPROVED"
+        ? "Refund approved"
+        : "Refund denied";
+  return <Badge tone={tone}>{label}</Badge>;
 }

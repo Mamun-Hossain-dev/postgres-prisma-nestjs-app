@@ -1,8 +1,8 @@
 'use client';
 
-import { createContext, useContext, useMemo } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo } from 'react';
 import { signIn, signOut, useSession } from 'next-auth/react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, registerTokenRefresher } from '@/lib/api';
 import type { User } from '@/lib/types';
 
 interface AuthContextValue {
@@ -19,6 +19,21 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { data: session, status, update } = useSession();
+
+  const refreshAccessToken = useCallback(async () => {
+    try {
+      const updated = await update({ refreshAccessToken: true });
+      if (!updated?.accessToken || updated.error) return null;
+      return updated.accessToken;
+    } catch {
+      return null;
+    }
+  }, [update]);
+
+  useEffect(() => {
+    registerTokenRefresher(refreshAccessToken);
+    return () => registerTokenRefresher(null);
+  }, [refreshAccessToken]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

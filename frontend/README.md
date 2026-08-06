@@ -208,11 +208,11 @@ NextAuth session strategy:
 ```ts
 session: {
   strategy: 'jwt',
-  maxAge: 15 * 60,
+  maxAge: 30 * 24 * 60 * 60,
 }
 ```
 
-Backend access token এবং user information NextAuth JWT-তে রাখা হয়। Client session-এ শুধু application-এর প্রয়োজনীয় `user` এবং `accessToken` expose করা হয়।
+Backend access token এবং user information NextAuth JWT-তে রাখা হয়। Client session-এ শুধু application-এর প্রয়োজনীয় `user` এবং `accessToken` expose করা হয়। Session `maxAge` refresh session-এর lifetime-এর সঙ্গে মিলে (৩০ দিন), তাই browser cookie আগে expire করে না; access token refresh-ই আসল re-auth mechanism।
 
 ### Token refresh
 
@@ -224,6 +224,11 @@ POST /auth/refresh
   → নতুন access token নেয়
   → JWT এবং user update করে
 ```
+
+Browser থেকে সরাসরি API call-এর ক্ষেত্রে `apiFetch` 401 পেলে single-flight (`refreshInFlight`) করে
+NextAuth session-এ `update({ refreshAccessToken: true })` পাঠায়, যা server-side refresh force করে।
+New access token পাওয়া গেলে original request একবার retry হয়; refresh ব্যর্থ হলে original 401
+error-ই throw হয়। Login/register-এর মতো token ছাড়া request-এ refresh attempt করা হয় না।
 
 Refresh ব্যর্থ হলে token-এর মধ্যে `RefreshAccessTokenError` রাখা হয়।
 

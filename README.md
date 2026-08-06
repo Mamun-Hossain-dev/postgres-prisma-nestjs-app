@@ -43,6 +43,7 @@ Install dependencies inside each directory so their lockfiles remain separate.
 - Stripe Payment Intent, webhook verification, and idempotent payment handling
 - Webhook-confirmed refunds with partial-refund support and `refund.completed`
   events for email, notification, and analytics consumers
+- Customer refund requests on paid orders with admin approve/deny workflow
 - Card checkout and delivery-fee-prepaid cash on delivery
 - Audited inventory adjustments with full per-product movement history and
   stock-health filters
@@ -134,6 +135,27 @@ never marks it completed. Full refunds atomically move the payment to `REFUNDED`
 cancel the order, and release redeemed coupon usage. Partial refunds keep the
 payment successful, and the refundable balance is recomputed from non-failed
 refunds on every request.
+
+### Customer refund request flow
+
+```text
+Customer request from the account orders page
+-> ownership + captured-payment validation
+-> Redis SET NX EX lock per order
+-> RefundRequest saved as PENDING
+-> Admin review (dedicated admin page or order details)
+-> Approve -> existing Stripe refund flow, RefundRequest links the Refund
+-> Deny   -> RefundRequest marked DENIED with an optional note
+-> customer sees PENDING / APPROVED / DENIED on the order
+```
+
+Refund requests live in a dedicated `refund_requests` table keyed by order. A
+customer can request a refund only for an order with a captured card payment,
+and only one PENDING/APPROVED request is allowed per order. Approving executes
+the same Stripe refund flow as an admin-initiated refund; the admin chooses the
+amount to return (defaults to the full order total, supports partial refunds),
+the request is then linked to the created refund, and the Stripe webhook remains
+the completion source of truth. Denied requests can be resubmitted.
 
 ### Reliability decisions
 
@@ -257,6 +279,12 @@ All routes are relative to `/api/v1`.
 | POST   | `/refunds`                      | Admin            | Request a refund               |
 | GET    | `/refunds`                      | Admin            | List refunds                   |
 | GET    | `/refunds/:id`                  | Admin            | Read a refund                  |
+| POST   | `/refund-requests`              | Authenticated    | Request a refund for an order  |
+| GET    | `/refund-requests`              | Authenticated    | List owned refund requests     |
+| GET    | `/refund-requests/:id`          | Owner            | Read an owned refund request   |
+| GET    | `/refund-requests/admin`        | Admin            | List all refund requests       |
+| PATCH  | `/refund-requests/admin/:id/approve` | Admin      | Approve and refund (full or chosen amount) |
+| PATCH  | `/refund-requests/admin/:id/deny` | Admin          | Deny a refund request          |
 | GET    | `/orders`                       | Authenticated    | List owned orders              |
 | GET    | `/orders/:id`                   | Owner            | Read owned order               |
 | GET    | `/orders/:id/invoice`           | Owner            | Download paid invoice          |

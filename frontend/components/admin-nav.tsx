@@ -25,6 +25,7 @@ const primary = [
   { href: '/admin/products', label: 'Products', icon: Boxes },
   { href: '/admin/users', label: 'Customers', icon: UsersRound },
   { href: '/admin/orders', label: 'Orders', icon: ClipboardList },
+  { href: '/admin/refund-requests', label: 'Refund requests', icon: Undo2 },
   { href: '/admin/refunds', label: 'Refunds', icon: Undo2 },
 ];
 

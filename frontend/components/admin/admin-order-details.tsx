@@ -16,6 +16,7 @@ import {
 } from "@/components/admin/admin-orders";
 import { AdminOrderStatusControl } from "@/components/admin/admin-order-status-control";
 import { AdminRefundDialog } from "@/components/admin/admin-refund-dialog";
+import { RefundRequestStatusBadge } from "@/components/admin/admin-refund-requests";
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -205,6 +206,39 @@ export function AdminOrderDetails({ orderId }: { orderId: number }) {
               </Button>
             </div>
           )}
+          {order.refundRequests?.length ? (
+            <div className="mt-8 border-t border-white/10 pt-6">
+              <p className="mb-3 text-xs font-bold uppercase tracking-wider text-white/40">
+                Refund requests
+              </p>
+              <ul className="space-y-4">
+                {order.refundRequests.map((request) => (
+                  <li key={request.id}>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-bold">
+                        Request #{request.id}
+                      </span>
+                      <RefundRequestStatusBadge status={request.status} />
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-white/60">
+                      {request.reason}
+                    </p>
+                    {request.decisionNote && (
+                      <p className="mt-1 text-xs italic text-white/45">
+                        Note: {request.decisionNote}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/admin/refund-requests"
+                className="mt-4 inline-block text-xs font-bold text-accent hover:underline"
+              >
+                Manage refund requests →
+              </Link>
+            </div>
+          ) : null}
         </aside>
       </div>
 

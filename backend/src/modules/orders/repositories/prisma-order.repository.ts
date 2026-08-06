@@ -20,6 +20,25 @@ const orderInclude = {
   },
 };
 
+const adminOrderInclude = {
+  ...orderInclude,
+  refundRequests: {
+    orderBy: { createdAt: 'desc' as const },
+    take: 5,
+    select: {
+      id: true,
+      reason: true,
+      status: true,
+      decisionNote: true,
+      reviewedAt: true,
+      createdAt: true,
+      refund: {
+        select: { id: true, amount: true, status: true },
+      },
+    },
+  },
+};
+
 @Injectable()
 export class PrismaOrderRepository implements OrderRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -100,7 +119,7 @@ export class PrismaOrderRepository implements OrderRepository {
   findByIdForAdmin(orderId: number): Promise<OrderView | null> {
     return this.prisma.order.findUnique({
       where: { id: orderId },
-      include: orderInclude,
+      include: adminOrderInclude,
     });
   }
 
